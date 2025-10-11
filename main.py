@@ -609,7 +609,9 @@ except ImportError:
 except Exception as e:
     print(f"⚠️ デバッグコマンドの読み込みエラー: {e}")
 
-# Koyeb用ヘルスチェックサーバー
+import asyncio
+from aiohttp import web
+
 async def health_check(request):
     return web.Response(text="OK", status=200)
 
@@ -619,26 +621,21 @@ async def run_health_server():
     app.router.add_get('/', health_check)
     runner = web.AppRunner(app)
     await runner.setup()
-    # Koyebのヘルスチェックのため0.0.0.0にバインド (127.0.0.1ではダメ)
     site = web.TCPSite(runner, '0.0.0.0', 8000)
     await site.start()
     print("✅ ヘルスチェックサーバーを起動しました (ポート 8000)")
 
 async def main():
     token = os.getenv("DISCORD_BOT_TOKEN")
-    
     if not token:
         print("❌ エラー: DISCORD_BOT_TOKEN 環境変数が設定されていません")
-        print("ℹ️  .env ファイルに DISCORD_BOT_TOKEN=your_token_here を設定してください")
         exit(1)
     
-    # ヘルスチェックサーバーを起動
-    asyncio.create_task(run_health_server())
+    # Health server を起動してから Bot を起動
+    await run_health_server()
     
     print("🤖 Discord BOTを起動します...")
     async with bot:
         await bot.start(token)
 
-# 起動
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
