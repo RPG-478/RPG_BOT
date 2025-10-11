@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 import random
 import asyncio
+import os
+from dotenv import load_dotenv
 import db
 from db import get_player
 import views
@@ -17,6 +19,8 @@ from views import (
 )
 import game
 from story import StoryView
+
+load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -606,18 +610,12 @@ except Exception as e:
 
 # 起動
 if __name__ == "__main__":
-    import os
-    
-    # 環境変数からトークンを取得（フォールバック：token.txt）
     token = os.getenv("DISCORD_BOT_TOKEN")
     
     if not token:
-        try:
-            with open("token.txt") as f:
-                token = f.read().strip()
-            print("ℹ️ token.txt からトークンを読み込みました")
-        except FileNotFoundError:
-            print("❌ エラー: DISCORD_BOT_TOKEN 環境変数または token.txt が見つかりません")
-            exit(1)
+        print("❌ エラー: DISCORD_BOT_TOKEN 環境変数が設定されていません")
+        print("ℹ️  .env ファイルに DISCORD_BOT_TOKEN=your_token_here を設定してください")
+        exit(1)
     
+    print("🤖 Discord BOTを起動します...")
     bot.run(token)
