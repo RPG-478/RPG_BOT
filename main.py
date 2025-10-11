@@ -4,6 +4,7 @@ import random
 import asyncio
 import os
 from dotenv import load_dotenv
+from aiohttp import web
 import db
 from db import get_player
 import views
@@ -608,8 +609,22 @@ except ImportError:
 except Exception as e:
     print(f"⚠️ デバッグコマンドの読み込みエラー: {e}")
 
-# 起動
-if __name__ == "__main__":
+# Koyeb用ヘルスチェックサーバー
+async def health_check(request):
+    return web.Response(text="OK", status=200)
+
+async def run_health_server():
+    app = web.Application()
+    app.router.add_get('/health', health_check)
+    app.router.add_get('/', health_check)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    # Koyebのヘルスチェックのため0.0.0.0にバインド (127.0.0.1ではダメ)
+    site = web.TCPSite(runner, '0.0.0.0', 8000)
+    await site.start()
+    print("✅ ヘルスチェックサーバーを起動しました (ポート 8000)")
+
+async def main():
     token = os.getenv("DISCORD_BOT_TOKEN")
     
     if not token:
@@ -617,5 +632,13 @@ if __name__ == "__main__":
         print("ℹ️  .env ファイルに DISCORD_BOT_TOKEN=your_token_here を設定してください")
         exit(1)
     
+    # ヘルスチェックサーバーを起動
+    asyncio.create_task(run_health_server())
+    
     print("🤖 Discord BOTを起動します...")
-    bot.run(token)
+    async with bot:
+        await bot.start(token)
+
+# 起動
+if __name__ == "__main__":
+    asyncio.run(main())
