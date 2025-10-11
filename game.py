@@ -1,6 +1,8 @@
 import random
 
 ITEMS_DATABASE = {
+    "none": {
+    },
     "木の剣": {
         "type": "weapon",
         "attack": 5,
