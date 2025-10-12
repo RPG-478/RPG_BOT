@@ -597,11 +597,12 @@ ENEMY_ZONES = {
                 "weight": 50,
                 "exp": 8,
                 "drops": [
-                    {"item": "木の剣", "weight": 40},
-                    {"item": "石の剣", "weight": 15},
-                    {"item": "鉄の剣", "weight": 5},
-                    {"item": "回復薬", "weight": 25},
-                    {"item": "coins", "amount": [10, 30], "weight": 15}
+                    {"item": "none", "weight": 70},
+                    {"item": "木の剣", "weight": 8},
+                    {"item": "石の剣", "weight": 3},
+                    {"item": "鉄の剣", "weight": 1},
+                    {"item": "回復薬", "weight": 8},
+                    {"item": "coins", "amount": [10, 30], "weight": 10}
                 ]
             },
             {
@@ -613,11 +614,12 @@ ENEMY_ZONES = {
                 "weight": 30,
                 "exp": 12,
                 "drops": [
-                    {"item": "木の盾", "weight": 35},
-                    {"item": "石の盾", "weight": 20},
-                    {"item": "鉄の盾", "weight": 8},
-                    {"item": "回復薬", "weight": 20},
-                    {"item": "coins", "amount": [15, 40], "weight": 17}
+                    {"item": "none", "weight": 70},
+                    {"item": "木の盾", "weight": 8},
+                    {"item": "石の盾", "weight": 3},
+                    {"item": "鉄の盾", "weight": 1},
+                    {"item": "回復薬", "weight": 8},
+                    {"item": "coins", "amount": [15, 40], "weight": 10}
                 ]
             },
             {
@@ -629,10 +631,11 @@ ENEMY_ZONES = {
                 "weight": 15,
                 "exp": 10,
                 "drops": [
-                    {"item": "蜘蛛の糸", "weight": 60},
-                    {"item": "毒の短剣", "weight": 15},
-                    {"item": "回復薬", "weight": 15},
-                    {"item": "coins", "amount": [8, 25], "weight": 10}
+                    {"item": "none", "weight": 50},
+                    {"item": "蜘蛛の糸", "weight": 15},
+                    {"item": "毒の短剣", "weight": 5},
+                    {"item": "回復薬", "weight": 10},
+                    {"item": "coins", "amount": [8, 25], "weight": 20}
                 ]
             },
             {
@@ -644,9 +647,10 @@ ENEMY_ZONES = {
                 "weight": 5,
                 "exp": 15,
                 "drops": [
-                    {"item": "幽霊の布", "weight": 45},
-                    {"item": "魔法の杖", "weight": 20},
-                    {"item": "高級回復薬", "weight": 15},
+                    {"item": "none", "weight": 50},
+                    {"item": "幽霊の布", "weight": 15},
+                    {"item": "魔法の杖", "weight": 5},
+                    {"item": "高級回復薬", "weight": 10},
                     {"item": "coins", "amount": [20, 50], "weight": 20}
                 ]
             }
