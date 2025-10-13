@@ -5,31 +5,31 @@ ITEMS_DATABASE = {
     },
     "木の剣": {
         "type": "weapon",
-        "attack": 5,
+        "attack": 2,
         "ability": "なし",
         "description": "初心者向けの木製の剣。軽くて扱いやすい。"
     },
     "石の剣": {
         "type": "weapon",
-        "attack": 8,
+        "attack": 4,
         "ability": "なし",
         "description": "石で作られた剣。木の剣より頑丈。"
     },
     "鉄の剣": {
         "type": "weapon",
-        "attack": 12,
+        "attack": 6,
         "ability": "なし",
         "description": "鉄製の剣。切れ味が良い。"
     },
     "毒の短剣": {
         "type": "weapon",
-        "attack": 10,
+        "attack": 8,
         "ability": "毒付与（5%の確率で追加ダメージ）",
         "description": "毒が塗られた短剣。相手を弱らせる。"
     },
     "魔法の杖": {
         "type": "weapon",
-        "attack": 15,
+        "attack": 10,
         "ability": "魔力増幅（魔法攻撃+20%）",
         "description": "魔力が込められた杖。魔法使いに最適。"
     },
@@ -590,9 +590,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "スライム",
-                "hp": 30,
-                "atk": 5,
-                "def": 1,
+                "hp": 20,
+                "atk": 3,
+                "def": 2,
                 "attribute": "none",
                 "weight": 50,
                 "exp": 8,
@@ -607,9 +607,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "ゴブリン",
-                "hp": 40,
-                "atk": 7,
-                "def": 3,
+                "hp": 15,
+                "atk": 4,
+                "def": 1,
                 "attribute": "none",
                 "weight": 30,
                 "exp": 12,
@@ -2287,3 +2287,53 @@ def get_exp_from_enemy(enemy_name, distance):
             return enemy.get("exp", 10)
     
     return 10
+
+def categorize_drops_by_zone(zones, items_db):
+    """
+    ENEMY_ZONESのドロップアイテムを、アイテムタイプ別に分類し、階層ごとに集計する。
+    """
+    drops_by_zone_and_type = {}
+    
+    for zone_key, zone_data in zones.items():
+        # ゾーンごとに結果を初期化
+        drops_by_zone_and_type[zone_key] = {
+            "weapon": set(),
+            "armor": set(),
+            "potion": set(),
+            "material": set(),
+            "other": set() # noneやcoinsなど、タイプがないものを格納
+        }
+        
+        for enemy in zone_data["enemies"]:
+            for drop in enemy["drops"]:
+                item_name = drop.get("item")
+                
+                "'none' または 'coins' のような特殊ドロップはスキップまたは'other'に追加"
+                if item_name == "none" or item_name == "coins":
+                    if item_name == "coins":
+                        drops_by_zone_and_type[zone_key]["other"].add(item_name)
+                    continue
+                
+                "ITEMS_DATABASEからアイテムタイプを取得"
+                item_info = items_db.get(item_name)
+                
+                if item_info:
+                    item_type = item_info.get("type")
+                    if item_type in drops_by_zone_and_type[zone_key]:
+                        "該当するタイプセットにアイテム名を追加"
+                        drops_by_zone_and_type[zone_key][item_type].add(item_name)
+                    else:
+                        "定義されていないタイプは 'other' に追加"
+                        drops_by_zone_and_type[zone_key]["other"].add(item_name)
+                else:
+                    "ITEMS_DATABASEに見つからない場合は 'other' に追加 (通常は発生しない想定)"
+                    drops_by_zone_and_type[zone_key]["other"].add(item_name)
+
+        "setをリストに変換して、ソートする（見やすくするため）"
+        for item_type in drops_by_zone_and_type[zone_key]:
+            drops_by_zone_and_type[zone_key][item_type] = sorted(list(drops_by_zone_and_type[zone_key][item_type]))
+            
+    return drops_by_zone_and_type
+
+"階層ごとにタイプ別ドロップアイテムを格納する新しい変数"
+DROPS_BY_ZONE_AND_TYPE = categorize_drops_by_zone(ENEMY_ZONES, ITEMS_DATABASE)
