@@ -65,19 +65,19 @@ ITEMS_DATABASE = {
     },
     "木の盾": {
         "type": "armor",
-        "defense": 3,
+        "defense": 2,
         "ability": "なし",
         "description": "木製の盾。簡素だが軽い。"
     },
     "石の盾": {
         "type": "armor",
-        "defense": 6,
+        "defense": 3,
         "ability": "なし",
         "description": "石で作られた盾。頑丈。"
     },
     "鉄の盾": {
         "type": "armor",
-        "defense": 10,
+        "defense": 5,
         "ability": "なし",
         "description": "鉄製の盾。高い防御力を持つ。"
     },
@@ -2349,3 +2349,91 @@ weapon_drops_1 = DROPS_BY_ZONE_AND_TYPE["0-1000"]["weapon"]
 "0-1000mのエリアでドロップする防具のリストを取得"
 armor_drops_1 = DROPS_BY_ZONE_AND_TYPE["0-1000"]["armor"]
 "['木の盾', '石の盾', '鉄の盾','幽霊の布']"
+
+"1001-2000mのエリアでドロップする武器のリストを取得"
+weapon_drops_2 = DROPS_BY_ZONE_AND_TYPE["1001-2000"]["weapon"]
+"['骨の剣', '呪いの剣', '魔法の杖']"
+
+"1001-2000mのエリアでドロップする防具のリストを取得"
+armor_drops_2 = DROPS_BY_ZONE_AND_TYPE["1001-2000"]["armor"]
+"['骨の盾', '死者の兜', '不死の鎧','幽霊の布']"
+
+"2001-3000mのエリアでドロップする武器のリストを取得"
+weapon_drops_3 = DROPS_BY_ZONE_AND_TYPE["2001-3000"]["weapon"]
+"['炎の大剣', 'ドラゴンソード', '黒騎士の剣']"
+
+"2001-3000mのエリアでドロップする防具のリストを取得"
+armor_drops_3 = DROPS_BY_ZONE_AND_TYPE["2001-3000"]["armor"]
+"['地獄の鎧', '龍の鱗', '黒騎士の盾','黒騎士の鎧']"
+
+"3001-4000mのエリアでドロップする武器のリストを取得"
+weapon_drops_4 = DROPS_BY_ZONE_AND_TYPE["3001-4000"]["weapon"]
+"['炎獄の剣', '死神の鎌']"
+
+"3001-4000mのエリアでドロップする防具のリストを取得"
+armor_drops_4 = DROPS_BY_ZONE_AND_TYPE["3001-4000"]["armor"]
+"['魔王の盾', '龍鱗の鎧', '冥界の盾','死の鎧']"
+
+"4001-5000mのエリアでドロップする武器のリストを取得"
+weapon_drops_5 = DROPS_BY_ZONE_AND_TYPE["4001-5000"]["weapon"]
+"['業火の剣', '血の剣', '死霊の杖']"
+
+"4001-5000mのエリアでドロップする防具のリストを取得"
+armor_drops_5 = DROPS_BY_ZONE_AND_TYPE["4001-5000"]["armor"]
+"['炎の鎧', '夜の外套', '不死王の兜']"
+
+"5001-6000mのエリアでドロップする武器のリストを取得"
+weapon_drops_6 = DROPS_BY_ZONE_AND_TYPE["5001-6000"]["weapon"]
+"['影の短剣', '暗黒の弓', '破壊の斧', '虚無の剣']"
+
+"5001-6000mのエリアでドロップする防具のリストを取得"
+armor_drops_6 = DROPS_BY_ZONE_AND_TYPE["5001-6000"]["armor"]
+"['巨人の鎧', '幻影の鎧']"
+
+"6001-7000mのエリアでドロップする武器のリストを取得"
+weapon_drops_7 = DROPS_BY_ZONE_AND_TYPE["6001-7000"]["weapon"]
+"['カオスブレード', '炎の剣', '滅びの剣']"
+
+"6001-7000mのエリアでドロップする防具のリストを取得"
+armor_drops_7 = DROPS_BY_ZONE_AND_TYPE["6001-7000"]["armor"]
+"['混沌の鎧', '再生の鎧', '終焉の盾']"
+
+"7001-8000mのエリアでドロップする武器のリストを取得"
+weapon_drops_8 = DROPS_BY_ZONE_AND_TYPE["7001-8000"]["weapon"]
+"['深淵の剣', '四元の剣', '天の槌']"
+
+"7001-8000mのエリアでドロップする防具のリストを取得"
+armor_drops_8 = DROPS_BY_ZONE_AND_TYPE["7001-8000"]["armor"]
+"['虚空の鎧', '精霊の盾', '神の盾']"
+
+"8001-9000mのエリアでドロップする武器のリストを取得"
+weapon_drops_9 = DROPS_BY_ZONE_AND_TYPE["8001-9000"]["weapon"]
+"['暗黒聖剣', '水神の槍']"
+
+"8001-9000mのエリアでドロップする防具のリストを取得"
+armor_drops_9 = DROPS_BY_ZONE_AND_TYPE["8001-9000"]["armor"]
+"['堕天の鎧', '深海の鎧']"
+
+"9001-10000mのエリアでドロップする武器のリストを取得"
+weapon_drops_10 = DROPS_BY_ZONE_AND_TYPE["9001-10000"]["weapon"]
+"['獄炎の剣', '幻影剣']"
+
+"9001-10000mのエリアでドロップする防具のリストを取得"
+armor_drops_10 = DROPS_BY_ZONE_AND_TYPE["9001-10000"]["armor"]
+"['炎の鎧', '夜の外套', '不死王の兜']"
+
+"10001-11000mのエリアでドロップする武器のリストを取得"
+weapon_drops_10 = DROPS_BY_ZONE_AND_TYPE["10001-11000"]["weapon"]
+"['竜帝剣', '混沌神剣']"
+
+"10001-11000mのエリアでドロップする防具のリストを取得"
+armor_drops_10 = DROPS_BY_ZONE_AND_TYPE["10001-11000"]["armor"]
+"['竜帝の鎧', '創世の盾']"
+
+"11001m-のエリアでドロップする武器のリストを取得"
+weapon_drops_11 = DROPS_BY_ZONE_AND_TYPE["11001-"]["weapon"]
+"['死神大鎌']"
+
+"11001mのエリアでドロップする防具のリストを取得"
+armor_drops_11 = DROPS_BY_ZONE_AND_TYPE["11001-"]["armor"]
+"['死帝の鎧']"
