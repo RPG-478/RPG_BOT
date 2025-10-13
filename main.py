@@ -667,4 +667,96 @@ async def main():
     async with bot:
         await bot.start(token)
 
+
+@bot.command(name="servers")
+async def show_servers(ctx: commands.Context):
+    """BOTが参加しているサーバー一覧を表示(開発者用・ページネーション付き)"""
+    
+    # 開発者のみ実行可能にする
+    DEVELOPER_ID = "1301416493401243694"  # あなたのDiscord ID
+    
+    if str(ctx.author.id) != DEVELOPER_ID:
+        await ctx.send("❌ このコマンドは開発者のみ実行できます")
+        return
+    
+    guilds_list = list(bot.guilds)
+    total_servers = len(guilds_list)
+    
+    if total_servers == 0:
+        await ctx.send("📭 BOTはどのサーバーにも参加していません")
+        return
+    
+    # ページネーション用のView
+    class ServerListView(discord.ui.View):
+        def __init__(self, guilds, user_id):
+            super().__init__(timeout=180)  # 3分でタイムアウト
+            self.guilds = guilds
+            self.user_id = user_id
+            self.current_page = 0
+            self.max_page = (len(guilds) - 1) // 10
+            
+            # 最初のページでは前のページボタンを無効化
+            self.update_buttons()
+        
+        def update_buttons(self):
+            """ボタンの有効/無効を更新"""
+            self.children[0].disabled = (self.current_page == 0)  # 前へボタン
+            self.children[1].disabled = (self.current_page >= self.max_page)  # 次へボタン
+        
+        def create_embed(self):
+            """現在のページのEmbedを作成"""
+            start_idx = self.current_page * 10
+            end_idx = min(start_idx + 10, len(self.guilds))
+            
+            embed = discord.Embed(
+                title="🌐 BOTが参加しているサーバー",
+                description=f"合計: **{len(self.guilds)}** サーバー",
+                color=discord.Color.blue()
+            )
+            
+            for guild in self.guilds[start_idx:end_idx]:
+                embed.add_field(
+                    name=f"📍 {guild.name}",
+                    value=f"ID: `{guild.id}`\nメンバー: {guild.member_count}人",
+                    inline=False
+                )
+            
+            embed.set_footer(text=f"ページ {self.current_page + 1} / {self.max_page + 1}")
+            return embed
+        
+        @discord.ui.button(label="◀ 前へ", style=discord.ButtonStyle.primary)
+        async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+            # 実行者チェック
+            if str(interaction.user.id) != self.user_id:
+                await interaction.response.send_message("❌ このボタンは実行者のみ操作できます", ephemeral=True)
+                return
+            
+            self.current_page -= 1
+            self.update_buttons()
+            await interaction.response.edit_message(embed=self.create_embed(), view=self)
+        
+        @discord.ui.button(label="次へ ▶", style=discord.ButtonStyle.primary)
+        async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+            # 実行者チェック
+            if str(interaction.user.id) != self.user_id:
+                await interaction.response.send_message("❌ このボタンは実行者のみ操作できます", ephemeral=True)
+                return
+            
+            self.current_page += 1
+            self.update_buttons()
+            await interaction.response.edit_message(embed=self.create_embed(), view=self)
+        
+        @discord.ui.button(label="❌ 閉じる", style=discord.ButtonStyle.danger)
+        async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+            # 実行者チェック
+            if str(interaction.user.id) != self.user_id:
+                await interaction.response.send_message("❌ このボタンは実行者のみ操作できます", ephemeral=True)
+                return
+            
+            await interaction.message.delete()
+    
+    # Viewとメッセージを送信
+    view = ServerListView(guilds_list, str(ctx.author.id))
+    await ctx.send(embed=view.create_embed(), view=view)
+
 asyncio.run(main())
