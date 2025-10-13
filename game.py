@@ -2341,3 +2341,11 @@ def categorize_drops_by_zone(zones, items_db):
 "階層ごとにタイプ別ドロップアイテムを格納する新しい変数"
 "ENEMY_ZONESとITEMS_DATABASEが定義された後に実行されます。"
 DROPS_BY_ZONE_AND_TYPE = categorize_drops_by_zone(ENEMY_ZONES, ITEMS_DATABASE)
+
+"0-1000mのエリアでドロップする武器のリストを取得"
+weapon_drops_1 = DROPS_BY_ZONE_AND_TYPE["0-1000"]["weapon"]
+"['木の剣', '魔法の杖', '石の剣', '毒の短剣', '鉄の剣']"
+
+"0-1000mのエリアでドロップする防具のリストを取得"
+armor_drops_1 = DROPS_BY_ZONE_AND_TYPE["0-1000"]["armor"]
+"['木の盾', '石の盾', '鉄の盾','幽霊の布']"
