@@ -753,8 +753,8 @@ class SpecialEventView(View):
 
         player_data = {
             "hp": player.get("hp", 100),
-            "attack": player.get("attack", 10),
-            "defense": player.get("defense", 5),
+            "attack": player.get("attack", 5),
+            "defense": player.get("defense", 3),
             "inventory": player.get("inventory", []),
             "distance": self.distance,
             "user_id": interaction.user.id
