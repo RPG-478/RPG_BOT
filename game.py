@@ -2295,7 +2295,7 @@ def categorize_drops_by_zone(zones, items_db):
     drops_by_zone_and_type = {}
     
     for zone_key, zone_data in zones.items():
-        # ゾーンごとに結果を初期化
+        "ゾーンごとに結果を初期化"
         drops_by_zone_and_type[zone_key] = {
             "weapon": set(),
             "armor": set(),
@@ -2304,13 +2304,16 @@ def categorize_drops_by_zone(zones, items_db):
             "other": set() # noneやcoinsなど、タイプがないものを格納
         }
         
-        for enemy in zone_data["enemies"]:
-            for drop in enemy["drops"]:
+        "ENEMIESがリストであることを前提"
+        for enemy in zone_data.get("enemies", []): 
+            "dropsがリストであることを前提"
+            for drop in enemy.get("drops", []):
                 item_name = drop.get("item")
                 
                 "'none' または 'coins' のような特殊ドロップはスキップまたは'other'に追加"
                 if item_name == "none" or item_name == "coins":
                     if item_name == "coins":
+                        # 'none'は無視、'coins'は'other'に記録
                         drops_by_zone_and_type[zone_key]["other"].add(item_name)
                     continue
                 
@@ -2326,14 +2329,15 @@ def categorize_drops_by_zone(zones, items_db):
                         "定義されていないタイプは 'other' に追加"
                         drops_by_zone_and_type[zone_key]["other"].add(item_name)
                 else:
-                    "ITEMS_DATABASEに見つからない場合は 'other' に追加 (通常は発生しない想定)"
+                    "ITEMS_DATABASEに見つからない場合は 'other' に追加"
                     drops_by_zone_and_type[zone_key]["other"].add(item_name)
 
-        "setをリストに変換して、ソートする（見やすくするため）"
+        "setをリストに変換して、ソートする"
         for item_type in drops_by_zone_and_type[zone_key]:
             drops_by_zone_and_type[zone_key][item_type] = sorted(list(drops_by_zone_and_type[zone_key][item_type]))
             
     return drops_by_zone_and_type
 
 "階層ごとにタイプ別ドロップアイテムを格納する新しい変数"
+"ENEMY_ZONESとITEMS_DATABASEが定義された後に実行されます。"
 DROPS_BY_ZONE_AND_TYPE = categorize_drops_by_zone(ENEMY_ZONES, ITEMS_DATABASE)
