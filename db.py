@@ -24,6 +24,10 @@ def delete_player(user_id):
 
 def add_item_to_inventory(user_id, item_name):
     """インベントリにアイテムを追加"""
+        if item_name == "none":
+        """アイテムがnoneの場合は何もせず終了"""
+        return
+            
     player = get_player(user_id)
     if player:
         inventory = player.get("inventory", [])
