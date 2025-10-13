@@ -2058,11 +2058,11 @@ class BattleView(View):
                 if drop_result["type"] == "coins":
                     db.add_gold(interaction.user.id, drop_result["amount"])
                     drop_text = f"\n💰 **{drop_result['amount']}コイン** を手に入れた！"
+                elif drop_result["name"] == "none":
+                    drop_text = f"\n **敵は何も落とさなかった...**"
                 elif drop_result["type"] == "item":
                     db.add_item_to_inventory(interaction.user.id, drop_result["name"])
                     drop_text = f"\n🎁 **{drop_result['name']}** を手に入れた！"
-                elif drop_result["name"] == "none":
-                    drop_text = f"\n **敵は何も落とさなかった...**"
             
             await self.update_embed(text + "\n🏆 敵を倒した！" + drop_text)
             self.disable_all_items()
