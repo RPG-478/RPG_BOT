@@ -567,3 +567,21 @@ def is_game_cleared(user_id):
     """ゲームクリア状態を取得"""
     player = get_player(user_id)
     return player.get("game_cleared", False) if player else False
+
+def is_player_banned(user_id):
+    """プレイヤーがBANされているかチェック"""
+    player = get_player(user_id)
+    if player:
+        bot_banned = player.get("bot_banned", False)
+        return bot_banned
+    return False
+
+def get_ban_status(user_id):
+    """BAN状態の詳細を取得"""
+    player = get_player(user_id)
+    if player:
+        return {
+            "bot_banned": player.get("bot_banned", False),
+            "web_banned": player.get("web_banned", False)
+        }
+    return {"bot_banned": False, "web_banned": False}
