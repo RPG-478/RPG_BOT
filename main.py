@@ -59,6 +59,7 @@ async def on_ready():
 
 #スタート×チュートリアル開始
 @bot.command(name="start")
+@check_ban()
 async def start(ctx: commands.Context):
     user = ctx.author
     user_id = str(user.id)
@@ -131,6 +132,7 @@ async def start(ctx: commands.Context):
 
 
 @bot.command(name="reset")
+@check_ban()
 async def reset(ctx: commands.Context):
     """2段階確認付きでプレイヤーデータと専用チャンネルを削除する"""
     user = ctx.author
@@ -158,6 +160,7 @@ async def reset(ctx: commands.Context):
 
 #move
 @bot.command(name="move")
+@check_ban()
 async def move(ctx: commands.Context):
     user = ctx.author
     
@@ -454,6 +457,7 @@ async def move(ctx: commands.Context):
 
 # インベントリ
 @bot.command()
+@check_ban()
 async def inventory(ctx):
     # 処理中チェック
     if user_processing.get(ctx.author.id):
@@ -470,6 +474,7 @@ async def inventory(ctx):
 
 # ステータス&装備
 @bot.command()
+@check_ban()
 async def status(ctx):
     try:
         # 他処理中チェック
@@ -530,6 +535,7 @@ async def status(ctx):
 
 # アップグレード
 @bot.command()
+@check_ban()
 async def upgrade(ctx):
     if user_processing.get(ctx.author.id):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
@@ -575,6 +581,7 @@ async def upgrade(ctx):
 
 # アップグレード購入
 @bot.command()
+@check_ban()
 async def buy_upgrade(ctx, upgrade_type: int):
     if user_processing.get(ctx.author.id):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
