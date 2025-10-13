@@ -30,6 +30,28 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 user_processing = {}
 
+from functools import wraps
+def check_ban():
+    """BAN確認デコレーター"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(ctx: commands.Context, *args, **kwargs):
+            user_id = str(ctx.author.id)
+            
+            # BAN確認
+            if db.is_player_banned(user_id):
+                embed = discord.Embed(
+                    title="❌ BOT利用禁止",
+                    description="あなたはBOT利用禁止処分を受けています。\n\n運営チームにお問い合わせください。",
+                    color=discord.Color.red()
+                )
+                await ctx.send(embed=embed)
+                return
+            
+            return await func(ctx, *args, **kwargs)
+        return wrapper
+    return decorator
+
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
