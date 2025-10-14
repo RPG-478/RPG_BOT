@@ -585,3 +585,179 @@ def get_ban_status(user_id):
             "web_banned": player.get("web_banned", False)
         }
     return {"bot_banned": False, "web_banned": False}
+    
+# 死亡履歴システム
+
+def record_death_history(user_id, enemy_name, distance=0, floor=0, stage=0, enemy_type="normal"):
+    """死亡履歴を記録"""
+    try:
+        supabase.table("death_history").insert({
+            "user_id": str(user_id),
+            "enemy_name": enemy_name,
+            "enemy_type": enemy_type,
+            "distance": distance,
+            "floor": floor,
+            "stage": stage
+        }).execute()
+        
+        # total_deaths カウントアップ（オプション）
+        player = get_player(user_id)
+        if player:
+            total_deaths = player.get("total_deaths", 0) + 1
+            update_player(user_id, total_deaths=total_deaths)
+        
+        return True
+    except Exception as e:
+        print(f"Error recording death history: {e}")
+        return False
+
+def get_death_history(user_id, limit=100):
+    """死亡履歴を取得（最新limit件）"""
+    try:
+        res = supabase.table("death_history")\
+            .select("*")\
+            .eq("user_id", str(user_id))\
+            .order("died_at", desc=True)\
+            .limit(limit)\
+            .execute()
+        return res.data if res.data else []
+    except Exception as e:
+        print(f"Error getting death history: {e}")
+        return []
+
+def get_death_count_by_enemy(user_id, enemy_name):
+    """特定の敵に殺された回数を取得"""
+    try:
+        res = supabase.table("death_history")\
+            .select("id", count="exact")\
+            .eq("user_id", str(user_id))\
+            .eq("enemy_name", enemy_name)\
+            .execute()
+        return res.count if res.count else 0
+    except Exception as e:
+        print(f"Error getting death count: {e}")
+        return 0
+
+def get_death_stats(user_id):
+    """死亡統計を取得（敵ごとの死亡回数）"""
+    try:
+        history = get_death_history(user_id, limit=1000)
+        stats = {}
+        
+        for death in history:
+            enemy_name = death.get("enemy_name", "不明")
+            if enemy_name in stats:
+                stats[enemy_name] += 1
+            else:
+                stats[enemy_name] = 1
+        
+        # 死亡回数順にソート
+        sorted_stats = dict(sorted(stats.items(), key=lambda x: x[1], reverse=True))
+        return sorted_stats
+    except Exception as e:
+        print(f"Error getting death stats: {e}")
+        return {}
+
+def get_recent_deaths(user_id, limit=5):
+    """直近N回の死亡履歴を取得"""
+    try:
+        res = supabase.table("death_history")\
+            .select("*")\
+            .eq("user_id", str(user_id))\
+            .order("died_at", desc=True)\
+            .limit(limit)\
+            .execute()
+        return res.data if res.data else []
+    except Exception as e:
+        print(f"Error getting recent deaths: {e}")
+        return []
+
+def check_death_pattern(user_id, pattern):
+    """
+    特定の死亡パターンをチェック
+    pattern: ["敵A", "敵B", "敵C"] のようなリスト（順番重要）
+    """
+    try:
+        recent = get_recent_deaths(user_id, limit=len(pattern))
+        if len(recent) < len(pattern):
+            return False
+        
+        for i, expected_enemy in enumerate(pattern):
+            if recent[i].get("enemy_name") != expected_enemy:
+                return False
+        
+        return True
+    except Exception as e:
+        print(f"Error checking death pattern: {e}")
+        return False
+
+# 称号システム
+
+def add_title(user_id, title_id, title_name):
+    """称号を追加（重複は無視）"""
+    try:
+        supabase.table("player_titles").insert({
+            "user_id": str(user_id),
+            "title_id": title_id,
+            "title_name": title_name
+        }).execute()
+        return True
+    except Exception as e:
+        # UNIQUE制約違反（既に持っている）は無視
+        if "duplicate key" in str(e).lower():
+            return False
+        print(f"Error adding title: {e}")
+        return False
+
+def get_player_titles(user_id):
+    """プレイヤーが持っている称号一覧を取得"""
+    try:
+        res = supabase.table("player_titles")\
+            .select("*")\
+            .eq("user_id", str(user_id))\
+            .order("unlocked_at", desc=True)\
+            .execute()
+        return res.data if res.data else []
+    except Exception as e:
+        print(f"Error getting titles: {e}")
+        return []
+
+def has_title(user_id, title_id):
+    """特定の称号を持っているかチェック"""
+    try:
+        res = supabase.table("player_titles")\
+            .select("id")\
+            .eq("user_id", str(user_id))\
+            .eq("title_id", title_id)\
+            .execute()
+        return len(res.data) > 0 if res.data else False
+    except Exception as e:
+        print(f"Error checking title: {e}")
+        return False
+
+def set_active_title(user_id, title_id):
+    """装備中の称号を設定"""
+    # 称号を持っているか確認
+    if not has_title(user_id, title_id):
+        return False
+    
+    update_player(user_id, active_title=title_id)
+    return True
+
+def get_active_title(user_id):
+    """現在装備中の称号を取得"""
+    player = get_player(user_id)
+    if player:
+        title_id = player.get("active_title")
+        if title_id:
+            # 称号名を取得
+            titles = get_player_titles(user_id)
+            for title in titles:
+                if title.get("title_id") == title_id:
+                    return title.get("title_name")
+    return None
+
+def unequip_title(user_id):
+    """称号を外す"""
+    update_player(user_id, active_title=None)
+    return True
