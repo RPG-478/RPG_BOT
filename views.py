@@ -470,23 +470,26 @@ class TreasureView(View):
                 )
 
             else:
-                # 距離に応じた武器
-                distance = player.get("distance", 0)
-                if distance <= 1000:
-                    weapon_list1 = list(game.weapon_drops_1, game.armor_drops_1.keys())
-                    weapon_name1 = random.choice([w for w in weapon_list1 if game.ITEMS_DATABASE[w].get('type') in ['weapon', 'armor']])
-                    item_info = game.get_item_info(weapon_name)
-
-                else:
-                    weapon_list = list(game.ITEMS_DATABASE.keys())
-                    weapon_name = random.choice([w for w in weapon_list if game.ITEMS_DATABASE[w].get('type') in ['weapon', 'armor']])
-                    db.add_item_to_inventory(interaction.user.id, weapon_name)
+                # 距離に応じた武器・防具の抽選
+                distance = player.get("distance", 0)
+                # game.pyで定義した関数を呼び出し、距離に応じた装備リストを取得
+                available_equipment = game.get_treasure_box_equipment(distance)
                 
-                embed = discord.Embed(
-                    title="🗡️ 宝箱の中身",
-                    description=f"**{weapon_name}** を手に入れた！\n\n{item_info.get('description', '')}",
-                    color=discord.Color.green()
-                )
+                if available_equipment:
+                    # 取得したリストからランダムに選択
+                    weapon_name = random.choice(available_equipment)
+                else:
+                    # リストが空の場合のフォールバック
+                    weapon_name = "木の剣" 
+                    
+                db.add_item_to_inventory(interaction.user.id, weapon_name)
+                
+                item_info = game.get_item_info(weapon_name)
+                embed = discord.Embed(
+                    title="🗡️ 宝箱の中身",
+                    description=f"**{weapon_name}** を手に入れた！\n\n{item_info.get('description', '')}",
+                    color=discord.Color.green()
+                )
 
         if embed is not None:
             msg = self.message or interaction.message
