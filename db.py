@@ -242,21 +242,26 @@ def upgrade_coin_gain(user_id):
         return True
     return False
 
-def handle_player_death(user_id):
+def handle_player_death(user_id, killed_by_enemy_name=None, enemy_type="normal"):
     """プレイヤー死亡時の処理（ポイント付与、死亡回数増加、全アイテム消失、フラグクリア）"""
     player = get_player(user_id)
     if player:
         distance = player.get("distance", 0)
         floor = distance // 100
+        stage = distance // 1000
         points = max(1, floor // 2)
-        
+
         add_upgrade_points(user_id, points)
         death_count = increment_death_count(user_id)
-        
+
+        # 🆕 死亡履歴を記録
+        if killed_by_enemy_name:
+            record_death_history(user_id, killed_by_enemy_name, distance, floor, stage, enemy_type)
+
         # 死亡時リセット：全アイテム消失、装備解除、ゴールドリセット、フラグクリア、ゲームクリア状態リセット
         update_player(user_id, 
                       hp=player.get("max_hp", 100),
-                      mp=player.get("max_hp", 100),
+                      mp=player.get("max_mp", 100),
                       distance=0, 
                       current_floor=0, 
                       current_stage=0,
@@ -268,8 +273,14 @@ def handle_player_death(user_id):
                       boss_defeated_flags={},
                       mp_stunned=False,
                       game_cleared=False)
-        
-        return {"points": points, "death_count": death_count, "floor": floor, "distance": distance}
+
+        return {
+            "points": points, 
+            "death_count": death_count, 
+            "floor": floor, 
+            "distance": distance,
+            "killed_by": killed_by_enemy_name  # 🆕 追加
+        }
     return None
 
 def handle_boss_clear(user_id):
