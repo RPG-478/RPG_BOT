@@ -474,7 +474,7 @@ class TreasureView(View):
                 distance = player.get("distance", 0)
                 if distance <= 1000:
                     weapon_list1 = list(game.weapon_drops_1, game.armor_drops_1.keys())
-                    weapon_name1 = random.choice(w for w in weapon_list1 if game.ITEMS_DATABASE[w].get('type') in ['weapon', 'armor']])
+                    weapon_name1 = random.choice([w for w in weapon_list1 if game.ITEMS_DATABASE[w].get('type') in ['weapon', 'armor']])
                     item_info = game.get_item_info(weapon_name)
 
                 else:
