@@ -473,14 +473,14 @@ class TreasureView(View):
                 # 距離に応じた武器
                 distance = player.get("distance", 0)
                 if distance <= 1000:
-                weapon_list1 = list(game.weapon_drops_1, game.armor_drops_1.keys())
-                weapon_name1 = random.choice(w for w in weapon_list1)
-                item_info = game.get_item_info(weapon_name)
+                    weapon_list1 = list(game.weapon_drops_1, game.armor_drops_1.keys())
+                    weapon_name1 = random.choice(w for w in weapon_list1)
+                    item_info = game.get_item_info(weapon_name)
 
-                else
-                weapon_list = list(game.ITEMS_DATABASE.keys())
-                weapon_name = random.choice([w for w in weapon_list if game.ITEMS_DATABASE[w].get('type') in ['weapon', 'armor']])
-                db.add_item_to_inventory(interaction.user.id, weapon_name)
+                else:
+                    weapon_list = list(game.ITEMS_DATABASE.keys())
+                    weapon_name = random.choice([w for w in weapon_list if game.ITEMS_DATABASE[w].get('type') in ['weapon', 'armor']])
+                    db.add_item_to_inventory(interaction.user.id, weapon_name)
                 
                 embed = discord.Embed(
                     title="🗡️ 宝箱の中身",
