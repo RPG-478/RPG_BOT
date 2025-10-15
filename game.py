@@ -27,6 +27,12 @@ ITEMS_DATABASE = {
         "ability": "毒付与（5%の確率で追加ダメージ）",
         "description": "毒が塗られた短剣。相手を弱らせる。"
     },
+    "王者の剣": {
+        "type": "weapon",
+        "attack": 15,
+        "ability": "全ステータス+20%、全状態異常耐性+50%",
+        "description": "遥か昔に造られた剣。刀身の輝きは未だ失われていない。"
+    },
     "骨の剣": {
         "type": "weapon",
         "attack": 8,
@@ -53,13 +59,13 @@ ITEMS_DATABASE = {
     },
     "炎の大剣": {
         "type": "weapon",
-        "attack": 8,
+        "attack": 10,
         "ability": "炎属性（追加で炎ダメージ+5）",
         "description": "炎を纏った大剣。燃え盛る力を持つ。"
     },
     "ドラゴンソード": {
         "type": "weapon",
-        "attack": 11,
+        "attack": 12,
         "ability": "竜の力（全ステータス+15%）",
         "description": "伝説の竜の牙から作られた剣。"
     },
@@ -68,6 +74,24 @@ ITEMS_DATABASE = {
         "attack": 12,
         "ability": "闇属性（闇の敵に+50%ダメージ）",
         "description": "黒騎士が使っていた漆黒の剣。"
+    },
+    "業火の剣": {
+        "type": "weapon",
+        "attack": 15,
+        "ability": "攻撃時30%で敵を燃焼（4ターン、ダメージ10）",
+        "description": "業火を纏う剣。敵を焼き尽くす。"
+    },
+    "炎獄の剣": {
+        "type": "weapon",
+        "attack": 12,
+        "ability": "攻撃時20%で敵を燃焼状態にする（3ターン、ダメージ10）",
+        "description": "地獄の炎を纏った大剣。"
+    },
+    "影の短剣": {
+        "type": "weapon",
+        "attack": 22,
+        "ability": "クリティカル率+25%、背後攻撃時ダメージ2倍",
+        "description": "影より生まれし短剣。"
     },
     "木の盾": {
         "type": "armor",
@@ -87,6 +111,12 @@ ITEMS_DATABASE = {
         "ability": "なし",
         "description": "鉄製の盾。高い防御力を持つ。"
     },
+    "スライムの王冠": {
+        "type": "armor",
+        "defense": 10,
+        "ability": "HP+50",
+        "description": "スライムキングが落とした王冠。生命力が強くなる。"
+    }, 
     "骨の盾": {
         "type": "armor",
         "defense": 7,
@@ -134,6 +164,24 @@ ITEMS_DATABASE = {
         "defense": 16,
         "ability": "全属性耐性+20%",
         "description": "竜の鱗で作られた鎧。あらゆる攻撃に強い。"
+    },
+    "悪魔の盾": {
+        "type": "armor",
+        "defense": 14,
+        "ability": "魔法ダメージ30%軽減",
+        "description": "悪魔の力が込められた盾。"
+    },
+    "冥界の盾": {
+        "type": "armor",
+        "defense": 17,
+        "ability": "アンデッド特効+30%、毒無効",
+        "description": "冥界の力を宿した盾。"
+    },
+    "死の鎧": {
+        "type": "armor",
+        "defense": 15,
+        "ability": "被ダメージ時20%でHP吸収（ダメージの30%）、HP+50",
+        "description": "死の力を纏う漆黒の鎧。"
     },
     "呪いの首輪": {
         "type": "armor",
@@ -219,18 +267,6 @@ ITEMS_DATABASE = {
         "ability": "素材",
         "description": "魔界の力が宿る結晶。高位の装備に使える。"
     },
-    "炎獄の剣": {
-        "type": "weapon",
-        "attack": 35,
-        "ability": "攻撃時20%で敵を燃焼状態にする（3ターン、ダメージ10）",
-        "description": "地獄の炎を纏った大剣。"
-    },
-    "魔王の盾": {
-        "type": "armor",
-        "defense": 28,
-        "ability": "魔法ダメージ30%軽減",
-        "description": "魔王の力が込められた盾。"
-    },
     "古竜の心臓": {
         "type": "material",
         "ability": "素材",
@@ -241,34 +277,10 @@ ITEMS_DATABASE = {
         "ability": "素材",
         "description": "竜王の牙。ドラゴン系特効武器の素材。"
     },
-    "竜鱗の鎧": {
-        "type": "armor",
-        "defense": 32,
-        "ability": "炎耐性+50%、HP+20",
-        "description": "竜の鱗で作られた強靭な鎧。"
-    },
-    "冥界の盾": {
-        "type": "armor",
-        "defense": 30,
-        "ability": "アンデッド特効+30%、毒無効",
-        "description": "冥界の力を宿した盾。"
-    },
-    "死の鎧": {
-        "type": "armor",
-        "defense": 34,
-        "ability": "被ダメージ時20%でHP吸収（ダメージの30%）",
-        "description": "死の力を纏う漆黒の鎧。"
-    },
     "地獄犬の牙": {
         "type": "material",
         "ability": "素材",
         "description": "地獄の番犬の牙。炎属性武器の素材。"
-    },
-    "業火の剣": {
-        "type": "weapon",
-        "attack": 42,
-        "ability": "攻撃時30%で敵を燃焼（4ターン、ダメージ15）",
-        "description": "業火を纏う剣。敵を焼き尽くす。"
     },
     "炎の鎧": {
         "type": "armor",
@@ -314,12 +326,6 @@ ITEMS_DATABASE = {
         "type": "material",
         "ability": "素材",
         "description": "漆黒の宝石。闇属性装備の核となる。"
-    },
-    "影の短剣": {
-        "type": "weapon",
-        "attack": 38,
-        "ability": "クリティカル率+25%、背後攻撃時ダメージ2倍",
-        "description": "影より生まれし短剣。"
     },
     "暗黒の弓": {
         "type": "weapon",
@@ -699,7 +705,7 @@ ENEMY_ZONES = {
             {
                 "name": "デーモン",
                 "hp": 60,
-                "atk": 10,
+                "atk": 8,
                 "def": 5,
                 "attribute": "fire",
                 "weight": 50,
@@ -710,13 +716,13 @@ ENEMY_ZONES = {
                     {"item": "炎の大剣", "weight": 5},
                     {"item": "地獄の鎧", "weight": 5},
                     {"item": "回復薬", "weight": 5},
-                    {"item": "coins", "amount": [40, 60], "weight": 10}
+                    {"item": "coins", "amount": [30, 50], "weight": 10}
                 ]
             },
             {
                 "name": "ダークナイト",
                 "hp": 50,
-                "atk": 12,
+                "atk": 9,
                 "def": 6,
                 "attribute": "dark",
                 "weight": 40,
@@ -726,25 +732,25 @@ ENEMY_ZONES = {
                     {"item": "黒騎士の剣", "weight": 10},
                     {"item": "黒騎士の盾", "weight": 5},
                     {"item": "黒騎士の鎧", "weight": 5},
-                    {"item": "回復薬", "weight": 15},
-                    {"item": "高級回復薬", "weight": 5},
-                    {"item": "coins", "amount": [50, 70], "weight": 10}
+                    {"item": "回復薬", "weight": 10},
+                    {"item": "coins", "amount": [35, 50], "weight": 10}
                 ]
             },
             {
                 "name": "ドラゴン",
-                "hp": 90,
-                "atk": 10,
+                "hp": 70,
+                "atk": 12,
                 "def": 5,
                 "attribute": "fire",
                 "weight": 10,
                 "exp": 60,
                 "drops": [
                     {"item": "竜の牙", "weight": 40},
-                    {"item": "竜の鱗", "weight": 15},
-                    {"item": "ドラゴンソード", "weight": 15},
-                    {"item": "高級回復薬", "weight": 15},
-                    {"item": "coins", "amount": [80, 120], "weight": 15}
+                    {"item": "ドラゴンソード", "weight": 20},
+                    {"item": "竜の鱗", "weight": 5},
+                    {"item": "回復薬", "weight": 15},
+                    {"item": "高級回復薬", "weight": 5},
+                    {"item": "coins", "amount": [60, 90], "weight": 15}
                 ]
             }
         ]
@@ -752,53 +758,56 @@ ENEMY_ZONES = {
     "3001-4000": {
         "enemies": [
             {
-                "name": "アークデーモン",
-                "hp": 120,
-                "atk": 20,
-                "def": 15,
-                "attribute": "fire",
-                "weight": 35,
-                "exp": 45,
+                "name": "デスナイト",
+                "hp": 80,
+                "atk": 12,
+                "def": 8,
+                "attribute": "dark",
+                "weight": 50,
+                "exp": 48,
                 "drops": [
-                    {"item": "魔界の結晶", "weight": 35},
-                    {"item": "炎獄の剣", "weight": 18},
-                    {"item": "魔王の盾", "weight": 10},
-                    {"item": "万能薬", "weight": 17},
-                    {"item": "coins", "amount": [120, 220], "weight": 20}
+                    {"item": "none", "weight": 60},
+                    {"item": "死神の鎌", "weight": 10},
+                    {"item": "冥界の盾", "weight": 9},
+                    {"item": "死の鎧", "weight": 1},
+                    {"item": "回復薬", "weight": 10},
+                    {"item": "coins", "amount": [50, 65], "weight": 10}
+                ]
+            },
+            {
+                "name": "アークデーモン",
+                "hp": 70,
+                "atk": 13,
+                "def": 9,
+                "attribute": "fire",
+                "weight": 40,
+                "exp": 50,
+                "drops": [
+                    {"item": "none", "weight": 50},
+                    {"item": "魔界の結晶", "weight": 15},
+                    {"item": "炎獄の剣", "weight": 10},
+                    {"item": "悪魔の盾", "weight": 10},
+                    {"item": "高級回復薬", "weight": 5},
+                    {"item": "coins", "amount": [40, 60], "weight": 10}
                 ]
             },
             {
                 "name": "エンシェントドラゴン",
-                "hp": 140,
-                "atk": 22,
-                "def": 16,
+                "hp": 100,
+                "atk": 15,
+                "def": 7,
                 "attribute": "fire",
-                "weight": 30,
-                "exp": 50,
+                "weight": 10,
+                "exp": 80,
                 "drops": [
-                    {"item": "古竜の心臓", "weight": 25},
-                    {"item": "竜王の牙", "weight": 25},
-                    {"item": "竜鱗の鎧", "weight": 15},
-                    {"item": "万能薬", "weight": 15},
-                    {"item": "coins", "amount": [150, 280], "weight": 20}
+                    {"item": "竜王の牙", "weight": 40},
+                    {"item": "古竜の心臓", "weight": 10},
+                    {"item": "竜の鱗", "weight": 15},
+                    {"item": "回復薬", "weight": 15},
+                    {"item": "高級回復薬", "weight": 5},
+                    {"item": "coins", "amount": [80, 100], "weight": 15}
                 ]
             },
-            {
-                "name": "デスナイト",
-                "hp": 130,
-                "atk": 21,
-                "def": 18,
-                "attribute": "dark",
-                "weight": 35,
-                "exp": 48,
-                "drops": [
-                    {"item": "死神の鎌", "weight": 22},
-                    {"item": "冥界の盾", "weight": 20},
-                    {"item": "死の鎧", "weight": 12},
-                    {"item": "万能薬", "weight": 16},
-                    {"item": "coins", "amount": [130, 250], "weight": 30}
-                ]
-            }
         ]
     },
     "4001-5000": {
@@ -1222,30 +1231,30 @@ BOSS_DATA = {
     },
     3: {
         "name": "炎獄の魔竜", 
-        "hp": 250,
+        "hp": 200,
         "atk": 15,
         "def": 8,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
             {"item": "竜の鱗", "weight": 15},
-            {"item": "ドラゴンソード", "weight": 15},
+            {"item": "業火の剣", "weight": 15},
             {"item": "高級回復薬", "weight": 40},
             {"item": "coins", "amount": [150, 250], "weight": 30}
         ]
     },
     4: {
         "name": "影の王",
-        "hp": 500,
-        "atk": 35,
-        "def": 25,
+        "hp": 300,
+        "atk": 20,
+        "def": 10,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
-            {"item": "影の剣", "weight": 35},
-            {"item": "闇の宝珠", "weight": 30},
-            {"item": "万能薬", "weight": 25},
-            {"item": "coins", "amount": [800, 1500], "weight": 10}
+            {"item": "影の短剣", "weight": 15},
+            {"item": "死の鎧", "weight": 15},
+            {"item": "高級回復薬", "weight": 40},
+            {"item": "coins", "amount": [200, 300], "weight": 30}
         ]
     },
     5: {
@@ -1357,14 +1366,14 @@ SPECIAL_EVENT_SHOP = [
 ]
 
 MATERIAL_PRICES = {
-    "蜘蛛の糸": 40,
-    "悪魔の角": 50,
-    "竜の牙": 300,
-    "闇の宝珠": 100,
+    "蜘蛛の糸": 30,
     "腐った肉": 20,
-    "魔界の結晶": 400,
-    "古竜の心臓": 600,
-    "竜王の牙": 550,
+    "悪魔の角": 40,
+    "竜の牙": 60,
+    "魔界の結晶": 50,
+    "竜王の牙": 80,
+    "古竜の心臓": 100,
+    "闇の宝珠": 200,
     "地獄犬の牙": 450,
     "吸血鬼の牙": 500,
     "魔導書の欠片": 550,
@@ -1397,7 +1406,7 @@ CRAFTING_RECIPES = {
     "悪魔の剣": {
         "materials": {"悪魔の角": 2, "闇の宝珠": 1},
         "result_type": "weapon",
-        "attack": 38,
+        "attack": 22,
         "ability": "闇属性（闇の敵に+60%ダメージ）",
         "description": "悪魔の角から鍛えられた剣。邪悪な力を宿す。"
     },
@@ -1409,7 +1418,7 @@ CRAFTING_RECIPES = {
         "description": "竜の牙から作られた伝説の剣。"
     },
     "闇の盾": {
-        "materials": {"闇の宝珠": 2, "腐った肉": 3},
+        "materials": {"闇の宝珠": 1, "腐った肉": 3},
         "result_type": "armor",
         "defense": 22,
         "ability": "闇耐性+60%",
@@ -1423,10 +1432,10 @@ CRAFTING_RECIPES = {
         "description": "蜘蛛の糸で織られた鎧。軽くて頑丈。"
     },
     "竜鱗の鎧": {
-        "materials": {"竜の牙": 2, "悪魔の角": 2, "闇の宝珠": 1},
+        "materials": {"古龍の心臓": 1, "竜の牙": 2, "闇の宝珠": 1},
         "result_type": "armor",
-        "defense": 35,
-        "ability": "全属性耐性+30%、HP自動回復+8/ターン",
+        "defense": 20,
+        "ability": "全属性耐性+30%、HP自動回復+5/ターン",
         "description": "竜の素材から作られた究極の鎧。"
     },
     "腐肉の兜": {
