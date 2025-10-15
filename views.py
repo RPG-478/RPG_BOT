@@ -461,7 +461,7 @@ async def open_treasure_box(self, interaction, player, secret_weapon_hit):
         )[0]
 
         if reward_type == "coins":
-            amount = random.randint(30, 100)
+            amount = random.randint(30, 60)
             db.add_gold(interaction.user.id, amount)
 
             embed = discord.Embed(
