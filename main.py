@@ -760,3 +760,224 @@ async def show_servers(ctx: commands.Context):
     await ctx.send(embed=view.create_embed(), view=view)
 
 asyncio.run(main())
+
+
+@bot.command(name="death_stats")
+@check_ban()
+async def death_stats(ctx: commands.Context):
+    """死亡統計を表示"""
+    user = ctx.author
+    player = get_player(user.id)
+
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+
+    import death_system
+
+    summary = death_system.get_death_summary(user.id)
+    total_deaths = summary.get("total_deaths", 0)
+    top_killers = summary.get("top_killers", [])
+
+    if total_deaths == 0:
+        embed = discord.Embed(
+            title="💀 死亡統計",
+            description="まだ一度も死亡していません。\n\n慎重な冒険者ですね！",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
+        return
+
+    # トップ5の敵を表示
+    killer_list = ""
+    for i, (enemy_name, count) in enumerate(top_killers[:5], 1):
+        killer_list += f"{i}. **{enemy_name}** - {count}回\n"
+
+    if not killer_list:
+        killer_list = "データがありません"
+
+    embed = discord.Embed(
+        title=f"💀 {player.get('name', 'あなた')}の死亡統計",
+        description=f"総死亡回数: **{total_deaths}回**\n\n## よく殺された敵 TOP5\n{killer_list}",
+        color=discord.Color.red()
+    )
+
+    # ストーリー進行状況
+    story_progress = death_system.get_death_story_progress(user.id)
+    embed.add_field(
+        name="📖 死亡ストーリー進行",
+        value=f"{story_progress['unlocked']}/{story_progress['total']} ({story_progress['percentage']:.1f}%)",
+        inline=True
+    )
+
+    embed.set_footer(text="!death_history で詳細な履歴を確認できます")
+
+    await ctx.send(embed=embed)
+    
+@bot.command(name="death_history")
+@check_ban()
+async def death_history(ctx: commands.Context, limit: int = 10):
+    """最近の死亡履歴を表示"""
+    user = ctx.author
+    player = get_player(user.id)
+
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+
+    if limit < 1 or limit > 50:
+        await ctx.send("⚠️ 表示件数は1〜50の範囲で指定してください。")
+        return
+
+    recent_deaths = db.get_recent_deaths(user.id, limit)
+
+    if not recent_deaths:
+        embed = discord.Embed(
+            title="💀 死亡履歴",
+            description="まだ一度も死亡していません。",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
+        return
+
+    # 履歴をフォーマット
+    history_text = ""
+    for i, death in enumerate(recent_deaths, 1):
+        enemy_name = death.get("enemy_name", "不明")
+        distance = death.get("distance", 0)
+        floor = death.get("floor", 0)
+        enemy_type_icon = "👑" if death.get("enemy_type") == "boss" else "⚔️"
+        
+        history_text += f"{i}. {enemy_type_icon} **{enemy_name}** ({distance}m / {floor}階層)\n"
+
+    embed = discord.Embed(
+        title=f"💀 最近の死亡履歴 (直近{len(recent_deaths)}件)",
+        description=history_text,
+        color=discord.Color.dark_red()
+    )
+
+    embed.set_footer(text="!death_stats で統計を確認できます")
+
+    await ctx.send(embed=embed)
+    
+@bot.command(name="titles")
+@check_ban()
+async def titles(ctx: commands.Context):
+    """所持している称号を表示"""
+    user = ctx.author
+    player = get_player(user.id)
+
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+
+    from titles import get_title_rarity_emoji, RARITY_COLORS
+
+    player_titles = db.get_player_titles(user.id)
+    active_title = db.get_active_title(user.id)
+
+    if not player_titles:
+        embed = discord.Embed(
+            title="🏆 称号一覧",
+            description="まだ称号を獲得していません。\n\n特定の条件を満たすと称号が解放されます。",
+            color=discord.Color.blue()
+        )
+        await ctx.send(embed=embed)
+        return
+
+    # レアリティ別に分類
+    from titles import TITLES
+    rarity_order = ["mythic", "legendary", "epic", "rare", "uncommon", "common"]
+    
+    title_text = ""
+    for rarity in rarity_order:
+        rarity_titles = [t for t in player_titles if TITLES.get(t['title_id'], {}).get('rarity') == rarity]
+        
+        if rarity_titles:
+            rarity_name = {
+                "mythic": "神話",
+                "legendary": "伝説",
+                "epic": "叙事詩",
+                "rare": "レア",
+                "uncommon": "アンコモン",
+                "common": "コモン"
+            }.get(rarity, rarity)
+            
+            for title in rarity_titles:
+                emoji = get_title_rarity_emoji(title['title_id'])
+                title_name = title['title_name']
+                is_active = "【装備中】" if title_name == active_title else ""
+                title_text += f"{emoji} **{title_name}** {is_active}\n"
+
+    embed = discord.Embed(
+        title=f"🏆 {player.get('name', 'あなた')}の称号一覧 ({len(player_titles)}個)",
+        description=title_text or "称号がありません",
+        color=discord.Color.gold()
+    )
+
+    embed.set_footer(text="!equip_title <称号名> で称号を装備できます")
+
+    await ctx.send(embed=embed)
+    
+@bot.command(name="equip_title")
+@check_ban()
+async def equip_title(ctx: commands.Context, *, title_name: str = None):
+    """称号を装備する"""
+    user = ctx.author
+    player = get_player(user.id)
+
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+
+    if not title_name:
+        await ctx.send("⚠️ 使い方: `!equip_title <称号名>`")
+        return
+
+    # 称号を持っているか確認
+    player_titles = db.get_player_titles(user.id)
+    matching_title = None
+
+    for title in player_titles:
+        if title['title_name'].lower() == title_name.lower():
+            matching_title = title
+            break
+
+    if not matching_title:
+        await ctx.send(f"⚠️ 称号 `{title_name}` を所持していません。\n\n`!titles` で所持称号を確認できます。")
+        return
+
+    # 称号を装備
+    success = db.set_active_title(user.id, matching_title['title_id'])
+
+    if success:
+        from titles import get_title_rarity_emoji
+        embed = discord.Embed(
+            title="✅ 称号を装備しました",
+            description=f"{get_title_rarity_emoji(matching_title['title_id'])} **{matching_title['title_name']}** を装備中",
+            color=discord.Color.green()
+        )
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send("⚠️ 称号の装備に失敗しました。")
+        
+    
+@bot.command(name="unequip_title")
+@check_ban()
+async def unequip_title(ctx: commands.Context):
+    """称号を外す"""
+    user = ctx.author
+    player = get_player(user.id)
+
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+
+    db.unequip_title(user.id)
+
+    embed = discord.Embed(
+        title="✅ 称号を外しました",
+        description="現在、称号を装備していません。",
+        color=discord.Color.grey()
+    )
+    await ctx.send(embed=embed)
