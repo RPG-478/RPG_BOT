@@ -2382,7 +2382,13 @@ class BattleView(View):
             text += f"\n敵の攻撃！ {enemy_dmg} のダメージを受けた！"
             
             if self.player["hp"] <= 0:
-                death_result = db.handle_player_death(self.ctx.author.id)
+                await handle_death_with_triggers(
+    self.ctx, 
+    self.ctx.author.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
                 if death_result:
                     text += f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！\n（死亡回数: {death_result['death_count']}回）"
                 else:
