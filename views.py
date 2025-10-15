@@ -491,7 +491,7 @@ if not secret_weapon_hit:
             color=discord.Color.green()
         )
 
-if embed is not None:
+    # ここでembedが必ず定義されているのでawaitしてOK
     msg = self.message or interaction.message
     await msg.edit(embed=embed, view=None)
 
