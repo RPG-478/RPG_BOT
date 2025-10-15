@@ -471,7 +471,7 @@ class TreasureView(View):
                 )
 
             else:
-                distance = player.get("distance", 0)
+                distance = player.get("distance", 0)
                 # game.pyで定義した関数を呼び出し、距離に応じた装備リストを取得
                 available_equipment = game.get_treasure_box_equipment(distance)
                 
