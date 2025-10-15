@@ -982,4 +982,8 @@ async def unequip_title(ctx: commands.Context):
     )
     await ctx.send(embed=embed)
     
-asyncio.run(main())
+async def main():
+    await bot.start(os.getenv("DISCORD_TOKEN"))
+# 実行
+if __name__ == "__main__":
+    asyncio.run(main())
