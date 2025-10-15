@@ -452,48 +452,39 @@ class TreasureView(View):
                 except Exception as e:
                     print(f"グローバルログ通知エラー: {e}")
         
-if not secret_weapon_hit:
-    # 通常報酬抽選
-    reward_type = random.choices(
-        ["coins", "weapon"],
-        weights=[70, 30],
-        k=1
-    )[0]
+async def open_treasure_box(self, interaction, player, secret_weapon_hit):
+    if not secret_weapon_hit:
+        reward_type = random.choices(
+            ["coins", "weapon"],
+            weights=[70, 30],
+            k=1
+        )[0]
 
-    if reward_type == "coins":
-        amount = random.randint(30, 100)
-        db.add_gold(interaction.user.id, amount)
+        if reward_type == "coins":
+            amount = random.randint(30, 100)
+            db.add_gold(interaction.user.id, amount)
 
-        embed = discord.Embed(
-            title="💰 宝箱の中身",
-            description=f"{amount}ゴールドを手に入れた！",
-            color=discord.Color.gold()
-        )
+            embed = discord.Embed(
+                title="💰 宝箱の中身",
+                description=f"{amount}ゴールドを手に入れた！",
+                color=discord.Color.gold()
+            )
 
-    else:
-        distance = player.get("distance", 0)
-        # game.pyで定義した関数を呼び出し、距離に応じた装備リストを取得
-        available_equipment = game.get_treasure_box_equipment(distance)
-        
-        if available_equipment:
-            # 取得したリストからランダムに選択
-            weapon_name = random.choice(available_equipment)
         else:
-            # リストが空の場合のフォールバック
-            weapon_name = "木の剣" 
-            
-        db.add_item_to_inventory(interaction.user.id, weapon_name)
-        
-        item_info = game.get_item_info(weapon_name)
-        embed = discord.Embed(
-            title="🗡️ 宝箱の中身",
-            description=f"**{weapon_name}** を手に入れた！\n\n{item_info.get('description', '')}",
-            color=discord.Color.green()
-        )
+            distance = player.get("distance", 0)
+            available_equipment = game.get_treasure_box_equipment(distance)
+            weapon_name = random.choice(available_equipment) if available_equipment else "木の剣"
+            db.add_item_to_inventory(interaction.user.id, weapon_name)
+            item_info = game.get_item_info(weapon_name)
 
-    # ここでembedが必ず定義されているのでawaitしてOK
-    msg = self.message or interaction.message
-    await msg.edit(embed=embed, view=None)
+            embed = discord.Embed(
+                title="🗡️ 宝箱の中身",
+                description=f"**{weapon_name}** を手に入れた！\n\n{item_info.get('description', '')}",
+                color=discord.Color.green()
+            )
+
+        msg = self.message or interaction.message
+        await msg.edit(embed=embed, view=None)
 
 
     # ==============================
