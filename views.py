@@ -1087,7 +1087,13 @@ class FinalBossBattleView(View):
             text += f"\nラスボスの反撃！ {enemy_dmg} のダメージを受けた！"
             
             if self.player["hp"] <= 0:
-                death_result = db.handle_player_death(interaction.user.id)
+                await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
                 
                 try:
                     notify_channel = interaction.client.get_channel(1424712515396305007)
@@ -1308,7 +1314,13 @@ class FinalBossBattleView(View):
                 self.player["hp"] = 1
                 text += "\n蘇生効果で生き残った！"
             else:
-                death_result = db.handle_player_death(interaction.user.id)
+                await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
                 
                 # 死亡通知を送信
                 try:
@@ -1351,7 +1363,13 @@ class FinalBossBattleView(View):
         text = f"防御した！ ダメージを {reduction}% 軽減！\nラスボスの攻撃で {enemy_dmg} のダメージを受けた！"
 
         if self.player["hp"] <= 0:
-            death_result = db.handle_player_death(interaction.user.id)
+            await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
             
             # 死亡通知を送信
             try:
@@ -1546,7 +1564,13 @@ class BossBattleView(View):
             text += f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
             
             if self.player["hp"] <= 0:
-                death_result = db.handle_player_death(interaction.user.id)
+                await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
                 
                 try:
                     notify_channel = interaction.client.get_channel(1424712515396305007)
@@ -1763,7 +1787,13 @@ class BossBattleView(View):
                 self.player["hp"] = 1
                 text += "\n蘇生効果で生き残った！"
             else:
-                death_result = db.handle_player_death(interaction.user.id)
+                await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
                 
                 # 死亡通知を送信
                 try:
@@ -1807,7 +1837,13 @@ class BossBattleView(View):
         text = f"防御した！ ダメージを {reduction}% 軽減！\nボスの攻撃で {enemy_dmg} のダメージを受けた！"
 
         if self.player["hp"] <= 0:
-            death_result = db.handle_player_death(interaction.user.id)
+            await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
             if death_result:
                 await self.update_embed(
                     text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！"
@@ -1981,7 +2017,13 @@ class BattleView(View):
             text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
             
             if self.player["hp"] <= 0:
-                death_result = db.handle_player_death(interaction.user.id)
+                await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
                 if death_result:
                     await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
                 else:
@@ -2156,7 +2198,13 @@ class BattleView(View):
                 text += "\n蘇生効果で生き残った！\n『死んだかと思った……どんなシステムなんだろう』"
             else:
                 # 死亡処理（HPリセット、距離リセット、アップグレードポイント付与）
-                death_result = db.handle_player_death(interaction.user.id)
+                await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
                 if death_result:
                     await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
                 else:
@@ -2186,7 +2234,13 @@ class BattleView(View):
 
         if self.player["hp"] <= 0:
             # 死亡処理
-            death_result = db.handle_player_death(interaction.user.id)
+            await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
             if death_result:
                 await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
             else:
@@ -2230,7 +2284,13 @@ class BattleView(View):
             text = f"逃げられなかった！ 敵の攻撃で {enemy_dmg} のダメージ！"
             if self.player["hp"] <= 0:
                 # 死亡処理
-                death_result = db.handle_player_death(interaction.user.id)
+                await handle_death_with_triggers(
+    self.ctx if hasattr(self, 'ctx') else interaction.channel,
+    interaction.user.id, 
+    self.user_processing if hasattr(self, 'user_processing') else {},
+    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+)
                 if death_result:
                     text += f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt"
                 else:
