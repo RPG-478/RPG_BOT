@@ -1074,43 +1074,49 @@ class FinalBossBattleView(View):
                 return
             
             enemy_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
-            self.player["hp"] -= enemy_dmg
-            text += f"\nラスボスの反撃！ {enemy_dmg} のダメージを受けた！"
-            
-            if self.player["hp"] <= 0:
-                await handle_death_with_triggers(
-    self.ctx if hasattr(self, 'ctx') else interaction.channel,
-    interaction.user.id, 
-    self.user_processing if hasattr(self, 'user_processing') else {},
-    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
-    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
-)
-                
-                try:
-                    notify_channel = interaction.client.get_channel(1424712515396305007)
-                    if notify_channel and death_result:
-                        distance = death_result.get("distance", 0)
-                        await notify_channel.send(
-                            f"💀 {interaction.user.mention} がラスボス戦で倒れた…\n"
-                            f"到達距離: {distance}m"
-                        )
-                except Exception as e:
-                    print(f"通知送信エラー: {e}")
-                
-                if death_result:
-                    await self.update_embed(
-                        text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！"
-                    )
-                else:
-                    await self.update_embed(text + "\n💀 あなたは倒れた…")
-                
-                self.disable_all_items()
-                await self.message.edit(view=self)
-                
-                if self.ctx.author.id in self.user_processing:
-                    self.user_processing[self.ctx.author.id] = False
-                await interaction.response.defer()
-                return
+self.player["hp"] -= enemy_dmg
+text += f"\nラスボスの反撃！ {enemy_dmg} のダメージを受けた！"
+
+if self.player["hp"] <= 0:
+    # 【重要】先にインタラクションに応答（3秒以内）
+    await interaction.response.defer()
+    
+    # 死亡処理 + トリガーチェック
+    death_result = await handle_death_with_triggers(
+        self.ctx,
+        interaction.user.id,
+        self.user_processing,
+        enemy_name=self.boss.get('name', '不明'),
+        enemy_type='boss'
+    )
+    
+    # 通知送信
+    try:
+        notify_channel = interaction.client.get_channel(1424712515396305007)
+        if notify_channel and death_result:
+            distance = death_result.get("distance", 0)
+            await notify_channel.send(
+                f"💀 {interaction.user.mention} がラスボス戦で倒れた…\n"
+                f"到達距離: {distance}m"
+            )
+    except Exception as e:
+        print(f"通知送信エラー: {e}")
+    
+    # 死亡メッセージ表示
+    if death_result:
+        await self.update_embed(
+            text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！"
+        )
+    else:
+        await self.update_embed(text + "\n💀 あなたは倒れた…")
+    
+    self.disable_all_items()
+    await self.message.edit(view=self)
+    
+    if self.ctx.author.id in self.user_processing:
+        self.user_processing[self.ctx.author.id] = False
+    
+    return
         
         elif skill_info["type"] == "heal":
             heal_amount = skill_info["heal_amount"]
