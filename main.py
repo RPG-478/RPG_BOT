@@ -20,6 +20,8 @@ from views import (
 )
 import game
 from story import StoryView
+import death_system
+from titles import get_title_rarity_emoji, RARITY_COLORS
 
 load_dotenv()
 
