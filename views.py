@@ -1303,50 +1303,55 @@ if self.player["hp"] <= 0:
                     return
             
             # HP回復
-            if armor_result["hp_regen"] > 0:
-                self.player["hp"] = min(self.player.get("max_hp", 100), self.player["hp"] + armor_result["hp_regen"])
+if armor_result["hp_regen"] > 0:
+    self.player["hp"] = min(self.player.get("max_hp", 100), self.player["hp"] + armor_result["hp_regen"])
 
-        if self.player["hp"] <= 0:
-            if armor_result.get("revived", False):
-                self.player["hp"] = 1
-                text += "\n蘇生効果で生き残った！"
-            else:
-                await handle_death_with_triggers(
-    self.ctx if hasattr(self, 'ctx') else interaction.channel,
-    interaction.user.id, 
-    self.user_processing if hasattr(self, 'user_processing') else {},
-    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
-    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
-)
-                
-                # 死亡通知を送信
-                try:
-                    notify_channel = interaction.client.get_channel(1424712515396305007)
-                    if notify_channel and death_result:
-                        distance = death_result.get("distance", 0)
-                        await notify_channel.send(
-                            f"💀 {interaction.user.mention} がラスボス戦で倒れた…\n"
-                            f"到達距離: {distance}m"
-                        )
-                except Exception as e:
-                    print(f"通知送信エラー: {e}")
-                
-                if death_result:
-                    await self.update_embed(
-                        text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！"
-                    )
-                else:
-                    await self.update_embed(text + "\n💀 あなたは倒れた…")
-                
-                self.disable_all_items()
-                await self.message.edit(view=self)
-                
-                if self.ctx.author.id in self.user_processing:
-                    self.user_processing[self.ctx.author.id] = False
-                return
-
-        await self.update_embed(text)
+if self.player["hp"] <= 0:
+    if armor_result.get("revived", False):
+        self.player["hp"] = 1
+        text += "\n蘇生効果で生き残った！"
+    else:
+        # 【重要】先にインタラクションに応答
         await interaction.response.defer()
+        
+        # 死亡処理 + トリガーチェック
+        death_result = await handle_death_with_triggers(
+            self.ctx,
+            interaction.user.id,
+            self.user_processing,
+            enemy_name=self.boss.get('name', '不明'),
+            enemy_type='boss'
+        )
+        
+        # 死亡通知を送信
+        try:
+            notify_channel = interaction.client.get_channel(1424712515396305007)
+            if notify_channel and death_result:
+                distance = death_result.get("distance", 0)
+                await notify_channel.send(
+                    f"💀 {interaction.user.mention} がラスボス戦で倒れた…\n"
+                    f"到達距離: {distance}m"
+                )
+        except Exception as e:
+            print(f"通知送信エラー: {e}")
+        
+        if death_result:
+            await self.update_embed(
+                text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！"
+            )
+        else:
+            await self.update_embed(text + "\n💀 あなたは倒れた…")
+        
+        self.disable_all_items()
+        await self.message.edit(view=self)
+        
+        if self.ctx.author.id in self.user_processing:
+            self.user_processing[self.ctx.author.id] = False
+        return
+
+# 生存している場合
+await interaction.response.defer()
+await self.update_embed(text)
 
     @button(label="防御", style=discord.ButtonStyle.secondary, emoji="🛡️")
     async def defend(self, interaction: discord.Interaction, button: discord.ui.Button):
