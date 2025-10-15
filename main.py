@@ -410,7 +410,7 @@ async def move(ctx: commands.Context):
             return
         
         # 9% 宝箱（1～10%）
-        elif event_roll < 80:
+        elif event_roll < 10:
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
