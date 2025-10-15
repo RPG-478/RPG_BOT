@@ -4,7 +4,8 @@ import random
 import asyncio
 import game
 from db import get_player, update_player, delete_player
-
+import death_system
+from titles import get_title_rarity_emoji, get_title_rarity_color
 # -------------------------
 # 名前入力View
 # -------------------------
