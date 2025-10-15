@@ -761,8 +761,6 @@ async def show_servers(ctx: commands.Context):
     view = ServerListView(guilds_list, str(ctx.author.id))
     await ctx.send(embed=view.create_embed(), view=view)
 
-asyncio.run(main())
-
 
 @bot.command(name="death_stats")
 @check_ban()
@@ -983,3 +981,5 @@ async def unequip_title(ctx: commands.Context):
         color=discord.Color.grey()
     )
     await ctx.send(embed=embed)
+    
+asyncio.run(main())
