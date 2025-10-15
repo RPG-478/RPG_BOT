@@ -452,7 +452,7 @@ class TreasureView(View):
                 except Exception as e:
                     print(f"グローバルログ通知エラー: {e}")
         
-        if not secret_weapon_hit:
+if not secret_weapon_hit:
     # 通常報酬抽選
     reward_type = random.choices(
         ["coins", "weapon"],
