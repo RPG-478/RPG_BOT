@@ -1157,10 +1157,10 @@ def get_zone_from_distance(distance):
 def get_random_enemy(distance):
     zone = get_zone_from_distance(distance)
     enemies = ENEMY_ZONES[zone]["enemies"]
-    
+
     weights = [enemy["weight"] for enemy in enemies]
     selected_enemy = random.choices(enemies, weights=weights, k=1)[0]
-    
+
     return {
         "name": selected_enemy["name"],
         "hp": selected_enemy["hp"],
@@ -1174,20 +1174,20 @@ def get_random_enemy(distance):
 def get_enemy_drop(enemy_name, distance):
     zone = get_zone_from_distance(distance)
     enemies = ENEMY_ZONES[zone]["enemies"]
-    
+
     enemy_data = None
     for enemy in enemies:
         if enemy["name"] == enemy_name:
             enemy_data = enemy
             break
-    
+
     if not enemy_data or not enemy_data.get("drops"):
         return None
-    
+
     drops = enemy_data["drops"]
     weights = [drop["weight"] for drop in drops]
     selected_drop = random.choices(drops, weights=weights, k=1)[0]
-    
+
     if selected_drop["item"] == "coins":
         coin_amount = random.randint(selected_drop["amount"][0], selected_drop["amount"][1])
         return {"type": "coins", "amount": coin_amount}
@@ -1491,41 +1491,41 @@ def parse_ability_bonuses(ability_text):
         'hp_regen': 0,
         'lifesteal_percent': 0
     }
-    
+
     if not ability_text or ability_text == "なし" or ability_text == "素材":
         return bonuses
-    
+
     hp_match = re.search(r'HP\+(\d+)', ability_text)
     if hp_match:
         bonuses['hp_bonus'] = int(hp_match.group(1))
-    
+
     atk_match = re.search(r'攻撃力\+(\d+)%', ability_text)
     if atk_match:
         bonuses['attack_percent'] = int(atk_match.group(1))
-    
+
     def_match = re.search(r'防御力\+(\d+)%', ability_text)
     if def_match:
         bonuses['defense_percent'] = int(def_match.group(1))
-    
+
     dmg_red_match = re.search(r'(?:全ダメージ|被ダメージ)-(\d+)%', ability_text)
     if dmg_red_match:
         bonuses['damage_reduction'] = int(dmg_red_match.group(1))
-    
+
     regen_match = re.search(r'HP(?:自動)?回復\+(\d+)', ability_text)
     if regen_match:
         bonuses['hp_regen'] = int(regen_match.group(1))
-    
+
     lifesteal_match = re.search(r'HP吸収(?:.*?)?(\d+)%', ability_text)
     if lifesteal_match:
         bonuses['lifesteal_percent'] = int(lifesteal_match.group(1))
-    
+
     return bonuses
 
 def calculate_equipment_bonus(user_id):
     """装備中のアイテムから攻撃力・防御力ボーナスと特殊効果を計算"""
     import db
     equipped = db.get_equipped_items(user_id)
-    
+
     attack_bonus = 0
     defense_bonus = 0
     total_bonuses = {
@@ -1536,10 +1536,10 @@ def calculate_equipment_bonus(user_id):
         'hp_regen': 0,
         'lifesteal_percent': 0
     }
-    
+
     weapon_ability = ""
     armor_ability = ""
-    
+
     if equipped.get('weapon'):
         weapon_info = get_item_info(equipped['weapon'])
         if weapon_info:
@@ -1548,7 +1548,7 @@ def calculate_equipment_bonus(user_id):
             weapon_bonuses = parse_ability_bonuses(weapon_ability)
             for key in total_bonuses:
                 total_bonuses[key] += weapon_bonuses[key]
-    
+
     if equipped.get('armor'):
         armor_info = get_item_info(equipped['armor'])
         if armor_info:
@@ -1557,7 +1557,7 @@ def calculate_equipment_bonus(user_id):
             armor_bonuses = parse_ability_bonuses(armor_ability)
             for key in total_bonuses:
                 total_bonuses[key] += armor_bonuses[key]
-    
+
     return {
         'attack_bonus': attack_bonus,
         'defense_bonus': defense_bonus,
@@ -1596,38 +1596,38 @@ STORY_TRIGGERS = [
 def get_enemy_type(enemy_name):
     """敵の名前からタイプを判定"""
     enemy_name_lower = enemy_name.lower()
-    
+
     # アンデッド系
     undead_keywords = ["ゴースト", "スケルトン", "ゾンビ", "リッチ", "デスナイト", "デスロード", "デスエンペラー", "不死", "死神"]
     for keyword in undead_keywords:
         if keyword in enemy_name:
             return "undead"
-    
+
     # ドラゴン系
     dragon_keywords = ["ドラゴン", "竜", "龍", "ワイバーン"]
     for keyword in dragon_keywords:
         if keyword in enemy_name:
             return "dragon"
-    
+
     # 闇属性
     dark_keywords = ["ダーク", "闇", "シャドウ", "影", "黒騎士"]
     for keyword in dark_keywords:
         if keyword in enemy_name:
             return "dark"
-    
+
     return "normal"
 
 
 def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal"):
     """
     ability効果を適用してダメージと追加効果を計算
-    
+
     Args:
         damage: 基本ダメージ
         ability_text: ability説明文
         attacker_hp: 攻撃者のHP（HP吸収用）
         target_type: 対象タイプ（"normal", "undead", "dragon"など）
-    
+
     Returns:
         dict: {
             "damage": 最終ダメージ,
@@ -1639,7 +1639,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         }
     """
     import re
-    
+
     result = {
         "damage": damage,
         "lifesteal": 0,
@@ -1648,17 +1648,17 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         "instant_kill": False,
         "effect_text": ""
     }
-    
+
     if not ability_text or ability_text == "なし" or ability_text == "素材":
         return result
-    
+
     # 炎ダメージ（追加で炎ダメージ+X）
     fire_match = re.search(r'炎ダメージ\+(\d+)', ability_text)
     if fire_match:
         fire_damage = int(fire_match.group(1))
         result["damage"] += fire_damage
         result["effect_text"] += f"🔥炎+{fire_damage} "
-    
+
     # 燃焼状態（攻撃時X%で敵を燃焼）
     burn_match = re.search(r'攻撃時(\d+)%で(?:敵を)?燃焼.*?ダメージ(\d+)', ability_text)
     if burn_match:
@@ -1667,7 +1667,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         if random.randint(1, 100) <= burn_chance:
             result["burn"] = burn_damage
             result["effect_text"] += f"🔥燃焼付与! "
-    
+
     # 毒付与
     poison_match = re.search(r'毒付与.*?(\d+)%', ability_text)
     if poison_match:
@@ -1675,14 +1675,14 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         if random.randint(1, 100) <= poison_chance:
             result["poison"] = 10
             result["effect_text"] += f"☠️毒付与! "
-    
+
     # HP吸収
     lifesteal_match = re.search(r'HP吸収.*?(\d+)%', ability_text)
     if lifesteal_match:
         lifesteal_percent = int(lifesteal_match.group(1))
         result["lifesteal"] = int(damage * lifesteal_percent / 100)
         result["effect_text"] += f"💉HP吸収{result['lifesteal']} "
-    
+
     # 即死効果
     instant_kill_match = re.search(r'攻撃時(\d+)%で即死', ability_text)
     if instant_kill_match:
@@ -1690,7 +1690,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         if random.randint(1, 100) <= kill_chance:
             result["instant_kill"] = True
             result["effect_text"] += f"💀即死発動! "
-    
+
     # アンデッド特効
     if target_type == "undead" and "アンデッド特効" in ability_text:
         undead_match = re.search(r'アンデッド.*?\+(\d+)%', ability_text)
@@ -1699,7 +1699,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             bonus_damage = int(damage * bonus_percent / 100)
             result["damage"] += bonus_damage
             result["effect_text"] += f"⚰️特効+{bonus_damage} "
-    
+
     # ドラゴン特効
     if target_type == "dragon" and "ドラゴン特効" in ability_text:
         dragon_match = re.search(r'ドラゴン.*?\+(\d+)%', ability_text)
@@ -1708,7 +1708,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             bonus_damage = int(damage * bonus_percent / 100)
             result["damage"] += bonus_damage
             result["effect_text"] += f"🐉特効+{bonus_damage} "
-    
+
     # 闇属性特効
     if target_type == "dark" and "闇" in ability_text:
         dark_match = re.search(r'闇.*?\+(\d+)%', ability_text)
@@ -1717,7 +1717,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             bonus_damage = int(damage * bonus_percent / 100)
             result["damage"] += bonus_damage
             result["effect_text"] += f"🌑特効+{bonus_damage} "
-    
+
     # クリティカル率アップ
     if "クリティカル率" in ability_text:
         crit_match = re.search(r'クリティカル率\+(\d+)%', ability_text)
@@ -1727,14 +1727,14 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
                 crit_damage = int(damage * 0.5)
                 result["damage"] += crit_damage
                 result["effect_text"] += f"💥クリティカル+{crit_damage} "
-    
+
     # クリティカル時ダメージ3倍
     if "クリティカル時ダメージ3倍" in ability_text:
         if random.randint(1, 100) <= 20:
             triple_damage = int(damage * 2)
             result["damage"] += triple_damage
             result["effect_text"] += f"💥💥クリティカル3倍+{triple_damage} "
-    
+
     # 凍結効果（攻撃時X%で敵を凍結）
     freeze_match = re.search(r'攻撃時(\d+)%で(?:敵を)?凍結', ability_text)
     if freeze_match:
@@ -1742,19 +1742,19 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         if random.randint(1, 100) <= freeze_chance:
             result["freeze"] = True
             result["effect_text"] += "❄️凍結! "
-    
+
     # 分身攻撃（2回攻撃）
     if "分身攻撃" in ability_text and "2回攻撃" in ability_text:
         result["double_attack"] = True
         result["damage"] = int(damage * 2)
         result["effect_text"] += f"👥分身攻撃×2! "
-    
+
     # 3回攻撃
     if "3回攻撃" in ability_text:
         result["triple_attack"] = True
         result["damage"] = int(damage * 3)
         result["effect_text"] += f"👥👥3連撃! "
-    
+
     # 防御力無視
     if "防御無視" in ability_text or "防御力無視" in ability_text:
         if "攻撃時" in ability_text:
@@ -1767,21 +1767,21 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         else:
             result["defense_ignore"] = True
             result["effect_text"] += "🔓防御無視! "
-    
+
     # MP吸収
     mp_drain_match = re.search(r'(?:攻撃時)?敵のMP-(\d+)', ability_text)
     if mp_drain_match:
         mp_drain = int(mp_drain_match.group(1))
         result["mp_drain"] = mp_drain
         result["effect_text"] += f"🔵MP吸収{mp_drain} "
-    
+
     # MP吸収（パーセント版）
     mp_absorb_match = re.search(r'MP吸収(\d+)%', ability_text)
     if mp_absorb_match:
         mp_percent = int(mp_absorb_match.group(1))
         result["mp_absorb_percent"] = mp_percent
         result["effect_text"] += f"🔵MP吸収{mp_percent}% "
-    
+
     # 敵の最大HP-X%
     max_hp_dmg_match = re.search(r'敵の最大HP-(\d+)%', ability_text)
     if max_hp_dmg_match:
@@ -1789,7 +1789,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         if random.randint(1, 100) <= 20:
             result["max_hp_damage"] = max_hp_percent
             result["effect_text"] += f"💀最大HP-{max_hp_percent}%! "
-    
+
     # アンデッド召喚
     if "アンデッド召喚" in ability_text:
         summon_match = re.search(r'攻撃時(\d+)%でアンデッド召喚.*?HP(\d+)回復', ability_text)
@@ -1799,13 +1799,13 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             if random.randint(1, 100) <= summon_chance:
                 result["summon_heal"] = heal_amount
                 result["effect_text"] += f"💀召喚HP+{heal_amount} "
-    
+
     # 竜の咆哮（敵怯み）
     if "竜の咆哮" in ability_text:
         if random.randint(1, 100) <= 30:
             result["enemy_flinch"] = True
             result["effect_text"] += "🐉咆哮(怯み)! "
-    
+
     # 呪い（攻撃時にHP-5、ダメージ+50%）
     if "呪い" in ability_text and "攻撃時にHP-" in ability_text:
         curse_match = re.search(r'HP-(\d+).*?ダメージ\+(\d+)%', ability_text)
@@ -1816,7 +1816,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             result["damage"] += bonus_damage
             result["self_damage"] = hp_loss
             result["effect_text"] += f"😈呪い+{bonus_damage}(自傷-{hp_loss}) "
-    
+
     # ランダム効果（燃焼・毒・麻痺・即死のいずれか）
     if "ランダム効果" in ability_text or "毎攻撃ランダム追加効果" in ability_text:
         random_effect = random.choice(["burn", "poison", "paralyze", "instant_kill"])
@@ -1833,7 +1833,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             if random.randint(1, 100) <= 10:
                 result["instant_kill"] = True
                 result["effect_text"] += "💀ランダム:即死! "
-    
+
     # ボス特効
     if "ボスに特効" in ability_text or "ボス特効" in ability_text:
         boss_match = re.search(r'ボス(?:に)?特効\+(\d+)%', ability_text)
@@ -1842,7 +1842,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             bonus_damage = int(damage * bonus_percent / 100)
             result["damage"] += bonus_damage
             result["effect_text"] += f"👑ボス特効+{bonus_damage} "
-    
+
     # 全能力+X%
     if "全能力" in ability_text:
         all_match = re.search(r'全能力\+(\d+)%', ability_text)
@@ -1851,7 +1851,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             bonus_damage = int(damage * all_bonus / 100)
             result["damage"] += bonus_damage
             result["effect_text"] += f"✨全能力+{all_bonus}% "
-    
+
     # 全ステータス+X%
     if "全ステータス" in ability_text:
         stats_match = re.search(r'全ステータス\+(\d+)%', ability_text)
@@ -1860,7 +1860,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             bonus_damage = int(damage * stats_bonus / 100)
             result["damage"] += bonus_damage
             result["effect_text"] += f"✨全ステ+{stats_bonus}% "
-    
+
     # 攻撃力+X%（デバフ防具）
     if "攻撃力+" in ability_text and "%" in ability_text:
         atk_match = re.search(r'攻撃力\+(\d+)%', ability_text)
@@ -1869,7 +1869,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             bonus_damage = int(damage * atk_bonus / 100)
             result["damage"] += bonus_damage
             result["effect_text"] += f"⚔️攻撃+{atk_bonus}% "
-    
+
     # 初期化されていないフィールドを追加
     if "freeze" not in result:
         result["freeze"] = False
@@ -1893,14 +1893,14 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         result["self_damage"] = 0
     if "paralyze" not in result:
         result["paralyze"] = False
-    
+
     return result
 
 
 def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, attacker_damage=0, attack_attribute="none"):
     """
     防具のアビリティ効果を適用
-    
+
     Args:
         incoming_damage: 受けるダメージ
         armor_ability: 防具のアビリティ文字列
@@ -1908,7 +1908,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
         max_hp: 防御者の最大HP
         attacker_damage: 攻撃者が与えたダメージ（反撃用）
         attack_attribute: 攻撃の属性 (none, fire, ice, thunder, dark, water, etc.)
-    
+
     Returns:
         dict: {
             "damage": 最終ダメージ,
@@ -1921,7 +1921,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
         }
     """
     import re
-    
+
     result = {
         "damage": incoming_damage,
         "evaded": False,
@@ -1931,10 +1931,10 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
         "revived": False,
         "effect_text": ""
     }
-    
+
     if not armor_ability or armor_ability == "なし" or armor_ability == "素材":
         return result
-    
+
     # 回避率
     evasion_match = re.search(r'回避率\+(\d+)%', armor_ability)
     if evasion_match:
@@ -1944,7 +1944,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
             result["damage"] = 0
             result["effect_text"] += "💨回避! "
             return result
-    
+
     # 幻影分身（被攻撃時X%で回避）
     phantom_match = re.search(r'被攻撃時(\d+)%で(?:完全)?回避', armor_ability)
     if phantom_match:
@@ -1954,7 +1954,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
             result["damage"] = 0
             result["effect_text"] += "👻幻影回避! "
             return result
-    
+
     # ダメージ軽減系
     if "全ダメージ" in armor_ability or "被ダメージ" in armor_ability:
         dmg_red_match = re.search(r'(?:全ダメージ|被ダメージ)-(\d+)%', armor_ability)
@@ -1963,7 +1963,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
             reduced_amount = int(incoming_damage * reduction / 100)
             result["damage"] -= reduced_amount
             result["effect_text"] += f"🛡️軽減-{reduced_amount} "
-    
+
     # 物理ダメージ軽減
     if "物理ダメージ" in armor_ability:
         phys_match = re.search(r'物理ダメージ(?:軽減)?-(\d+)%', armor_ability)
@@ -1972,7 +1972,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
             reduced_amount = int(incoming_damage * reduction / 100)
             result["damage"] -= reduced_amount
             result["effect_text"] += f"🛡️物理軽減-{reduced_amount} "
-    
+
     # 属性耐性（攻撃属性に応じて適用）
     if attack_attribute == "fire":
         if "炎耐性" in armor_ability or "炎無効" in armor_ability:
@@ -1986,7 +1986,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
                     reduced = int(incoming_damage * resistance / 100)
                     result["damage"] -= reduced
                     result["effect_text"] += f"🔥炎耐性-{reduced} "
-    
+
     if attack_attribute == "dark":
         if "闇耐性" in armor_ability:
             dark_res_match = re.search(r'闇耐性\+(\d+)%', armor_ability)
@@ -1995,7 +1995,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
                 reduced = int(incoming_damage * resistance / 100)
                 result["damage"] -= reduced
                 result["effect_text"] += f"🌑闇耐性-{reduced} "
-    
+
     if attack_attribute in ["ice", "water"]:
         if "水・氷耐性" in armor_ability or "水耐性" in armor_ability or "氷耐性" in armor_ability:
             water_match = re.search(r'(?:水・氷耐性|水耐性|氷耐性)(\d+)%', armor_ability)
@@ -2004,7 +2004,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
                 reduced = int(incoming_damage * resistance / 100)
                 result["damage"] -= reduced
                 result["effect_text"] += f"❄️水氷耐性-{reduced} "
-    
+
     # 全属性耐性は常に適用（属性攻撃のみ）
     if attack_attribute != "none" and "全属性耐性" in armor_ability:
         all_res_match = re.search(r'全属性耐性\+(\d+)%', armor_ability)
@@ -2013,10 +2013,10 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
             reduced = int(incoming_damage * resistance / 100)
             result["damage"] -= reduced
             result["effect_text"] += f"✨全耐性-{reduced} "
-    
+
     # ダメージ下限を0に
     result["damage"] = max(0, result["damage"])
-    
+
     # 反撃（被ダメージのX%を返す）
     if "反撃" in armor_ability:
         counter_match = re.search(r'被ダメージの(\d+)%を返す', armor_ability)
@@ -2024,7 +2024,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
             counter_percent = int(counter_match.group(1))
             result["counter_damage"] = int(incoming_damage * counter_percent / 100)
             result["effect_text"] += f"⚔️反撃{result['counter_damage']} "
-    
+
     # 被攻撃時反撃ダメージ
     if "被攻撃時" in armor_ability and "反撃ダメージ" in armor_ability:
         reflect_match = re.search(r'反撃ダメージ(\d+)', armor_ability)
@@ -2036,20 +2036,20 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
                 if random.randint(1, 100) <= reflect_chance:
                     result["reflect_damage"] = base_reflect
                     result["effect_text"] += f"⚡反撃{base_reflect} "
-    
+
     # 反射ダメージ
     if "反射ダメージ" in armor_ability:
         reflect_dmg_match = re.search(r'反射ダメージ(\d+)', armor_ability)
         if reflect_dmg_match:
             result["reflect_damage"] = int(reflect_dmg_match.group(1))
             result["effect_text"] += f"⚡反射{result['reflect_damage']} "
-    
+
     # HP自動回復
     hp_regen_match = re.search(r'HP(?:自動)?回復\+(\d+)', armor_ability)
     if hp_regen_match:
         result["hp_regen"] = int(hp_regen_match.group(1))
         result["effect_text"] += f"💚回復+{result['hp_regen']} "
-    
+
     # 瀕死時HP回復
     if "瀕死時" in armor_ability and defender_hp <= max_hp * 0.3:
         critical_heal_match = re.search(r'瀕死時HP\+(\d+)', armor_ability)
@@ -2057,70 +2057,70 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
             critical_heal = int(critical_heal_match.group(1))
             result["hp_regen"] += critical_heal
             result["effect_text"] += f"💚瀕死回復+{critical_heal} "
-    
+
     # HP30%以下で防御力2倍（神の加護）
     if "神の加護" in armor_ability and defender_hp <= max_hp * 0.3:
         if "防御力2倍" in armor_ability:
             halved = int(result["damage"] / 2)
             result["damage"] = halved
             result["effect_text"] += "✨神の加護(防御2倍)! "
-    
+
     # 精霊加護（致死ダメージ時1回生存）
     if "精霊加護" in armor_ability and result["damage"] >= defender_hp:
         if "致死ダメージ時1回生存" in armor_ability:
             result["damage"] = defender_hp - 1
             result["revived"] = True
             result["effect_text"] += "🌟精霊加護(生存)! "
-    
+
     # 竜鱗の守護（致死ダメージ無効1回）
     if "竜鱗の守護" in armor_ability and result["damage"] >= defender_hp:
         if "致死ダメージ無効" in armor_ability:
             result["damage"] = 0
             result["evaded"] = True
             result["effect_text"] += "🐉竜鱗の守護! "
-    
+
     return result
 
 
 def check_story_trigger(previous_distance, current_distance, user_id):
     """
     ストーリートリガーをチェック
-    
+
     Args:
         previous_distance: 移動前の距離
         current_distance: 移動後の距離
         user_id: ユーザーID
-    
+
     Returns:
         トリガーされたストーリーID、またはNone
     """
     import db
     from story import STORY_DATA
-    
+
     player = db.get_player(user_id)
     if not player:
         return None
-    
+
     loop_count = player.get("loop_count", 0)
-    
+
     for trigger in STORY_TRIGGERS:
         trigger_distance = trigger["distance"]
         story_id = trigger["story_id"]
         exact_match = trigger.get("exact_match", False)
-        
+
         triggered = False
         if exact_match:
             triggered = (current_distance == trigger_distance)
         else:
             triggered = (previous_distance < trigger_distance <= current_distance)
-        
+
         if triggered:
             story = STORY_DATA.get(story_id)
             if not story:
                 continue
-            
+
             loop_requirement = story.get("loop_requirement")
-            
+
             if loop_requirement is None:
                 return story_id
             elif loop_requirement == 0 and loop_count == 0:
@@ -2129,7 +2129,7 @@ def check_story_trigger(previous_distance, current_distance, user_id):
             elif loop_requirement > 0 and loop_count >= loop_requirement:
                 if not db.get_story_flag(user_id, story_id):
                     return story_id
-    
+
     return None
 
 # MP回復薬・EXP薬をITEMS_DATABASEに追加
@@ -2281,11 +2281,11 @@ def get_exp_from_enemy(enemy_name, distance):
     """敵からのEXP獲得量を取得"""
     zone = get_zone_from_distance(distance)
     enemies = ENEMY_ZONES[zone]["enemies"]
-    
+
     for enemy in enemies:
         if enemy["name"] == enemy_name:
             return enemy.get("exp", 10)
-    
+
     return 10
 
 def categorize_drops_by_zone(zones, items_db):
@@ -2293,7 +2293,7 @@ def categorize_drops_by_zone(zones, items_db):
     ENEMY_ZONESのドロップアイテムを、アイテムタイプ別に分類し、階層ごとに集計する。
     """
     drops_by_zone_and_type = {}
-    
+
     for zone_key, zone_data in zones.items():
         "ゾーンごとに結果を初期化"
         drops_by_zone_and_type[zone_key] = {
@@ -2303,23 +2303,23 @@ def categorize_drops_by_zone(zones, items_db):
             "material": set(),
             "other": set() # noneやcoinsなど、タイプがないものを格納
         }
-        
+
         "ENEMIESがリストであることを前提"
         for enemy in zone_data.get("enemies", []): 
             "dropsがリストであることを前提"
             for drop in enemy.get("drops", []):
                 item_name = drop.get("item")
-                
+
                 "'none' または 'coins' のような特殊ドロップはスキップまたは'other'に追加"
                 if item_name == "none" or item_name == "coins":
                     if item_name == "coins":
                         # 'none'は無視、'coins'は'other'に記録
                         drops_by_zone_and_type[zone_key]["other"].add(item_name)
                     continue
-                
+
                 "ITEMS_DATABASEからアイテムタイプを取得"
                 item_info = items_db.get(item_name)
-                
+
                 if item_info:
                     item_type = item_info.get("type")
                     if item_type in drops_by_zone_and_type[zone_key]:
@@ -2335,7 +2335,7 @@ def categorize_drops_by_zone(zones, items_db):
         "setをリストに変換して、ソートする"
         for item_type in drops_by_zone_and_type[zone_key]:
             drops_by_zone_and_type[zone_key][item_type] = sorted(list(drops_by_zone_and_type[zone_key][item_type]))
-            
+
     return drops_by_zone_and_type
 
 "階層ごとにタイプ別ドロップアイテムを格納する新しい変数"
