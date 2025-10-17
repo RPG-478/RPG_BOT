@@ -19,7 +19,7 @@ TITLES = {
         "effect": None,  # Lv2では効果なし、Lv3で実装
         "rarity": "common"
     },
-    
+
     "death_expert": {
         "id": "death_expert",
         "name": "死の熟練者",
@@ -31,7 +31,7 @@ TITLES = {
         "effect": None,
         "rarity": "uncommon"
     },
-    
+
     "death_master": {
         "id": "death_master",
         "name": "死の達人",
@@ -43,7 +43,7 @@ TITLES = {
         "effect": None,
         "rarity": "rare"
     },
-    
+
     # 敵別称号
     "slime_victim": {
         "id": "slime_victim",
@@ -57,7 +57,7 @@ TITLES = {
         "effect": None,
         "rarity": "common"
     },
-    
+
     "slime_friend": {
         "id": "slime_friend",
         "name": "スライムの友",
@@ -70,7 +70,7 @@ TITLES = {
         "effect": None,
         "rarity": "rare"
     },
-    
+
     "goblin_toy": {
         "id": "goblin_toy",
         "name": "ゴブリンの玩具",
@@ -83,7 +83,7 @@ TITLES = {
         "effect": None,
         "rarity": "uncommon"
     },
-    
+
     "skeleton_curse": {
         "id": "skeleton_curse",
         "name": "骨の呪い",
@@ -96,7 +96,7 @@ TITLES = {
         "effect": None,
         "rarity": "uncommon"
     },
-    
+
     "vampire_blood": {
         "id": "vampire_blood",
         "name": "吸血鬼の血袋",
@@ -109,7 +109,7 @@ TITLES = {
         "effect": None,
         "rarity": "rare"
     },
-    
+
     # ボス特化称号
     "boss_challenge": {
         "id": "boss_challenge",
@@ -123,7 +123,7 @@ TITLES = {
         "effect": None,
         "rarity": "uncommon"
     },
-    
+
     "golem_wall": {
         "id": "golem_wall",
         "name": "ゴーレムの壁",
@@ -136,7 +136,7 @@ TITLES = {
         "effect": None,
         "rarity": "rare"
     },
-    
+
     # パターン称号
     "slime_hell": {
         "id": "slime_hell",
@@ -149,7 +149,7 @@ TITLES = {
         "effect": None,
         "rarity": "uncommon"
     },
-    
+
     "boss_pilgrim": {
         "id": "boss_pilgrim",
         "name": "ボス巡礼者",
@@ -161,7 +161,7 @@ TITLES = {
         "effect": None,
         "rarity": "epic"
     },
-    
+
     "undead_cursed": {
         "id": "undead_cursed",
         "name": "不死者の呪い",
@@ -173,7 +173,7 @@ TITLES = {
         "effect": None,
         "rarity": "rare"
     },
-    
+
     "equal_death": {
         "id": "equal_death",
         "name": "平等な死",
@@ -185,7 +185,7 @@ TITLES = {
         "effect": None,
         "rarity": "epic"
     },
-    
+
     # 特殊称号
     "immortal_seeker": {
         "id": "immortal_seeker",
@@ -198,7 +198,7 @@ TITLES = {
         "effect": None,
         "rarity": "legendary"
     },
-    
+
     "death_memory": {
         "id": "death_memory",
         "name": "死の記憶",
@@ -210,7 +210,7 @@ TITLES = {
         "effect": "future_bonus",  # Lv3で実装予定
         "rarity": "epic"
     },
-    
+
     # 隠し称号（真END用、Lv3実装予定）
     "world_observer": {
         "id": "world_observer",
@@ -281,9 +281,9 @@ def get_all_titles_by_rarity():
         "uncommon": [],
         "common": []
     }
-    
+
     for title_id, title_data in TITLES.items():
         rarity = title_data.get("rarity", "common")
         sorted_titles[rarity].append(title_data)
-    
+
     return sorted_titles
