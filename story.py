@@ -466,7 +466,7 @@ STORY_DATA = {
             {"speaker": "ナレーション", "text": "老人は煙のように消えていった…"}
         ]
     },
-    
+
     # ==============================
     # 選択肢付きストーリー（サンプル）
     # ==============================
@@ -741,7 +741,7 @@ class StoryView(View):
         self.current_page = 0
         self.callback_data = callback_data
         self.ctx = None
-        
+
         story = STORY_DATA.get(story_id)
         if not story:
             self.story_title = "不明なストーリー"
@@ -751,62 +751,62 @@ class StoryView(View):
             self.story_title = story["title"]
             self.story_lines = story["lines"]
             self.choices = story.get("choices")  # 選択肢があれば取得
-    
+
     def get_embed(self):
         if self.current_page >= len(self.story_lines):
             self.current_page = len(self.story_lines) - 1
-        
+
         line = self.story_lines[self.current_page]
         speaker = line.get("speaker", "???")
         text = line.get("text", "")
-        
+
         embed = discord.Embed(
             title=f"📖 {self.story_title}",
             description=f"**{speaker}**：{text}",
             color=discord.Color.purple()
         )
         embed.set_footer(text=f"ページ {self.current_page + 1}/{len(self.story_lines)}")
-        
+
         return embed
-    
+
     async def send_story(self, ctx_or_interaction):
         # ctxを保存（選択肢処理で使用）
         if hasattr(ctx_or_interaction, 'channel'):
             self.ctx = ctx_or_interaction
-        
+
         embed = self.get_embed()
-        
+
         if hasattr(ctx_or_interaction, 'channel'):
             self.message = await ctx_or_interaction.channel.send(embed=embed, view=self)
         else:
             await ctx_or_interaction.response.edit_message(embed=embed, view=self)
             self.message = await ctx_or_interaction.original_response()
-    
+
     @button(label="◀ BACK", style=discord.ButtonStyle.secondary)
     async def back_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("これはあなたのストーリーではありません！", ephemeral=True)
             return
-        
+
         if self.current_page > 0:
             self.current_page -= 1
-        
+
         embed = self.get_embed()
         await interaction.response.edit_message(embed=embed, view=self)
-    
+
     @button(label="NEXT ▶", style=discord.ButtonStyle.primary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("これはあなたのストーリーではありません！", ephemeral=True)
             return
-        
+
         if self.current_page < len(self.story_lines) - 1:
             self.current_page += 1
             embed = self.get_embed()
             await interaction.response.edit_message(embed=embed, view=self)
         else:
             import db
-            
+
             # 選択肢がある場合は選択Viewを表示
             if self.choices:
                 choice_view = StoryChoiceView(self.user_id, self.story_id, self.choices, self.user_processing, self.ctx)
@@ -817,27 +817,27 @@ class StoryView(View):
                 )
                 await interaction.response.edit_message(embed=embed, view=choice_view)
                 return
-            
+
             # 選択肢がない場合は通常通り完了
             db.set_story_flag(self.user_id, self.story_id)
-            
+
             embed = discord.Embed(
                 title="📘 ストーリー完了！",
                 description="物語が一区切りついた。冒険を続けよう。",
                 color=discord.Color.green()
             )
             await interaction.response.edit_message(embed=embed, view=None)
-            
+
             if self.callback_data and self.callback_data.get('type') == 'boss_battle':
                 import asyncio
                 await asyncio.sleep(1.5)
-                
+
                 import game
                 from views import BossBattleView, FinalBossBattleView
-                
+
                 boss_stage = self.callback_data['boss_stage']
                 ctx = self.callback_data['ctx']
-                
+
                 boss = game.get_boss(boss_stage)
                 if boss:
                     player = db.get_player(self.user_id)
@@ -849,7 +849,7 @@ class StoryView(View):
                         "distance": player.get("distance", 0),
                         "user_id": self.user_id
                     }
-                    
+
                     if boss_stage == 10:
                         embed = discord.Embed(
                             title="⚔️ ラスボス出現！",
@@ -858,7 +858,7 @@ class StoryView(View):
                         )
                         await ctx.channel.send(embed=embed)
                         await asyncio.sleep(2)
-                        
+
                         view = FinalBossBattleView(ctx, player_data, boss, self.user_processing, boss_stage)
                         await view.send_initial_embed()
                     else:
@@ -869,7 +869,7 @@ class StoryView(View):
                         )
                         await ctx.channel.send(embed=embed)
                         await asyncio.sleep(1.5)
-                        
+
                         view = BossBattleView(ctx, player_data, boss, self.user_processing, boss_stage)
                         await view.send_initial_embed()
             else:
@@ -886,7 +886,7 @@ class StoryChoiceView(View):
         self.choices = choices
         self.user_processing = user_processing
         self.ctx = ctx
-        
+
         for idx, choice in enumerate(choices):
             btn = discord.ui.Button(
                 label=choice["label"],
@@ -895,49 +895,49 @@ class StoryChoiceView(View):
             )
             btn.callback = self.create_choice_callback(idx)
             self.add_item(btn)
-    
+
     def create_choice_callback(self, choice_idx):
         async def callback(interaction: discord.Interaction):
             if interaction.user.id != self.user_id:
                 await interaction.response.send_message("これはあなたの選択ではありません！", ephemeral=True)
                 return
-            
+
             import db
             import game
             import random
-            
+
             choice = self.choices[choice_idx]
             result = choice["result"]
-            
+
             lines_text = "\n".join([f"**{line['speaker']}**：{line['text']}" for line in result["lines"]])
-            
+
             embed = discord.Embed(
                 title=f"✨ {result['title']}",
                 description=lines_text,
                 color=discord.Color.gold()
             )
-            
+
             reward_text = ""
             player = db.get_player(self.user_id)
-            
+
             if result.get("reward") == "hp_restore":
                 max_hp = player.get("max_hp", 100)
                 heal_amount = int(max_hp * 0.5)
                 new_hp = min(max_hp, player.get("hp", 100) + heal_amount)
                 db.update_player(self.user_id, hp=new_hp)
                 reward_text = f"\n\n💚 HP +{heal_amount} 回復！"
-            
+
             elif result.get("reward") == "weapon_drop":
                 weapons = [w for w, info in game.ITEMS_DATABASE.items() if info.get('type') == 'weapon']
                 if weapons:
                     weapon = random.choice(weapons)
                     db.add_item_to_inventory(self.user_id, weapon)
                     reward_text = f"\n\n⚔️ **{weapon}** を手に入れた！"
-            
+
             elif result.get("reward") == "item_drop":
                 gold_cost = result.get("gold_cost", 0)
                 current_gold = player.get("gold", 0)
-                
+
                 if current_gold >= gold_cost:
                     items = list(game.ITEMS_DATABASE.keys())
                     item = random.choice(items)
@@ -946,12 +946,12 @@ class StoryChoiceView(View):
                     reward_text = f"\n\n💰 -{gold_cost}G\n📦 **{item}** を手に入れた！"
                 else:
                     reward_text = f"\n\n💸 ゴールドが足りない…（必要: {gold_cost}G）"
-            
+
             elif result.get("reward") == "small_gold":
                 gold_amount = random.randint(30, 80)
                 db.add_gold(self.user_id, gold_amount)
                 reward_text = f"\n\n💰 {gold_amount}G を手に入れた！"
-            
+
             elif result.get("reward") == "rare_item_with_damage":
                 rare_items = [w for w, info in game.ITEMS_DATABASE.items() if info.get('attack', 0) >= 20 or info.get('defense', 0) >= 15]
                 if rare_items:
@@ -961,11 +961,11 @@ class StoryChoiceView(View):
                     new_hp = max(1, player.get("hp", 100) - damage)
                     db.update_player(self.user_id, hp=new_hp)
                     reward_text = f"\n\n📦 **{item}** を手に入れた！\n💔 HP -{damage}"
-            
+
             elif result.get("reward") == "max_hp_boost":
                 gold_cost = result.get("gold_cost", 0)
                 current_gold = player.get("gold", 0)
-                
+
                 if current_gold >= gold_cost:
                     current_max_hp = player.get("max_hp", 100)
                     new_max_hp = current_max_hp + 20
@@ -974,14 +974,14 @@ class StoryChoiceView(View):
                     reward_text = f"\n\n💰 -{gold_cost}G\n❤️ 最大HP +20！（{current_max_hp} → {new_max_hp}）"
                 else:
                     reward_text = f"\n\n💸 ゴールドが足りない…（必要: {gold_cost}G）"
-            
+
             elif result.get("reward") == "legendary_item":
                 legendary_items = [w for w, info in game.ITEMS_DATABASE.items() if info.get('attack', 0) >= 30 or info.get('defense', 0) >= 25]
                 if legendary_items:
                     item = random.choice(legendary_items)
                     db.add_item_to_inventory(self.user_id, item)
                     reward_text = f"\n\n✨ 伝説の **{item}** を手に入れた！"
-            
+
             elif result.get("reward") == "gold_with_damage":
                 gold_amount = random.randint(200, 400)
                 db.add_gold(self.user_id, gold_amount)
@@ -989,45 +989,45 @@ class StoryChoiceView(View):
                 new_hp = max(1, player.get("hp", 100) - damage)
                 db.update_player(self.user_id, hp=new_hp)
                 reward_text = f"\n\n💰 {gold_amount}G を手に入れた！\n💔 HP -{damage}"
-            
+
             elif result.get("reward") == "mp_restore":
                 max_mp = player.get("max_mp", 100)
                 heal_amount = int(max_mp * 0.5)
                 new_mp = min(max_mp, player.get("mp", 100) + heal_amount)
                 db.update_player(self.user_id, mp=new_mp)
                 reward_text = f"\n\n💙 MP +{heal_amount} 回復！"
-            
+
             elif result.get("reward") == "exp_boost":
                 atk_boost = random.randint(3, 8)
                 current_atk = player.get("atk", 10)
                 db.update_player(self.user_id, atk=current_atk + atk_boost)
                 reward_text = f"\n\n⚔️ 攻撃力 +{atk_boost}！（{current_atk} → {current_atk + atk_boost}）"
-            
+
             elif result.get("reward") == "defense_boost":
                 def_boost = random.randint(3, 8)
                 current_def = player.get("def", 5)
                 db.update_player(self.user_id, def_=current_def + def_boost)
                 reward_text = f"\n\n🛡️ 防御力 +{def_boost}！（{current_def} → {current_def + def_boost}）"
-            
+
             elif result.get("reward") == "attack_boost":
                 atk_boost = random.randint(5, 10)
                 current_atk = player.get("atk", 10)
                 db.update_player(self.user_id, atk=current_atk + atk_boost)
                 reward_text = f"\n\n⚔️ 攻撃力 +{atk_boost}！（{current_atk} → {current_atk + atk_boost}）"
-            
+
             elif result.get("reward") == "full_heal":
                 max_hp = player.get("max_hp", 100)
                 max_mp = player.get("max_mp", 100)
                 db.update_player(self.user_id, hp=max_hp, mp=max_mp)
                 reward_text = f"\n\n✨ HP・MP完全回復！"
-            
+
             embed.description += reward_text
-            
+
             await interaction.response.edit_message(embed=embed, view=None)
-            
+
             db.set_story_flag(self.user_id, self.story_id)
-            
+
             if self.user_id in self.user_processing:
                 self.user_processing[self.user_id] = False
-        
+
         return callback
