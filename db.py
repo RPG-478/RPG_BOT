@@ -394,10 +394,10 @@ def add_exp(user_id, amount):
         current_level += 1
 
         # ステータス上昇
-        new_hp = player.get("hp", 100) + 20
-        new_max_hp = player.get("max_hp", 100) + 20
-        new_atk = player.get("atk", 10) + 3
-        new_def = player.get("def", 5) + 2
+        new_hp = player.get("hp", 100) + 5
+        new_max_hp = player.get("max_hp", 100) + 5
+        new_atk = player.get("atk", 5) + 1
+        new_def = player.get("def", 3) + 1
 
         update_data = {
             "level": current_level,
@@ -410,9 +410,9 @@ def add_exp(user_id, amount):
 
         level_ups.append({
             "new_level": current_level,
-            "hp_gain": 20,
-            "atk_gain": 3,
-            "def_gain": 2
+            "hp_gain": 5,
+            "atk_gain": 1,
+            "def_gain": 1
         })
 
         player = get_player(user_id)
