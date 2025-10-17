@@ -9,9 +9,15 @@ def get_player(user_id):
     return res.data[0] if res.data else None
 
 def create_player(user_id: int):
-    """新規プレイヤーを作成（デフォルト値はテーブル定義に従う）"""
+    """新規プレイヤーを作成（デフォルト値を明示的に設定）"""
     supabase.table("players").insert({
-        "user_id": str(user_id)
+        "user_id": str(user_id),
+        "hp": 50,
+        "max_hp": 50,
+        "mp": 20,
+        "max_mp": 20,
+        "atk": 5,
+        "def": 2
     }).execute()
 
 def update_player(user_id, **kwargs):
@@ -208,9 +214,13 @@ def get_upgrade_levels(user_id):
         return {
             "initial_hp": player.get("initial_hp_upgrade", 0),
             "initial_mp": player.get("initial_mp_upgrade", 0),
-            "coin_gain": player.get("coin_gain_upgrade", 0)
+            "coin_gain": player.get("coin_gain_upgrade", 0),
+            "max_hp": player.get("max_hp_upgrade", 0),
+            "max_mp": player.get("max_mp_upgrade", 0),
+            "atk": player.get("atk_upgrade", 0),
+            "def_upgrade": player.get("def_upgrade", 0)
         }
-    return {"initial_hp": 0, "initial_mp": 0, "coin_gain": 0}
+    return {"initial_hp": 0, "initial_mp": 0, "coin_gain": 0, "max_hp": 0, "max_mp": 0, "atk": 0, "def_upgrade": 0}
 
 def upgrade_initial_hp(user_id):
     """初期HP最大量をアップグレード"""
@@ -239,6 +249,49 @@ def upgrade_coin_gain(user_id):
         current_level = player.get("coin_gain_upgrade", 0)
         new_multiplier = player.get("coin_multiplier", 1.0) + 0.1
         update_player(user_id, coin_gain_upgrade=current_level + 1, coin_multiplier=new_multiplier)
+        return True
+    return False
+
+def upgrade_max_hp(user_id):
+    """最大HP初期値をアップグレード（5PT で +5HP）"""
+    player = get_player(user_id)
+    if player:
+        current_level = player.get("max_hp_upgrade", 0)
+        new_max_hp = player.get("max_hp", 50) + 5
+        new_hp = player.get("hp", 50) + 5
+        update_player(user_id, max_hp_upgrade=current_level + 1, max_hp=new_max_hp, hp=new_hp)
+        return True
+    return False
+
+def upgrade_max_mp(user_id):
+    """最大MP初期値をアップグレード（3PT で +5MP）"""
+    player = get_player(user_id)
+    if player:
+        current_level = player.get("max_mp_upgrade", 0)
+        new_max_mp = player.get("max_mp", 20) + 5
+        new_mp = player.get("mp", 20) + 5
+        update_player(user_id, max_mp_upgrade=current_level + 1, max_mp=new_max_mp, mp=new_mp)
+        return True
+    return False
+
+def upgrade_atk(user_id):
+    """攻撃力初期値をアップグレード（3PT で +1ATK）"""
+    player = get_player(user_id)
+    if player:
+        current_level = player.get("atk_upgrade", 0)
+        new_atk = player.get("atk", 5) + 1
+        update_player(user_id, atk_upgrade=current_level + 1, atk=new_atk)
+        return True
+    return False
+
+def upgrade_def(user_id):
+    """防御力初期値をアップグレード（5PT で +1DEF）"""
+    player = get_player(user_id)
+    if player:
+        current_level = player.get("def_upgrade", 0)
+        new_def = player.get("def", 2) + 1
+        update_data = {"def_upgrade": current_level + 1, "def": new_def}
+        update_player(user_id, **update_data)
         return True
     return False
 

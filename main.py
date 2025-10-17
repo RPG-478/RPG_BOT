@@ -577,6 +577,26 @@ async def upgrade(ctx):
         value=f"現在Lv.{upgrades['coin_gain']} → コイン +10%",
         inline=False
     )
+    embed.add_field(
+        name="4️⃣ HP初期値アップ (5ポイント)",
+        value=f"現在Lv.{upgrades['max_hp']} → HP +5",
+        inline=False
+    )
+    embed.add_field(
+        name="5️⃣ MP初期値アップ (3ポイント)",
+        value=f"現在Lv.{upgrades['max_mp']} → MP +5",
+        inline=False
+    )
+    embed.add_field(
+        name="6️⃣ 攻撃力初期値アップ (3ポイント)",
+        value=f"現在Lv.{upgrades['atk']} → ATK +1",
+        inline=False
+    )
+    embed.add_field(
+        name="7️⃣ 防御力初期値アップ (5ポイント)",
+        value=f"現在Lv.{upgrades['def_upgrade']} → DEF +1",
+        inline=False
+    )
     embed.set_footer(text="!buy_upgrade <番号> でアップグレード購入")
 
     await ctx.send(embed=embed)
@@ -604,10 +624,10 @@ async def buy_upgrade(ctx, upgrade_type: int):
         await ctx.send(embed=embed)
         return
 
-    costs = {1: 5, 2: 5, 3: 5}
+    costs = {1: 5, 2: 5, 3: 5, 4: 5, 5: 3, 6: 3, 7: 5}
 
     if upgrade_type not in costs:
-        await ctx.send("無効なアップグレード番号です。1, 2, 3から選んでください。")
+        await ctx.send("無効なアップグレード番号です。1〜7から選んでください。")
         return
 
     cost = costs[upgrade_type]
@@ -629,6 +649,22 @@ async def buy_upgrade(ctx, upgrade_type: int):
         db.upgrade_coin_gain(ctx.author.id)
         db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ コイン取得量をアップグレードしました！ コイン取得 +10%")
+    elif upgrade_type == 4:
+        db.upgrade_max_hp(ctx.author.id)
+        db.spend_upgrade_points(ctx.author.id, cost)
+        await ctx.send("✅ HP初期値をアップグレードしました！ HP +5")
+    elif upgrade_type == 5:
+        db.upgrade_max_mp(ctx.author.id)
+        db.spend_upgrade_points(ctx.author.id, cost)
+        await ctx.send("✅ MP初期値をアップグレードしました！ MP +5")
+    elif upgrade_type == 6:
+        db.upgrade_atk(ctx.author.id)
+        db.spend_upgrade_points(ctx.author.id, cost)
+        await ctx.send("✅ 攻撃力初期値をアップグレードしました！ ATK +1")
+    elif upgrade_type == 7:
+        db.upgrade_def(ctx.author.id)
+        db.spend_upgrade_points(ctx.author.id, cost)
+        await ctx.send("✅ 防御力初期値をアップグレードしました！ DEF +1")
 
 # デバッグコマンドの読み込み（削除可能）
 try:
