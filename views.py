@@ -1196,6 +1196,8 @@ class FinalBossBattleView(View):
         # 怯み効果で敵がスキップ
         if ability_result.get("enemy_flinch", False):
             text += "\nラスボスは怯んで動けない！"
+            # HPを保存
+            db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
             await interaction.response.defer()
             return
@@ -1203,6 +1205,8 @@ class FinalBossBattleView(View):
         # 凍結効果で敵がスキップ
         if ability_result.get("freeze", False):
             text += "\nラスボスは凍結して動けない！"
+            # HPを保存
+            db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
             await interaction.response.defer()
             return
@@ -1687,6 +1691,8 @@ class BossBattleView(View):
         # 怯み効果で敵がスキップ
         if ability_result.get("enemy_flinch", False):
             text += "\nボスは怯んで動けない！"
+            # HPを保存
+            db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
             await interaction.response.defer()
             return
@@ -1694,6 +1700,8 @@ class BossBattleView(View):
         # 凍結効果で敵がスキップ
         if ability_result.get("freeze", False):
             text += "\nボスは凍結して動けない！"
+            # HPを保存
+            db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
             await interaction.response.defer()
             return
@@ -2122,12 +2130,16 @@ class BattleView(View):
         # 怯み効果で敵がスキップ
         if ability_result.get("enemy_flinch", False):
             text += "\n敵は怯んで動けない！\n『よしっ！』"
+            # HPを保存
+            db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
             return
 
         # 凍結効果で敵がスキップ
         if ability_result.get("freeze", False):
             text += "\n敵は凍結して動けない！"
+            # HPを保存
+            db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
             return
 
@@ -2210,6 +2222,8 @@ class BattleView(View):
                     self.user_processing[self.ctx.author.id] = False
                 return
 
+        # HPを保存（戦闘継続時）
+        db.update_player(interaction.user.id, hp=self.player["hp"])
         await self.update_embed(text)
 
     # =====================================
@@ -2397,6 +2411,8 @@ class BattleView(View):
                 await select_interaction.response.defer()
                 return
 
+            # HPを保存（生存時）
+            db.update_player(self.ctx.author.id, hp=self.player["hp"])
             await self.update_embed(text)
             await select_interaction.response.defer()
 
