@@ -27,7 +27,7 @@ def add_item_to_inventory(user_id, item_name):
     if item_name == "none":
         """アイテムがnoneの場合は何もせず終了"""
         return
-            
+
     player = get_player(user_id)
     if player:
         inventory = player.get("inventory", [])
@@ -66,22 +66,22 @@ def add_player_distance(user_id, increment):
     player = get_player(user_id)
     if not player:
         return 0
-    
+
     current_distance = player.get("distance", 0)
     new_distance = current_distance + increment
-    
+
     floor = new_distance // 100
     stage = new_distance // 1000
-    
+
     # スキル解放チェック（1000m毎）
     check_and_unlock_distance_skills(user_id, new_distance)
-    
+
     # 新しい距離を設定
     update_player(user_id, 
                   distance=new_distance, 
                   current_floor=floor, 
                   current_stage=stage)
-    
+
     return new_distance
 
 def get_previous_distance(user_id):
@@ -285,7 +285,7 @@ def handle_player_death(user_id, killed_by_enemy_name=None, enemy_type="normal")
 
 def handle_boss_clear(user_id):
     """ラスボス撃破時の処理（クリア報酬、クリア状態フラグ設定）
-    
+
     注意: この関数ではデータリセットを行わない。
     リセットは!resetコマンドでユーザーが手動で行う。
     """
@@ -293,10 +293,10 @@ def handle_boss_clear(user_id):
     if player:
         # クリア報酬（固定50ポイント）
         add_upgrade_points(user_id, 50)
-        
+
         # クリア状態フラグを設定（リセットは行わない）
         update_player(user_id, game_cleared=True)
-        
+
         return {
             "points_gained": 50
         }
@@ -338,7 +338,7 @@ def increment_global_weapon_count(weapon_id):
     """シークレット武器のグローバル排出数を増やす"""
     try:
         current_count = get_global_weapon_count(weapon_id)
-        
+
         if current_count == 0:
             supabase.table("secret_weapons_global").insert({
                 "weapon_id": weapon_id,
@@ -349,7 +349,7 @@ def increment_global_weapon_count(weapon_id):
             supabase.table("secret_weapons_global").update({
                 "total_dropped": current_count + 1
             }).eq("weapon_id", weapon_id).execute()
-        
+
         return True
     except Exception as e:
         print(f"Error incrementing weapon count: {e}")
@@ -359,13 +359,13 @@ def get_available_secret_weapons():
     """排出可能なシークレット武器リストを取得（上限10個未満のもの）"""
     import game
     available_weapons = []
-    
+
     for weapon in game.SECRET_WEAPONS:
         weapon_id = weapon["id"]
         count = get_global_weapon_count(weapon_id)
         if count < 10:
             available_weapons.append(weapon)
-    
+
     return available_weapons
 
 # ==============================
@@ -381,24 +381,24 @@ def add_exp(user_id, amount):
     player = get_player(user_id)
     if not player:
         return None
-    
+
     current_exp = player.get("exp", 0)
     current_level = player.get("level", 1)
     new_exp = current_exp + amount
-    
+
     level_ups = []
-    
+
     # レベルアップチェック
     while new_exp >= get_required_exp(current_level):
         new_exp -= get_required_exp(current_level)
         current_level += 1
-        
+
         # ステータス上昇
         new_hp = player.get("hp", 100) + 20
         new_max_hp = player.get("max_hp", 100) + 20
         new_atk = player.get("atk", 10) + 3
         new_def = player.get("def", 5) + 2
-        
+
         update_data = {
             "level": current_level,
             "hp": new_hp,
@@ -407,19 +407,19 @@ def add_exp(user_id, amount):
             "def": new_def
         }
         update_player(user_id, **update_data)
-        
+
         level_ups.append({
             "new_level": current_level,
             "hp_gain": 20,
             "atk_gain": 3,
             "def_gain": 2
         })
-        
+
         player = get_player(user_id)
-    
+
     # 残りEXPを更新
     update_player(user_id, exp=new_exp)
-    
+
     return {
         "exp_gained": amount,
         "current_exp": new_exp,
@@ -436,16 +436,16 @@ def consume_mp(user_id, amount):
     player = get_player(user_id)
     if not player:
         return False
-    
+
     current_mp = player.get("mp", 100)
     if current_mp >= amount:
         new_mp = current_mp - amount
         update_player(user_id, mp=new_mp)
-        
+
         # MP=0の場合、行動不能フラグ
         if new_mp == 0:
             update_player(user_id, mp_stunned=True)
-        
+
         return True
     return False
 
@@ -454,12 +454,12 @@ def restore_mp(user_id, amount):
     player = get_player(user_id)
     if not player:
         return 0
-    
+
     current_mp = player.get("mp", 100)
     max_mp = player.get("max_mp", 100)
     new_mp = min(current_mp + amount, max_mp)
     update_player(user_id, mp=new_mp)
-    
+
     return new_mp - current_mp
 
 def set_mp_stunned(user_id, stunned):
@@ -507,7 +507,7 @@ def check_and_unlock_distance_skills(user_id, distance):
         9000: "神速の一閃",
         10000: "究極魔法"
     }
-    
+
     for unlock_distance, skill_id in skill_unlock_map.items():
         if distance >= unlock_distance:
             unlock_skill(user_id, skill_id)
@@ -534,10 +534,10 @@ def get_storage_items(user_id, include_taken=False):
     """倉庫のアイテムリストを取得"""
     try:
         query = supabase.table("storage").select("*").eq("user_id", str(user_id))
-        
+
         if not include_taken:
             query = query.eq("is_taken", False)
-        
+
         res = query.order("stored_at", desc=True).execute()
         return res.data if res.data else []
     except Exception as e:
@@ -596,7 +596,7 @@ def get_ban_status(user_id):
             "web_banned": player.get("web_banned", False)
         }
     return {"bot_banned": False, "web_banned": False}
-    
+
 # 死亡履歴システム
 
 def record_death_history(user_id, enemy_name, distance=0, floor=0, stage=0, enemy_type="normal"):
@@ -610,13 +610,13 @@ def record_death_history(user_id, enemy_name, distance=0, floor=0, stage=0, enem
             "floor": floor,
             "stage": stage
         }).execute()
-        
+
         # total_deaths カウントアップ（オプション）
         player = get_player(user_id)
         if player:
             total_deaths = player.get("total_deaths", 0) + 1
             update_player(user_id, total_deaths=total_deaths)
-        
+
         return True
     except Exception as e:
         print(f"Error recording death history: {e}")
@@ -654,14 +654,14 @@ def get_death_stats(user_id):
     try:
         history = get_death_history(user_id, limit=1000)
         stats = {}
-        
+
         for death in history:
             enemy_name = death.get("enemy_name", "不明")
             if enemy_name in stats:
                 stats[enemy_name] += 1
             else:
                 stats[enemy_name] = 1
-        
+
         # 死亡回数順にソート
         sorted_stats = dict(sorted(stats.items(), key=lambda x: x[1], reverse=True))
         return sorted_stats
@@ -692,11 +692,11 @@ def check_death_pattern(user_id, pattern):
         recent = get_recent_deaths(user_id, limit=len(pattern))
         if len(recent) < len(pattern):
             return False
-        
+
         for i, expected_enemy in enumerate(pattern):
             if recent[i].get("enemy_name") != expected_enemy:
                 return False
-        
+
         return True
     except Exception as e:
         print(f"Error checking death pattern: {e}")
@@ -751,7 +751,7 @@ def set_active_title(user_id, title_id):
     # 称号を持っているか確認
     if not has_title(user_id, title_id):
         return False
-    
+
     update_player(user_id, active_title=title_id)
     return True
 
