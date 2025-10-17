@@ -39,7 +39,7 @@ def check_ban():
         @wraps(func)
         async def wrapper(ctx: commands.Context, *args, **kwargs):
             user_id = str(ctx.author.id)
-            
+
             # BAN確認
             if db.is_player_banned(user_id):
                 embed = discord.Embed(
@@ -49,7 +49,7 @@ def check_ban():
                 )
                 await ctx.send(embed=embed)
                 return
-            
+
             return await func(ctx, *args, **kwargs)
         return wrapper
     return decorator
@@ -65,12 +65,12 @@ async def on_ready():
 async def start(ctx: commands.Context):
     user = ctx.author
     user_id = str(user.id)
-    
+
     # 処理中チェック
     if user_processing.get(user.id):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
-    
+
     user_processing[user.id] = True
     try:
         # DBからプレイヤー取得
@@ -118,7 +118,7 @@ async def start(ctx: commands.Context):
         )
         view = NameRequestView(user.id, channel)
         await channel.send(embed=embed, view=view)
-        
+
         # 通知チャンネルへメッセージ送信
         try:
             notify_channel = bot.get_channel(1424712515396305007)
@@ -139,12 +139,12 @@ async def reset(ctx: commands.Context):
     """2段階確認付きでプレイヤーデータと専用チャンネルを削除する"""
     user = ctx.author
     user_id = str(user.id)
-    
+
     # 処理中チェック
     if user_processing.get(user.id):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
-    
+
     player = get_player(user_id)
 
     if not player:
@@ -165,22 +165,22 @@ async def reset(ctx: commands.Context):
 @check_ban()
 async def move(ctx: commands.Context):
     user = ctx.author
-    
+
     # 処理中チェック
     if user_processing.get(user.id):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
-    
+
     user_processing[user.id] = True
     view_delegated = False
-    
+
     try:
         # プレイヤーデータチェック
         player = get_player(user.id)
         if not player:
             await ctx.send("!start で冒険を始めてみてね。")
             return
-        
+
         # クリア状態チェック
         if db.is_game_cleared(user.id):
             embed = discord.Embed(
@@ -190,14 +190,14 @@ async def move(ctx: commands.Context):
             )
             await ctx.send(embed=embed)
             return
-        
+
         # intro_2: 1回目の死亡後、最初のmove時に表示
         loop_count = db.get_loop_count(user.id)
         intro_2_flag = db.get_story_flag(user.id, "intro_2")
-        
+
         # デバッグログ（本番環境では削除可能）
         print(f"[DEBUG] intro_2チェック - User: {user.id}, loop_count: {loop_count}, intro_2_flag: {intro_2_flag}")
-        
+
         if loop_count == 1 and not intro_2_flag:
             print(f"[DEBUG] intro_2を表示します - User: {user.id}")
             embed = discord.Embed(
@@ -207,17 +207,17 @@ async def move(ctx: commands.Context):
             )
             await ctx.send(embed=embed)
             await asyncio.sleep(2)
-            
+
             view = StoryView(user.id, "intro_2", user_processing)
             await view.send_story(ctx)
             view_delegated = True
             return
-        
+
         # 移動距離（5〜15m）
         distance = random.randint(5, 15)
         previous_distance = db.get_previous_distance(user.id)
         total_distance = db.add_player_distance(user.id, distance)
-        
+
         current_floor = total_distance // 100 + 1
         current_stage = total_distance // 1000 + 1
 
@@ -231,18 +231,18 @@ async def move(ctx: commands.Context):
         # ==========================
         # イベント分岐（通過判定方式）
         # ==========================
-        
+
         # 通過したイベント距離を判定する関数
         def passed_through(event_distance):
             """前回の距離から今回の距離の間にevent_distanceを通過したか"""
             return previous_distance < event_distance <= total_distance
-        
+
         # 優先度1: ボス戦（1000m毎）- 最優先
         boss_distances = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
         for boss_distance in boss_distances:
             if passed_through(boss_distance):
                 boss_stage = boss_distance // 1000
-                
+
                 # ボス未撃破の場合のみ処理
                 if not db.is_boss_defeated(user.id, boss_stage):
                     # boss_preストーリーチェック（未表示の場合のみ表示）
@@ -261,10 +261,10 @@ async def move(ctx: commands.Context):
                                 description="強大な存在の気配を感じる…気を引き締めて……",
                                 color=discord.Color.purple()
                             )
-                        
+
                         await exploring_msg.edit(content=None, embed=embed)
                         await asyncio.sleep(2)
-                        
+
                         # ストーリー完了後にボス戦を開始するコールバックを設定
                         view = StoryView(user.id, story_id, user_processing, 
                                         callback_data={
@@ -275,7 +275,7 @@ async def move(ctx: commands.Context):
                         await view.send_story(ctx)
                         view_delegated = True
                         return
-                    
+
                     # ストーリー表示済みの場合、ボス戦に進む
                     boss = game.get_boss(boss_stage)
                     if boss:
@@ -288,7 +288,7 @@ async def move(ctx: commands.Context):
                             "distance": total_distance,
                             "user_id": user.id
                         }
-                        
+
                         # ラスボス判定（10000m）
                         if boss_stage == 10:
                             embed = discord.Embed(
@@ -298,7 +298,7 @@ async def move(ctx: commands.Context):
                             )
                             await exploring_msg.edit(content=None, embed=embed)
                             await asyncio.sleep(3)
-                            
+
                             view = FinalBossBattleView(ctx, player_data, boss, user_processing, boss_stage)
                             await view.send_initial_embed()
                             view_delegated = True
@@ -311,12 +311,12 @@ async def move(ctx: commands.Context):
                             )
                             await exploring_msg.edit(content=None, embed=embed)
                             await asyncio.sleep(2)
-                            
+
                             view = BossBattleView(ctx, player_data, boss, user_processing, boss_stage)
                             await view.send_initial_embed()
                             view_delegated = True
                             return
-            
+
         # 優先度2: 特殊イベント（500m毎、1000m除く）
         special_distances = [500, 1500, 2500, 3500, 4500, 5500, 6500, 7500, 8500, 9500]
         for special_distance in special_distances:
@@ -331,7 +331,7 @@ async def move(ctx: commands.Context):
                 await exploring_msg.edit(content=None, embed=embed, view=view)
                 view_delegated = True
                 return
-        
+
         # 優先度3: 距離ベースストーリー（250m, 750m, 1250m, etc.）
         story_distances = [250, 750, 1250, 1750, 2250, 2750, 3250, 3750, 4250, 4750, 5250, 5750, 6250, 6750, 7250, 7750, 8250, 8750, 9250, 9750]
         for story_distance in story_distances:
@@ -343,7 +343,7 @@ async def move(ctx: commands.Context):
                     # 周回専用ストーリーが存在するかチェック
                     if not db.get_story_flag(user.id, loop_story_id):
                         story_id = loop_story_id
-                
+
                 if not db.get_story_flag(user.id, story_id):
                     embed = discord.Embed(
                         title="📖 探索中に何かを見つけた",
@@ -352,7 +352,7 @@ async def move(ctx: commands.Context):
                     )
                     await exploring_msg.edit(content=None, embed=embed)
                     await asyncio.sleep(2)
-                    
+
                     view = StoryView(user.id, story_id, user_processing)
                     await view.send_story(ctx)
                     view_delegated = True
@@ -372,14 +372,14 @@ async def move(ctx: commands.Context):
                 "choice_time_traveler",
                 "choice_fairy_spring"
             ]
-            
+
             # 未体験の選択肢ストーリーをフィルタリング
             available_stories = [sid for sid in choice_story_ids if not db.get_story_flag(user.id, sid)]
-            
+
             # 未体験のストーリーがある場合、ランダムに選択
             if available_stories:
                 selected_story_id = random.choice(available_stories)
-                
+
                 embed = discord.Embed(
                     title="✨ イベント発生！",
                     description="運命の分岐点が現れた…",
@@ -387,7 +387,7 @@ async def move(ctx: commands.Context):
                 )
                 await exploring_msg.edit(content=None, embed=embed)
                 await asyncio.sleep(2)
-                
+
                 view = StoryView(user.id, selected_story_id, user_processing)
                 await view.send_story(ctx)
                 view_delegated = True
@@ -395,7 +395,7 @@ async def move(ctx: commands.Context):
 
         # 優先度5: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱）
         event_roll = random.random() * 100
-        
+
         # 1% トラップ宝箱
         if event_roll < 1:
             embed = discord.Embed(
@@ -408,7 +408,7 @@ async def move(ctx: commands.Context):
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
-        
+
         # 9% 宝箱（1～10%）
         elif event_roll < 10:
             embed = discord.Embed(
@@ -425,7 +425,7 @@ async def move(ctx: commands.Context):
         elif event_roll < 40:
             # game.pyから距離に応じた敵を取得
             enemy = game.get_random_enemy(total_distance)
-            
+
             player_data = {
                 "hp": player.get("hp", 100),
                 "mp": player.get("mp", 100),
@@ -465,7 +465,7 @@ async def inventory(ctx):
     if user_processing.get(ctx.author.id):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
-    
+
     player = db.get_player(ctx.author.id)
     if not player:
         await ctx.send("!start で冒険を始めてね。")
@@ -508,7 +508,7 @@ async def status(ctx):
         base_defense = player.get("def", 5)
         total_attack = base_attack + equipment_bonus.get("attack_bonus", 0)
         total_defense = base_defense + equipment_bonus.get("defense_bonus", 0)
-        
+
         # Embed作成
         embed = discord.Embed(title="📊 ステータス", color=discord.Color.blue())
         embed.add_field(name="名前", value=str(player.get("name", "未設定")), inline=True)
@@ -527,7 +527,7 @@ async def status(ctx):
         player_with_id = player.copy()
         player_with_id["user_id"] = ctx.author.id
         equip_view = views.EquipmentSelectView(player_with_id)
-        
+
         await ctx.send(embed=embed, view=equip_view)
 
     except Exception as e:
@@ -542,12 +542,12 @@ async def upgrade(ctx):
     if user_processing.get(ctx.author.id):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
-    
+
     player = db.get_player(ctx.author.id)
     if not player:
         await ctx.send("!start で冒険を始めてね。")
         return
-    
+
     # クリア状態チェック
     if db.is_game_cleared(ctx.author.id):
         embed = discord.Embed(
@@ -557,10 +557,10 @@ async def upgrade(ctx):
         )
         await ctx.send(embed=embed)
         return
-    
+
     points = player.get("upgrade_points", 0)
     upgrades = db.get_upgrade_levels(ctx.author.id)
-    
+
     embed = discord.Embed(title="⬆️ アップグレード", description=f"所持ポイント: **{points}**", color=0xFFD700)
     embed.add_field(
         name="1️⃣ 初期HP最大量アップ (5ポイント)",
@@ -578,7 +578,7 @@ async def upgrade(ctx):
         inline=False
     )
     embed.set_footer(text="!buy_upgrade <番号> でアップグレード購入")
-    
+
     await ctx.send(embed=embed)
 
 # アップグレード購入
@@ -588,12 +588,12 @@ async def buy_upgrade(ctx, upgrade_type: int):
     if user_processing.get(ctx.author.id):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
-    
+
     player = db.get_player(ctx.author.id)
     if not player:
         await ctx.send("!start で冒険を始めてね。")
         return
-    
+
     # クリア状態チェック
     if db.is_game_cleared(ctx.author.id):
         embed = discord.Embed(
@@ -603,20 +603,20 @@ async def buy_upgrade(ctx, upgrade_type: int):
         )
         await ctx.send(embed=embed)
         return
-    
+
     costs = {1: 5, 2: 5, 3: 5}
-    
+
     if upgrade_type not in costs:
         await ctx.send("無効なアップグレード番号です。1, 2, 3から選んでください。")
         return
-    
+
     cost = costs[upgrade_type]
     points = player.get("upgrade_points", 0)
-    
+
     if points < cost:
         await ctx.send(f"ポイントが足りません！必要: {cost}ポイント、所持: {points}ポイント")
         return
-    
+
     if upgrade_type == 1:
         db.upgrade_initial_hp(ctx.author.id)
         db.spend_upgrade_points(ctx.author.id, cost)
@@ -661,10 +661,10 @@ async def main():
     if not token:
         print("❌ エラー: DISCORD_BOT_TOKEN 環境変数が設定されていません")
         exit(1)
-    
+
     # Health server を起動してから Bot を起動
     await run_health_server()
-    
+
     print("🤖 Discord BOTを起動します...")
     async with bot:
         await bot.start(token)
@@ -673,21 +673,21 @@ async def main():
 @bot.command(name="servers")
 async def show_servers(ctx: commands.Context):
     """BOTが参加しているサーバー一覧を表示(開発者用・ページネーション付き)"""
-    
+
     # 開発者のみ実行可能にする
     DEVELOPER_ID = "1301416493401243694"  # あなたのDiscord ID
-    
+
     if str(ctx.author.id) != DEVELOPER_ID:
         await ctx.send("❌ このコマンドは開発者のみ実行できます")
         return
-    
+
     guilds_list = list(bot.guilds)
     total_servers = len(guilds_list)
-    
+
     if total_servers == 0:
         await ctx.send("📭 BOTはどのサーバーにも参加していません")
         return
-    
+
     # ページネーション用のView
     class ServerListView(discord.ui.View):
         def __init__(self, guilds, user_id):
@@ -696,67 +696,67 @@ async def show_servers(ctx: commands.Context):
             self.user_id = user_id
             self.current_page = 0
             self.max_page = (len(guilds) - 1) // 10
-            
+
             # 最初のページでは前のページボタンを無効化
             self.update_buttons()
-        
+
         def update_buttons(self):
             """ボタンの有効/無効を更新"""
             self.children[0].disabled = (self.current_page == 0)  # 前へボタン
             self.children[1].disabled = (self.current_page >= self.max_page)  # 次へボタン
-        
+
         def create_embed(self):
             """現在のページのEmbedを作成"""
             start_idx = self.current_page * 10
             end_idx = min(start_idx + 10, len(self.guilds))
-            
+
             embed = discord.Embed(
                 title="🌐 BOTが参加しているサーバー",
                 description=f"合計: **{len(self.guilds)}** サーバー",
                 color=discord.Color.blue()
             )
-            
+
             for guild in self.guilds[start_idx:end_idx]:
                 embed.add_field(
                     name=f"📍 {guild.name}",
                     value=f"ID: `{guild.id}`\nメンバー: {guild.member_count}人",
                     inline=False
                 )
-            
+
             embed.set_footer(text=f"ページ {self.current_page + 1} / {self.max_page + 1}")
             return embed
-        
+
         @discord.ui.button(label="◀ 前へ", style=discord.ButtonStyle.primary)
         async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
             # 実行者チェック
             if str(interaction.user.id) != self.user_id:
                 await interaction.response.send_message("❌ このボタンは実行者のみ操作できます", ephemeral=True)
                 return
-            
+
             self.current_page -= 1
             self.update_buttons()
             await interaction.response.edit_message(embed=self.create_embed(), view=self)
-        
+
         @discord.ui.button(label="次へ ▶", style=discord.ButtonStyle.primary)
         async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
             # 実行者チェック
             if str(interaction.user.id) != self.user_id:
                 await interaction.response.send_message("❌ このボタンは実行者のみ操作できます", ephemeral=True)
                 return
-            
+
             self.current_page += 1
             self.update_buttons()
             await interaction.response.edit_message(embed=self.create_embed(), view=self)
-        
+
         @discord.ui.button(label="❌ 閉じる", style=discord.ButtonStyle.danger)
         async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
             # 実行者チェック
             if str(interaction.user.id) != self.user_id:
                 await interaction.response.send_message("❌ このボタンは実行者のみ操作できます", ephemeral=True)
                 return
-            
+
             await interaction.message.delete()
-    
+
     # Viewとメッセージを送信
     view = ServerListView(guilds_list, str(ctx.author.id))
     await ctx.send(embed=view.create_embed(), view=view)
@@ -813,7 +813,7 @@ async def death_stats(ctx: commands.Context):
     embed.set_footer(text="!death_history で詳細な履歴を確認できます")
 
     await ctx.send(embed=embed)
-    
+
 @bot.command(name="death_history")
 @check_ban()
 async def death_history(ctx: commands.Context, limit: int = 10):
@@ -847,7 +847,7 @@ async def death_history(ctx: commands.Context, limit: int = 10):
         distance = death.get("distance", 0)
         floor = death.get("floor", 0)
         enemy_type_icon = "👑" if death.get("enemy_type") == "boss" else "⚔️"
-        
+
         history_text += f"{i}. {enemy_type_icon} **{enemy_name}** ({distance}m / {floor}階層)\n"
 
     embed = discord.Embed(
@@ -859,7 +859,7 @@ async def death_history(ctx: commands.Context, limit: int = 10):
     embed.set_footer(text="!death_stats で統計を確認できます")
 
     await ctx.send(embed=embed)
-    
+
 @bot.command(name="titles")
 @check_ban()
 async def titles(ctx: commands.Context):
@@ -888,11 +888,11 @@ async def titles(ctx: commands.Context):
     # レアリティ別に分類
     from titles import TITLES
     rarity_order = ["mythic", "legendary", "epic", "rare", "uncommon", "common"]
-    
+
     title_text = ""
     for rarity in rarity_order:
         rarity_titles = [t for t in player_titles if TITLES.get(t['title_id'], {}).get('rarity') == rarity]
-        
+
         if rarity_titles:
             rarity_name = {
                 "mythic": "神話",
@@ -902,7 +902,7 @@ async def titles(ctx: commands.Context):
                 "uncommon": "アンコモン",
                 "common": "コモン"
             }.get(rarity, rarity)
-            
+
             for title in rarity_titles:
                 emoji = get_title_rarity_emoji(title['title_id'])
                 title_name = title['title_name']
@@ -918,7 +918,7 @@ async def titles(ctx: commands.Context):
     embed.set_footer(text="!equip_title <称号名> で称号を装備できます")
 
     await ctx.send(embed=embed)
-    
+
 @bot.command(name="equip_title")
 @check_ban()
 async def equip_title(ctx: commands.Context, *, title_name: str = None):
@@ -960,8 +960,8 @@ async def equip_title(ctx: commands.Context, *, title_name: str = None):
         await ctx.send(embed=embed)
     else:
         await ctx.send("⚠️ 称号の装備に失敗しました。")
-        
-    
+
+
 @bot.command(name="unequip_title")
 @check_ban()
 async def unequip_title(ctx: commands.Context):
@@ -981,6 +981,6 @@ async def unequip_title(ctx: commands.Context):
         color=discord.Color.grey()
     )
     await ctx.send(embed=embed)
-    
+
 if __name__ == "__main__":
     asyncio.run(main())
