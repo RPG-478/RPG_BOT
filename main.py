@@ -563,13 +563,13 @@ async def upgrade(ctx):
 
     embed = discord.Embed(title="⬆️ アップグレード", description=f"所持ポイント: **{points}**", color=0xFFD700)
     embed.add_field(
-        name="1️⃣ 初期HP最大量アップ (5ポイント)",
-        value=f"現在Lv.{upgrades['initial_hp']} → 最大HP +10",
+        name="1️⃣ HP最大値アップ (5ポイント)",
+        value=f"現在Lv.{upgrades['initial_hp']} → 最大HP +5",
         inline=False
     )
     embed.add_field(
-        name="2️⃣ 初期MP最大量アップ (5ポイント)",
-        value=f"現在Lv.{upgrades['initial_mp']} → 最大MP +10",
+        name="2️⃣ MP最大値アップ (5ポイント)",
+        value=f"現在Lv.{upgrades['initial_mp']} → 最大MP +5",
         inline=False
     )
     embed.add_field(
@@ -578,22 +578,12 @@ async def upgrade(ctx):
         inline=False
     )
     embed.add_field(
-        name="4️⃣ HP初期値アップ (5ポイント)",
-        value=f"現在Lv.{upgrades['max_hp']} → HP +5",
-        inline=False
-    )
-    embed.add_field(
-        name="5️⃣ MP初期値アップ (3ポイント)",
-        value=f"現在Lv.{upgrades['max_mp']} → MP +5",
-        inline=False
-    )
-    embed.add_field(
-        name="6️⃣ 攻撃力初期値アップ (3ポイント)",
+        name="4️⃣ 攻撃力初期値アップ (3ポイント)",
         value=f"現在Lv.{upgrades['atk']} → ATK +1",
         inline=False
     )
     embed.add_field(
-        name="7️⃣ 防御力初期値アップ (5ポイント)",
+        name="5️⃣ 防御力初期値アップ (5ポイント)",
         value=f"現在Lv.{upgrades['def_upgrade']} → DEF +1",
         inline=False
     )
