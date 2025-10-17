@@ -35,7 +35,7 @@ DEATH_STORIES = {
             {"speaker": "ナレーション", "text": "スライムとの奇妙な友情が芽生えた気がする…"}
         ]
     },
-    
+
     # ゴブリン系
     "goblin_death_5": {
         "trigger_type": "enemy_count",
@@ -50,7 +50,7 @@ DEATH_STORIES = {
             {"speaker": "ナレーション", "text": "なぜこいつは覚えているんだ…"}
         ]
     },
-    
+
     # スケルトン系
     "skeleton_death_7": {
         "trigger_type": "enemy_count",
@@ -65,7 +65,7 @@ DEATH_STORIES = {
             {"speaker": "ナレーション", "text": "スケルトンは遠い目をしている…気がする。"}
         ]
     },
-    
+
     # ボス系
     "boss1_death_3": {
         "trigger_type": "enemy_count",
@@ -80,7 +80,7 @@ DEATH_STORIES = {
             {"speaker": "ナレーション", "text": "ボスが…泣いている？"}
         ]
     },
-    
+
     # 吸血鬼系
     "vampire_death_5": {
         "trigger_type": "enemy_count",
@@ -95,7 +95,7 @@ DEATH_STORIES = {
             {"speaker": "吸血鬼", "text": "「何度も何度も…死の記憶がな」"}
         ]
     },
-    
+
     # 一般的な多死
     "many_deaths": {
         "trigger_type": "enemy_count",
@@ -128,7 +128,7 @@ DEATH_PATTERNS = {
             {"speaker": "ナレーション", "text": "スライムに煽られている気がする…"}
         ]
     },
-    
+
     "boss_chain": {
         "pattern": ["スライムキング", "ゴーレム", "闇の騎士"],
         "story_id": "pattern_boss_chain",
@@ -140,7 +140,7 @@ DEATH_PATTERNS = {
             {"speaker": "ナレーション", "text": "選ばれた？何のために…？"}
         ]
     },
-    
+
     "variety_deaths": {
         "pattern": ["スライム", "ゴブリン", "スケルトン", "ゾンビ", "吸血鬼"],
         "story_id": "pattern_variety",
@@ -152,7 +152,7 @@ DEATH_PATTERNS = {
             {"speaker": "ナレーション", "text": "それは…褒め言葉なのか…？"}
         ]
     },
-    
+
     "undead_curse": {
         "pattern": ["スケルトン", "ゾンビ", "幽霊"],
         "story_id": "pattern_undead",
