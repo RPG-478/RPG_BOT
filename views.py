@@ -1083,6 +1083,7 @@ class FinalBossBattleView(View):
 
             enemy_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
             self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
             text += f"\nラスボスの反撃！ {enemy_dmg} のダメージを受けた！"
 
             if self.player["hp"] <= 0:
@@ -1162,6 +1163,7 @@ class FinalBossBattleView(View):
         # 自傷ダメージ
         if ability_result.get("self_damage", 0) > 0:
             self.player["hp"] -= ability_result["self_damage"]
+            self.player["hp"] = max(0, self.player["hp"])
 
         text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
         if ability_result["effect_text"]:
@@ -1230,6 +1232,7 @@ class FinalBossBattleView(View):
         else:
             enemy_dmg = armor_result["damage"]
             self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
             text += f"\nラスボスの反撃！ {enemy_dmg} のダメージを受けた！"
             if armor_result["effect_text"]:
                 text += f"\n{armor_result['effect_text']}"
@@ -1361,6 +1364,7 @@ class FinalBossBattleView(View):
         reduction = random.randint(40, 70)
         enemy_dmg = max(0, int((self.boss["atk"] + random.randint(-3, 3)) * (1 - reduction / 100)) - self.player["defense"])
         self.player["hp"] -= enemy_dmg
+        self.player["hp"] = max(0, self.player["hp"])
 
         text = f"防御した！ ダメージを {reduction}% 軽減！\nラスボスの攻撃で {enemy_dmg} のダメージを受けた！"
 
@@ -1568,6 +1572,7 @@ class BossBattleView(View):
 
             enemy_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
             self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
             text += f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
 
             if self.player["hp"] <= 0:
@@ -1645,6 +1650,7 @@ class BossBattleView(View):
         # 自傷ダメージ
         if ability_result.get("self_damage", 0) > 0:
             self.player["hp"] -= ability_result["self_damage"]
+            self.player["hp"] = max(0, self.player["hp"])
 
         text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
         if ability_result["effect_text"]:
@@ -1725,6 +1731,7 @@ class BossBattleView(View):
         else:
             enemy_dmg = armor_result["damage"]
             self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
             text += f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
             if armor_result["effect_text"]:
                 text += f"\n{armor_result['effect_text']}"
@@ -1836,6 +1843,7 @@ class BossBattleView(View):
         reduction = random.randint(30, 60)
         enemy_dmg = max(0, int((self.boss["atk"] + random.randint(-3, 3)) * (1 - reduction / 100)) - self.player["defense"])
         self.player["hp"] -= enemy_dmg
+        self.player["hp"] = max(0, self.player["hp"])
 
         text = f"防御した！ ダメージを {reduction}% 軽減！\nボスの攻撃で {enemy_dmg} のダメージを受けた！"
 
@@ -2017,6 +2025,7 @@ class BattleView(View):
 
             enemy_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
             self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
             text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
 
             if self.player["hp"] <= 0:
@@ -2091,6 +2100,7 @@ class BattleView(View):
         # 自傷ダメージ
         if ability_result.get("self_damage", 0) > 0:
             self.player["hp"] -= ability_result["self_damage"]
+            self.player["hp"] = max(0, self.player["hp"])
 
         text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
         if ability_result["effect_text"]:
@@ -2162,6 +2172,7 @@ class BattleView(View):
         else:
             enemy_dmg = armor_result["damage"]
             self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
             text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
             if armor_result["effect_text"]:
                 text += f"\n{armor_result['effect_text']}"
@@ -2240,6 +2251,7 @@ class BattleView(View):
         reduction = random.randint(10, 50)
         enemy_dmg = max(0, int((self.enemy["atk"] + random.randint(-2, 2)) * (1 - reduction / 100)) - self.player["defense"])
         self.player["hp"] -= enemy_dmg
+        self.player["hp"] = max(0, self.player["hp"])
 
         text = f"防御した！ ダメージを {reduction}% 軽減！\n敵の攻撃で {enemy_dmg} のダメージを受けた！"
 
@@ -2291,6 +2303,7 @@ class BattleView(View):
         else:
             enemy_dmg = max(0, self.enemy["atk"] - self.player["defense"])
             self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
             text = f"逃げられなかった！ 敵の攻撃で {enemy_dmg} のダメージ！"
             if self.player["hp"] <= 0:
                 # 死亡処理
@@ -2389,6 +2402,7 @@ class BattleView(View):
             # 敵の反撃
             enemy_dmg = max(0, self.enemy["atk"] + random.randint(-3, 3) - self.player["defense"])
             self.player["hp"] -= enemy_dmg
+            self.player["hp"] = max(0, self.player["hp"])
             text += f"\n敵の攻撃！ {enemy_dmg} のダメージを受けた！"
 
             if self.player["hp"] <= 0:
