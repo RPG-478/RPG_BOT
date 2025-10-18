@@ -119,8 +119,8 @@ ITEMS_DATABASE = {
     },
     "スライムの王冠": {
         "type": "armor",
-        "defense": 10,
-        "ability": "HP+50",
+        "defense": 8,
+        "ability": "HP+30",
         "description": "スライムキングが落とした王冠。生命力が強くなる。"
     }, 
     "骨の盾": {
@@ -1405,7 +1405,7 @@ CRAFTING_RECIPES = {
     "蜘蛛の短剣": {
         "materials": {"蜘蛛の糸": 2},
         "result_type": "weapon",
-        "attack": 9,
+        "attack": 8,
         "ability": "毒付与（10%の確率で追加ダメージ）",
         "description": "蜘蛛の糸から作られた短剣。強力な毒を持つ。"
     },
