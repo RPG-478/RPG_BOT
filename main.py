@@ -280,10 +280,10 @@ async def move(ctx: commands.Context):
                     boss = game.get_boss(boss_stage)
                     if boss:
                         player_data = {
-                            "hp": player.get("hp", 100),
-                            "mp": player.get("mp", 100),
-                            "attack": player.get("atk", 10),
-                            "defense": player.get("def", 5),
+                            "hp": player.get("hp", 50),
+                            "mp": player.get("mp", 20),
+                            "attack": player.get("atk", 5),
+                            "defense": player.get("def", 2),
                             "inventory": player.get("inventory", []),
                             "distance": total_distance,
                             "user_id": user.id
@@ -430,7 +430,7 @@ async def move(ctx: commands.Context):
                 "hp": player.get("hp", 50),
                 "mp": player.get("mp", 50),
                 "attack": player.get("atk", 5),
-                "defense": player.get("def", 3),
+                "defense": player.get("def", 2),
                 "inventory": player.get("inventory", []),
                 "distance": total_distance,
                 "user_id": user.id
@@ -504,8 +504,8 @@ async def status(ctx):
         # 装備ボーナスを計算
         import game
         equipment_bonus = game.calculate_equipment_bonus(ctx.author.id)
-        base_attack = player.get("atk", 10)
-        base_defense = player.get("def", 5)
+        base_attack = player.get("atk", 5)
+        base_defense = player.get("def", 2)
         total_attack = base_attack + equipment_bonus.get("attack_bonus", 0)
         total_defense = base_defense + equipment_bonus.get("defense_bonus", 0)
 
@@ -514,8 +514,8 @@ async def status(ctx):
         embed.add_field(name="名前", value=str(player.get("name", "未設定")), inline=True)
         embed.add_field(name="レベル", value=str(player.get("level", 1)), inline=True)
         embed.add_field(name="距離", value=f"{player.get('distance', 0)}m", inline=True)
-        embed.add_field(name="HP", value=f"{player.get('hp', 100)}/{player.get('max_hp', 100)}", inline=True)
-        embed.add_field(name="MP", value=f"{player.get('mp', 100)}/{player.get('max_mp', 100)}", inline=True)
+        embed.add_field(name="HP", value=f"{player.get('hp', 50)}/{player.get('max_hp', 50)}", inline=True)
+        embed.add_field(name="MP", value=f"{player.get('mp', 20)}/{player.get('max_mp', 20)}", inline=True)
         embed.add_field(name="EXP", value=f"{player.get('exp', 0)}/{db.get_required_exp(player.get('level', 1))}", inline=True)
         embed.add_field(name="攻撃力", value=f"{total_attack} ({base_attack}+{equipment_bonus.get('attack_bonus', 0)})", inline=True)
         embed.add_field(name="防御力", value=f"{total_defense} ({base_defense}+{equipment_bonus.get('defense_bonus', 0)})", inline=True)
