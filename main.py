@@ -427,10 +427,10 @@ async def move(ctx: commands.Context):
             enemy = game.get_random_enemy(total_distance)
 
             player_data = {
-                "hp": player.get("hp", 100),
-                "mp": player.get("mp", 100),
-                "attack": player.get("atk", 10),
-                "defense": player.get("def", 5),
+                "hp": player.get("hp", 50),
+                "mp": player.get("mp", 50),
+                "attack": player.get("atk", 5),
+                "defense": player.get("def", 3),
                 "inventory": player.get("inventory", []),
                 "distance": total_distance,
                 "user_id": user.id
@@ -563,12 +563,12 @@ async def upgrade(ctx):
 
     embed = discord.Embed(title="⬆️ アップグレード", description=f"所持ポイント: **{points}**", color=0xFFD700)
     embed.add_field(
-        name="1️⃣ HP最大値アップ (5ポイント)",
+        name="1️⃣ HP最大値アップ (3ポイント)",
         value=f"現在Lv.{upgrades['initial_hp']} → 最大HP +5",
         inline=False
     )
     embed.add_field(
-        name="2️⃣ MP最大値アップ (5ポイント)",
+        name="2️⃣ MP最大値アップ (3ポイント)",
         value=f"現在Lv.{upgrades['initial_mp']} → 最大MP +5",
         inline=False
     )
@@ -614,7 +614,7 @@ async def buy_upgrade(ctx, upgrade_type: int):
         await ctx.send(embed=embed)
         return
 
-    costs = {1: 5, 2: 5, 3: 5, 4: 5, 5: 3, 6: 3, 7: 5}
+    costs = {1: 3, 2: 3, 3: 5, 4: 3, 5: 5}
 
     if upgrade_type not in costs:
         await ctx.send("無効なアップグレード番号です。1〜7から選んでください。")
@@ -630,28 +630,20 @@ async def buy_upgrade(ctx, upgrade_type: int):
     if upgrade_type == 1:
         db.upgrade_initial_hp(ctx.author.id)
         db.spend_upgrade_points(ctx.author.id, cost)
-        await ctx.send("✅ 初期HP最大量をアップグレードしました！ 最大HP +10")
+        await ctx.send("✅ HP最大値をアップグレードしました！ 最大HP +5")
     elif upgrade_type == 2:
         db.upgrade_initial_mp(ctx.author.id)
         db.spend_upgrade_points(ctx.author.id, cost)
-        await ctx.send("✅ 初期MP最大量をアップグレードしました！ 最大MP +10")
+        await ctx.send("✅ MP最大値をアップグレードしました！ 最大MP +5")
     elif upgrade_type == 3:
         db.upgrade_coin_gain(ctx.author.id)
         db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ コイン取得量をアップグレードしました！ コイン取得 +10%")
     elif upgrade_type == 4:
-        db.upgrade_max_hp(ctx.author.id)
-        db.spend_upgrade_points(ctx.author.id, cost)
-        await ctx.send("✅ HP初期値をアップグレードしました！ HP +5")
-    elif upgrade_type == 5:
-        db.upgrade_max_mp(ctx.author.id)
-        db.spend_upgrade_points(ctx.author.id, cost)
-        await ctx.send("✅ MP初期値をアップグレードしました！ MP +5")
-    elif upgrade_type == 6:
         db.upgrade_atk(ctx.author.id)
         db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ 攻撃力初期値をアップグレードしました！ ATK +1")
-    elif upgrade_type == 7:
+    elif upgrade_type == 5:
         db.upgrade_def(ctx.author.id)
         db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ 防御力初期値をアップグレードしました！ DEF +1")
