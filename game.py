@@ -29,7 +29,7 @@ ITEMS_DATABASE = {
     },
     "王者の剣": {
         "type": "weapon",
-        "attack": 15,
+        "attack": 12,
         "ability": "全ステータス+20%、全状態異常耐性+50%",
         "description": "遥か昔に造られた剣。刀身の輝きは未だ失われていない。"
     },
@@ -92,6 +92,12 @@ ITEMS_DATABASE = {
         "attack": 22,
         "ability": "クリティカル率+25%、背後攻撃時ダメージ2倍",
         "description": "影より生まれし短剣。"
+    },
+    "革の盾": {
+        "type": "armor",
+        "defense": 1,
+        "ability": "なし",
+        "description": "革製の盾。何も装備しないよりはいい。"
     },
     "木の盾": {
         "type": "armor",
@@ -621,9 +627,9 @@ ENEMY_ZONES = {
                 "exp": 12,
                 "drops": [
                     {"item": "none", "weight": 60},
-                    {"item": "木の盾", "weight": 15},
-                    {"item": "石の盾", "weight": 5},
-                    {"item": "鉄の盾", "weight": 2},
+                    {"item": "革の盾", "weight": 15},
+                    {"item": "木の盾", "weight": 5},
+                    {"item": "石の盾", "weight": 2},
                     {"item": "回復薬", "weight": 8},
                     {"item": "coins", "amount": [15, 30], "weight": 10}
                 ]
