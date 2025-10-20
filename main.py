@@ -560,30 +560,37 @@ async def upgrade(ctx):
 
     points = player.get("upgrade_points", 0)
     upgrades = db.get_upgrade_levels(ctx.author.id)
+    
+    # 動的コストを取得
+    cost_hp = db.get_upgrade_cost(1, ctx.author.id)
+    cost_mp = db.get_upgrade_cost(2, ctx.author.id)
+    cost_coin = db.get_upgrade_cost(3, ctx.author.id)
+    cost_atk = db.get_upgrade_cost(4, ctx.author.id)
+    cost_def = db.get_upgrade_cost(5, ctx.author.id)
 
     embed = discord.Embed(title="⬆️ アップグレード", description=f"所持ポイント: **{points}**", color=0xFFD700)
     embed.add_field(
-        name="1️⃣ HP最大値アップ (3ポイント)",
-        value=f"現在Lv.{upgrades['initial_hp']} → 最大HP +5",
+        name=f"1️⃣ HP最大値アップ ({cost_hp}ポイント)",
+        value=f"現在Lv.{upgrades['max_hp']} → 最大HP +5",
         inline=False
     )
     embed.add_field(
-        name="2️⃣ MP最大値アップ (3ポイント)",
-        value=f"現在Lv.{upgrades['initial_mp']} → 最大MP +5",
+        name=f"2️⃣ MP最大値アップ ({cost_mp}ポイント)",
+        value=f"現在Lv.{upgrades['max_mp']} → 最大MP +5",
         inline=False
     )
     embed.add_field(
-        name="3️⃣ コイン取得量アップ (5ポイント)",
+        name=f"3️⃣ コイン取得量アップ ({cost_coin}ポイント)",
         value=f"現在Lv.{upgrades['coin_gain']} → コイン +10%",
         inline=False
     )
     embed.add_field(
-        name="4️⃣ 攻撃力初期値アップ (3ポイント)",
+        name=f"4️⃣ 攻撃力初期値アップ ({cost_atk}ポイント)",
         value=f"現在Lv.{upgrades['atk']} → ATK +1",
         inline=False
     )
     embed.add_field(
-        name="5️⃣ 防御力初期値アップ (5ポイント)",
+        name=f"5️⃣ 防御力初期値アップ ({cost_def}ポイント)",
         value=f"現在Lv.{upgrades['def_upgrade']} → DEF +1",
         inline=False
     )
@@ -614,13 +621,12 @@ async def buy_upgrade(ctx, upgrade_type: int):
         await ctx.send(embed=embed)
         return
 
-    costs = {1: 3, 2: 3, 3: 5, 4: 3, 5: 5}
-
-    if upgrade_type not in costs:
-        await ctx.send("無効なアップグレード番号です。1〜7から選んでください。")
+    if upgrade_type not in [1, 2, 3, 4, 5]:
+        await ctx.send("無効なアップグレード番号です。1〜5から選んでください。")
         return
 
-    cost = costs[upgrade_type]
+    # 動的コストを取得
+    cost = db.get_upgrade_cost(upgrade_type, ctx.author.id)
     points = player.get("upgrade_points", 0)
 
     if points < cost:

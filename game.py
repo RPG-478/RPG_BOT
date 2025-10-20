@@ -119,8 +119,8 @@ ITEMS_DATABASE = {
     },
     "スライムの王冠": {
         "type": "armor",
-        "defense": 8,
-        "ability": "HP+30",
+        "defense": 10,
+        "ability": "HP+50",
         "description": "スライムキングが落とした王冠。生命力が強くなる。"
     }, 
     "骨の盾": {
@@ -1201,8 +1201,71 @@ def get_enemy_drop(enemy_name, distance):
         return {"type": "item", "name": selected_drop["item"]}
 
 
+def get_treasure_box_equipment(distance):
+    """宝箱から出る装備（武器・防具）のリストを返す"""
+    zone = get_zone_from_distance(distance)
+    enemies = ENEMY_ZONES[zone]["enemies"]
+    
+    # そのゾーンの敵がドロップする装備を収集
+    equipment_list = []
+    for enemy in enemies:
+        drops = enemy.get("drops", [])
+        for drop in drops:
+            item_name = drop.get("item")
+            if item_name and item_name != "none" and item_name != "coins":
+                item_info = ITEMS_DATABASE.get(item_name)
+                if item_info and item_info.get("type") in ["weapon", "armor"]:
+                    if item_name not in equipment_list:
+                        equipment_list.append(item_name)
+    
+    return equipment_list if equipment_list else ["木の剣"]
+
+
+def get_treasure_box_weapons(distance):
+    """宝箱から出る武器のみのリストを返す（階層に応じた武器のみ）"""
+    zone = get_zone_from_distance(distance)
+    enemies = ENEMY_ZONES[zone]["enemies"]
+    
+    # そのゾーンの敵がドロップする武器のみを収集
+    weapon_list = []
+    for enemy in enemies:
+        drops = enemy.get("drops", [])
+        for drop in drops:
+            item_name = drop.get("item")
+            if item_name and item_name != "none" and item_name != "coins":
+                item_info = ITEMS_DATABASE.get(item_name)
+                if item_info and item_info.get("type") == "weapon":
+                    if item_name not in weapon_list:
+                        weapon_list.append(item_name)
+    
+    return weapon_list if weapon_list else ["木の剣"]
+
+
 def get_item_info(item_name):
     return ITEMS_DATABASE.get(item_name, None)
+
+
+def get_enemy_gold_drop(enemy_name, distance):
+    """敵撃破時の確定ゴールドドロップ（ランダム範囲）を取得"""
+    zone = get_zone_from_distance(distance)
+    enemies = ENEMY_ZONES[zone]["enemies"]
+    
+    # 敵データを検索
+    for enemy in enemies:
+        if enemy["name"] == enemy_name:
+            # dropsリストからcoinsの範囲を取得
+            drops = enemy.get("drops", [])
+            for drop in drops:
+                if drop.get("item") == "coins" and "amount" in drop:
+                    min_gold = drop["amount"][0]
+                    max_gold = drop["amount"][1]
+                    return random.randint(min_gold, max_gold)
+            # coinsが見つからない場合はデフォルト値
+            return random.randint(5, 15)
+    
+    # 敵が見つからない場合はデフォルト値
+    return random.randint(5, 15)
+
 
 BOSS_DATA = {
     1: {
@@ -1405,7 +1468,7 @@ CRAFTING_RECIPES = {
     "蜘蛛の短剣": {
         "materials": {"蜘蛛の糸": 2},
         "result_type": "weapon",
-        "attack": 8,
+        "attack": 9,
         "ability": "毒付与（10%の確率で追加ダメージ）",
         "description": "蜘蛛の糸から作られた短剣。強力な毒を持つ。"
     },

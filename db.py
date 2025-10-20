@@ -222,6 +222,32 @@ def get_upgrade_levels(user_id):
         }
     return {"initial_hp": 0, "initial_mp": 0, "coin_gain": 0, "max_hp": 0, "max_mp": 0, "atk": 0, "def_upgrade": 0}
 
+def get_upgrade_cost(upgrade_type, user_id):
+    """アップグレードタイプと現在のレベルに応じたコストを計算
+    
+    繰り返し購入でコストが上昇する仕組み
+    コスト = 基本コスト + (現在レベル × 上昇値)
+    """
+    upgrades = get_upgrade_levels(user_id)
+    
+    if upgrade_type == 1:  # HP
+        current_level = upgrades["max_hp"]
+        return 3 + (current_level * 1)
+    elif upgrade_type == 2:  # MP
+        current_level = upgrades["max_mp"]
+        return 3 + (current_level * 1)
+    elif upgrade_type == 3:  # コイン取得量
+        current_level = upgrades["coin_gain"]
+        return 5 + (current_level * 2)
+    elif upgrade_type == 4:  # ATK
+        current_level = upgrades["atk"]
+        return 3 + (current_level * 2)
+    elif upgrade_type == 5:  # DEF
+        current_level = upgrades["def_upgrade"]
+        return 5 + (current_level * 2)
+    
+    return 1  # デフォルト
+
 def upgrade_initial_hp(user_id):
     """初期HP最大量をアップグレード"""
     player = get_player(user_id)
@@ -337,7 +363,7 @@ def handle_player_death(user_id, killed_by_enemy_name=None, enemy_type="normal")
     return None
 
 def handle_boss_clear(user_id):
-    """ラスボス撃破時の処理（クリア報酬、クリア状態フラグ設定）
+    """ラスボス撃破時の処理（クリア報酬、クリア状態フラグ設定、ゴールド倉庫保存）
 
     注意: この関数ではデータリセットを行わない。
     リセットは!resetコマンドでユーザーが手動で行う。
@@ -346,12 +372,18 @@ def handle_boss_clear(user_id):
     if player:
         # クリア報酬（固定50ポイント）
         add_upgrade_points(user_id, 50)
+        
+        # 現在のゴールドを倉庫に保存
+        current_gold = player.get("gold", 0)
+        if current_gold > 0:
+            add_to_storage(user_id, f"{current_gold}ゴールド", "gold")
 
         # クリア状態フラグを設定（リセットは行わない）
         update_player(user_id, game_cleared=True)
 
         return {
-            "points_gained": 50
+            "points_gained": 50,
+            "gold_saved": current_gold
         }
     return None
 
