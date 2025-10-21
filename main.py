@@ -1,3 +1,16 @@
+import logging
+from logging.handlers import RotatingFileHandler
+
+logging.basicConfig(level=logging.DEBUG)  
+logger = logging.getLogger("rpgbot")
+
+handler = RotatingFileHandler("rpgbot.log", maxBytes=2*1024*1024, backupCount=3, encoding="utf-8")
+formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+logger.info("Logger initialized")
+
 import discord
 from discord.ext import commands
 import random
