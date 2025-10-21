@@ -225,23 +225,23 @@ ITEMS_DATABASE = {
         "ability": "全ステータス+30%",
         "description": "伝説の勇者が身に纏った鎧。"
     },
-    "回復薬": {
+    "回復薬（小）": {
+        "type": "potion",
+        "effect": "HP+30",
+        "ability": "HP回復",
+        "description": "HPを30回復する薬。"
+    },
+    "回復薬（中）": {
         "type": "potion",
         "effect": "HP+50",
-        "ability": "HP回復",
-        "description": "HPを50回復する薬。"
+        "ability": "HP中回復",
+        "description": "HPを50回復する高級な薬。"
     },
-    "高級回復薬": {
+    "回復薬（大）": {
         "type": "potion",
         "effect": "HP+100",
         "ability": "HP大回復",
-        "description": "HPを100回復する高級な薬。"
-    },
-    "万能薬": {
-        "type": "potion",
-        "effect": "HP全回復",
-        "ability": "HP完全回復",
-        "description": "HPを完全に回復する貴重な薬。"
+        "description": "HPを100回復する貴重な薬。"
     },
     "蜘蛛の糸": {
         "type": "material",
@@ -2219,24 +2219,6 @@ ITEMS_DATABASE["MP回復薬（大）"] = {
     "effect": "MP+100",
     "ability": "MP大回復",
     "description": "MPを100回復する高級な薬。"
-}
-ITEMS_DATABASE["EXP薬（小）"] = {
-    "type": "potion",
-    "effect": "EXP+50",
-    "ability": "EXP獲得",
-    "description": "EXPを50獲得する薬。"
-}
-ITEMS_DATABASE["EXP薬（中）"] = {
-    "type": "potion",
-    "effect": "EXP+150",
-    "ability": "EXP獲得",
-    "description": "EXPを150獲得する薬。"
-}
-ITEMS_DATABASE["EXP薬（大）"] = {
-    "type": "potion",
-    "effect": "EXP+300",
-    "ability": "EXP大量獲得",
-    "description": "EXPを300獲得する貴重な薬。"
 }
 
 # スキルデータベース
