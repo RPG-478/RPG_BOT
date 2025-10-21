@@ -248,38 +248,8 @@ def get_upgrade_cost(upgrade_type, user_id):
     
     return 1  # デフォルト
 
-def upgrade_initial_hp(user_id):
-    """初期HP最大量をアップグレード"""
-    player = get_player(user_id)
-    if player:
-        current_level = player.get("initial_hp_upgrade", 0)
-        new_max_hp = player.get("max_hp", 100) + 20
-        update_player(user_id, initial_hp_upgrade=current_level + 1, max_hp=new_max_hp)
-        return True
-    return False
-
-def upgrade_initial_mp(user_id):
-    """初期MP最大量をアップグレード"""
-    player = get_player(user_id)
-    if player:
-        current_level = player.get("initial_mp_upgrade", 0)
-        new_max_mp = player.get("max_mp", 100) + 15
-        update_player(user_id, initial_mp_upgrade=current_level + 1, max_mp=new_max_mp)
-        return True
-    return False
-
-def upgrade_coin_gain(user_id):
-    """コイン取得量をアップグレード"""
-    player = get_player(user_id)
-    if player:
-        current_level = player.get("coin_gain_upgrade", 0)
-        new_multiplier = player.get("coin_multiplier", 1.0) + 0.1
-        update_player(user_id, coin_gain_upgrade=current_level + 1, coin_multiplier=new_multiplier)
-        return True
-    return False
-
 def upgrade_max_hp(user_id):
-    """最大HP初期値をアップグレード（5PT で +5HP）"""
+    """最大HP初期値をアップグレード（3PT で +5HP）"""
     player = get_player(user_id)
     if player:
         current_level = player.get("max_hp_upgrade", 0)
@@ -297,6 +267,16 @@ def upgrade_max_mp(user_id):
         new_max_mp = player.get("max_mp", 20) + 5
         new_mp = player.get("mp", 20) + 5
         update_player(user_id, max_mp_upgrade=current_level + 1, max_mp=new_max_mp, mp=new_mp)
+        return True
+    return False
+    
+def upgrade_coin_gain(user_id):
+    """コイン取得量をアップグレード"""
+    player = get_player(user_id)
+    if player:
+        current_level = player.get("coin_gain_upgrade", 0)
+        new_multiplier = player.get("coin_multiplier", 1.0) + 0.1
+        update_player(user_id, coin_gain_upgrade=current_level + 1, coin_multiplier=new_multiplier)
         return True
     return False
 
