@@ -845,19 +845,53 @@ def unequip_title(user_id):
     return True
 
 
-# 既存の update_player をラップして全呼び出しをログにする（上書き）
-_original_update_player = globals().get("update_player")
+# --- 安全な update_player ラッパー（ファイル末尾に追加） ---
+import logging, threading, inspect
+logger = logging.getLogger("rpgbot")
 
-if _original_update_player:
+# 既にラップ済みかどうか確認して、重複登録を防ぐ
+_original_update_player = globals().get("update_player")
+if _original_update_player and not getattr(_original_update_player, "_is_wrapped_logger", False):
+
+    # スレッドローカルで再入制御（再帰呼び出しを検知する）
+    _wrapper_state = threading.local()
+
     def update_player(*args, **kwargs):
-        # 可能であれば user_id を抽出してログに載せる
+        # 抽出できれば user_id をログに載せる
         user_id = None
         if args:
             user_id = args[0]
         elif "user_id" in kwargs:
             user_id = kwargs.get("user_id")
-        logger.debug("db.update_player called user=%s args=%s kwargs=%s", user_id, args, kwargs)
-        return _original_update_player(*args, **kwargs)
+
+        # 再入チェック：すでに wrapper 内なら、内部の呼び出しはログせず直接実行
+        if getattr(_wrapper_state, "in_update_player", False):
+            # 直接元の関数を呼ぶ（ログは出さない） → 二重ログ／二重処理防止
+            return _original_update_player(*args, **kwargs)
+
+        # 通常パス：ログ出力して元関数を呼ぶ
+        _wrapper_state.in_update_player = True
+        try:
+            # 呼び出し元の簡易スタックを取得（上位数フレーム）
+            try:
+                stack = inspect.stack()[1:6]  # 少数のフレームを取る
+                callers = " | ".join(f"{s.filename.split('/')[-1]}:{s.lineno}" for s in stack)
+            except Exception:
+                callers = "stack-unavailable"
+
+            logger.debug("db.update_player called user=%s args=%s kwargs=%s callers=%s",
+                         user_id, args, kwargs, callers)
+
+            return _original_update_player(*args, **kwargs)
+        finally:
+            _wrapper_state.in_update_player = False
+
+    # マーカーを付けて二重ラップを防ぐ（他の場所で再度同じラッパーが入るのを防止）
+    update_player._is_wrapped_logger = True
+
+    # 置き換え（globals に書き戻す）
+    globals()["update_player"] = update_player
+
 else:
-    # 万が一 update_player が見つからない場合はデバッグログを残す
-    logger.debug("db.update_player wrapper could not find an original update_player to wrap.")
+    logger.debug("db.update_player wrapper: original_update_player not found or already wrapped.")
+# ---------------------------------------------------------------
