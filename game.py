@@ -225,19 +225,19 @@ ITEMS_DATABASE = {
         "ability": "全ステータス+30%",
         "description": "伝説の勇者が身に纏った鎧。"
     },
-    "回復薬（小）": {
+    "HP回復薬（小）": {
         "type": "potion",
         "effect": "HP+30",
         "ability": "HP回復",
         "description": "HPを30回復する薬。"
     },
-    "回復薬（中）": {
+    "HP回復薬（中）": {
         "type": "potion",
         "effect": "HP+50",
         "ability": "HP中回復",
         "description": "HPを50回復する高級な薬。"
     },
-    "回復薬（大）": {
+    "HP回復薬（大）": {
         "type": "potion",
         "effect": "HP+100",
         "ability": "HP大回復",
@@ -613,7 +613,7 @@ ENEMY_ZONES = {
                     {"item": "木の剣", "weight": 15},
                     {"item": "石の剣", "weight": 5},
                     {"item": "鉄の剣", "weight": 2},
-                    {"item": "回復薬", "weight": 8},
+                    {"item": "HP回復薬（小）", "weight": 8},
                     {"item": "coins", "amount": [10, 30], "weight": 10}
                 ]
             },
@@ -630,7 +630,7 @@ ENEMY_ZONES = {
                     {"item": "革の盾", "weight": 15},
                     {"item": "木の盾", "weight": 5},
                     {"item": "石の盾", "weight": 2},
-                    {"item": "回復薬", "weight": 8},
+                    {"item": "HP回復薬（小）", "weight": 8},
                     {"item": "coins", "amount": [15, 30], "weight": 10}
                 ]
             },
@@ -646,7 +646,7 @@ ENEMY_ZONES = {
                     {"item": "none", "weight": 40},
                     {"item": "蜘蛛の糸", "weight": 25},
                     {"item": "毒の短剣", "weight": 5},
-                    {"item": "回復薬", "weight": 10},
+                    {"item": "HP回復薬（小）", "weight": 10},
                     {"item": "coins", "amount": [30, 50], "weight": 20}
                 ]
             }
@@ -664,10 +664,10 @@ ENEMY_ZONES = {
                 "exp": 22,
                 "drops": [
                     {"item": "none", "weight": 60},
-                    {"item": "骨の剣", "weight": 10},
-                    {"item": "骨の盾", "weight": 10},
-                    {"item": "回復薬", "weight": 8},
-                    {"item": "高級回復薬", "weight": 2},
+                    {"item": "骨の剣", "weight": 6},
+                    {"item": "骨の盾", "weight": 6},
+                    {"item": "HP回復薬（小）", "weight": 9},
+                    {"item": "MP回復薬（小）", "weight": 9},
                     {"item": "coins", "amount": [20, 40], "weight": 10}
                 ]
             },
@@ -680,8 +680,8 @@ ENEMY_ZONES = {
                 "weight": 35,
                 "exp": 25,
                 "drops": [
-                    {"item": "none", "weight": 55},
-                    {"item": "腐った肉", "weight": 15},
+                    {"item": "none", "weight": 50},
+                    {"item": "腐った肉", "weight": 20},
                     {"item": "呪いの剣", "weight": 10},
                     {"item": "死者の兜", "weight": 10},
                     {"item": "coins", "amount": [25, 40], "weight": 10}
@@ -699,8 +699,8 @@ ENEMY_ZONES = {
                     {"item": "none", "weight": 40},
                     {"item": "幽霊の布", "weight": 10},
                     {"item": "魔法の杖", "weight": 10},
-                    {"item": "回復薬", "weight": 15},
-                    {"item": "高級回復薬", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 10},
+                    {"item": "MP回復薬（小）", "weight": 10},
                     {"item": "coins", "amount": [50, 70], "weight": 20}
                 ]
             }
@@ -717,11 +717,14 @@ ENEMY_ZONES = {
                 "weight": 50,
                 "exp": 32,
                 "drops": [
-                    {"item": "none", "weight": 60},
+                    {"item": "none", "weight": 45},
                     {"item": "悪魔の角", "weight": 15},
                     {"item": "炎の大剣", "weight": 5},
                     {"item": "地獄の鎧", "weight": 5},
-                    {"item": "回復薬", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 8},
+                    {"item": "MP回復薬（小）", "weight": 8},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [30, 50], "weight": 10}
                 ]
             },
@@ -738,7 +741,10 @@ ENEMY_ZONES = {
                     {"item": "黒騎士の剣", "weight": 10},
                     {"item": "黒騎士の盾", "weight": 5},
                     {"item": "黒騎士の鎧", "weight": 5},
-                    {"item": "回復薬", "weight": 10},
+                    {"item": "HP回復薬（小）", "weight": 8},
+                    {"item": "MP回復薬（小）", "weight": 8},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [35, 50], "weight": 10}
                 ]
             },
@@ -754,8 +760,8 @@ ENEMY_ZONES = {
                     {"item": "竜の牙", "weight": 40},
                     {"item": "ドラゴンソード", "weight": 20},
                     {"item": "竜の鱗", "weight": 5},
-                    {"item": "回復薬", "weight": 15},
-                    {"item": "高級回復薬", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 10},
+                    {"item": "MP回復薬（中）", "weight": 10},
                     {"item": "coins", "amount": [60, 90], "weight": 15}
                 ]
             }
@@ -772,11 +778,14 @@ ENEMY_ZONES = {
                 "weight": 50,
                 "exp": 48,
                 "drops": [
-                    {"item": "none", "weight": 60},
+                    {"item": "none", "weight": 50},
                     {"item": "死神の鎌", "weight": 10},
                     {"item": "冥界の盾", "weight": 9},
                     {"item": "死の鎧", "weight": 1},
-                    {"item": "回復薬", "weight": 10},
+                    {"item": "HP回復薬（小）", "weight": 8},
+                    {"item": "MP回復薬（小）", "weight": 8},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [50, 65], "weight": 10}
                 ]
             },
@@ -789,11 +798,14 @@ ENEMY_ZONES = {
                 "weight": 40,
                 "exp": 50,
                 "drops": [
-                    {"item": "none", "weight": 50},
+                    {"item": "none", "weight": 45},
                     {"item": "魔界の結晶", "weight": 15},
-                    {"item": "炎獄の剣", "weight": 10},
-                    {"item": "悪魔の盾", "weight": 10},
-                    {"item": "高級回復薬", "weight": 5},
+                    {"item": "炎獄の剣", "weight": 5},
+                    {"item": "悪魔の盾", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 8},
+                    {"item": "MP回復薬（小）", "weight": 8},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [40, 60], "weight": 10}
                 ]
             },
@@ -809,8 +821,8 @@ ENEMY_ZONES = {
                     {"item": "竜王の牙", "weight": 40},
                     {"item": "古竜の心臓", "weight": 10},
                     {"item": "竜の鱗", "weight": 15},
-                    {"item": "回復薬", "weight": 15},
-                    {"item": "高級回復薬", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 10},
+                    {"item": "MP回復薬（中）", "weight": 10},
                     {"item": "coins", "amount": [80, 100], "weight": 15}
                 ]
             },
@@ -1278,8 +1290,10 @@ BOSS_DATA = {
         "drops": [
             {"item": "王者の剣", "weight": 15},
             {"item": "スライムの王冠", "weight": 15},
-            {"item": "回復薬", "weight": 30},
-            {"item": "高級回復薬", "weight": 10},
+            {"item": "HP回復薬（小）", "weight": 15},
+            {"item": "HP回復薬（中）", "weight": 5},
+            {"item": "MP回復薬（小）", "weight": 15},
+            {"item": "MP回復薬（中）", "weight": 5},
             {"item": "coins", "amount": [100, 150], "weight": 30}
         ]
     },
@@ -1291,10 +1305,10 @@ BOSS_DATA = {
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
-            {"item": "死神の鎌", "weight": 15},
-            {"item": "不死の鎧", "weight": 15},
-            {"item": "回復薬", "weight": 20},
-            {"item": "高級回復薬", "weight": 20},
+            {"item": "死神の鎌", "weight": 20},
+            {"item": "不死の鎧", "weight": 20},
+            {"item": "HP回復薬（中）", "weight": 15},
+            {"item": "MP回復薬（中）", "weight": 15},
             {"item": "coins", "amount": [100, 200], "weight": 30}
         ]
     },
@@ -1308,7 +1322,8 @@ BOSS_DATA = {
         "drops": [
             {"item": "竜の鱗", "weight": 15},
             {"item": "業火の剣", "weight": 15},
-            {"item": "高級回復薬", "weight": 40},
+            {"item": "HP回復薬（中）", "weight": 20},
+            {"item": "MP回復薬（中）", "weight": 20},
             {"item": "coins", "amount": [150, 250], "weight": 30}
         ]
     },
@@ -1322,7 +1337,8 @@ BOSS_DATA = {
         "drops": [
             {"item": "影の短剣", "weight": 15},
             {"item": "死の鎧", "weight": 15},
-            {"item": "高級回復薬", "weight": 40},
+            {"item": "HP回復薬（中）", "weight": 20},
+            {"item": "MP回復薬（中）", "weight": 20},
             {"item": "coins", "amount": [200, 300], "weight": 30}
         ]
     },
