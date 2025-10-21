@@ -1,3 +1,9 @@
+#logger を確実に取得
+import logging
+logger = logging.getLogger("rpgbot")
+
+
+
 from supabase import create_client
 import config
 
@@ -837,3 +843,21 @@ def unequip_title(user_id):
     """称号を外す"""
     update_player(user_id, active_title=None)
     return True
+
+
+# 既存の update_player をラップして全呼び出しをログにする（上書き）
+_original_update_player = globals().get("update_player")
+
+if _original_update_player:
+    def update_player(*args, **kwargs):
+        # 可能であれば user_id を抽出してログに載せる
+        user_id = None
+        if args:
+            user_id = args[0]
+        elif "user_id" in kwargs:
+            user_id = kwargs.get("user_id")
+        logger.debug("db.update_player called user=%s args=%s kwargs=%s", user_id, args, kwargs)
+        return _original_update_player(*args, **kwargs)
+else:
+    # 万が一 update_player が見つからない場合はデバッグログを残す
+    logger.debug("db.update_player wrapper could not find an original update_player to wrap.")
