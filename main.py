@@ -57,7 +57,7 @@ def check_ban():
             if db.is_player_banned(user_id):
                 embed = discord.Embed(
                     title="❌ BOT利用禁止",
-                    description="あなたはBOT利用禁止処分を受けています。\n\n運営チームにお問い合わせください。",
+                    description="あなたはBOT利用禁止処分を受けています。\n\n運営チームにお問い合わせください。 Discord ID:mqy_n3w1",
                     color=discord.Color.red()
                 )
                 await ctx.send(embed=embed)
@@ -106,7 +106,7 @@ async def start(ctx: commands.Context):
         channel_name = f"{user.name}-冒険"
         existing_channel = discord.utils.get(category.channels, name=channel_name.lower())
         if existing_channel:
-            await ctx.send(f"⚠️ すでにチャンネルが存在します: {existing_channel.mention}", delete_after=10)
+            await ctx.send(f"⚠️ すでにチャンネルが存在します。: {existing_channel.mention}", delete_after=10)
             return
 
         overwrites = {
@@ -373,7 +373,7 @@ async def move(ctx: commands.Context):
 
         # 優先度4: 超低確率で選択肢分岐ストーリー（3%）
         choice_story_roll = random.random() * 100
-        if choice_story_roll < 3:
+        if choice_story_roll < 0.1:
             # 選択肢ストーリーのリスト
             choice_story_ids = [
                 "choice_mysterious_door",
