@@ -29,31 +29,31 @@ ITEMS_DATABASE = {
     },
     "王者の剣": {
         "type": "weapon",
-        "attack": 12,
+        "attack": 8,
         "ability": "全ステータス+20%、全状態異常耐性+50%",
         "description": "遥か昔に造られた剣。刀身の輝きは未だ失われていない。"
     },
     "骨の剣": {
         "type": "weapon",
-        "attack": 8,
+        "attack": 5,
         "ability": "アンデッド特効（アンデッド系に+30%ダメージ）",
         "description": "骨で作られた不気味な剣。"
     },
     "呪いの剣": {
         "type": "weapon",
-        "attack": 8,
+        "attack": 6,
         "ability": "呪い（攻撃時にHP-5、ダメージ+50%）",
         "description": "呪われた剣。強力だが使用者にも害を及ぼす。"
     },
     "魔法の杖": {
         "type": "weapon",
-        "attack": 15,
+        "attack": 12,
         "ability": "魔力増幅（魔法攻撃+20%）",
         "description": "魔力が込められた杖。魔法使いに最適。"
     },
     "死神の鎌": {
         "type": "weapon",
-        "attack": 18,
+        "attack": 16,
         "ability": "攻撃時15%で即死効果（ボス無効）",
         "description": "死神が持つ恐るべき鎌。"
     },
@@ -77,14 +77,14 @@ ITEMS_DATABASE = {
     },
     "業火の剣": {
         "type": "weapon",
-        "attack": 15,
-        "ability": "攻撃時30%で敵を燃焼（4ターン、ダメージ10）",
+        "attack": 12,
+        "ability": "攻撃時30%で敵を燃焼（2ターン、ダメージ5）",
         "description": "業火を纏う剣。敵を焼き尽くす。"
     },
     "炎獄の剣": {
         "type": "weapon",
         "attack": 12,
-        "ability": "攻撃時20%で敵を燃焼状態にする（3ターン、ダメージ10）",
+        "ability": "攻撃時20%で敵を燃焼状態にする（2ターン、ダメージ10）",
         "description": "地獄の炎を纏った大剣。"
     },
     "影の短剣": {
@@ -125,13 +125,13 @@ ITEMS_DATABASE = {
     }, 
     "骨の盾": {
         "type": "armor",
-        "defense": 7,
+        "defense": 5,
         "ability": "物理ダメージ軽減-15%",
         "description": "骨で作られた盾。意外と丈夫。"
     },
     "死者の兜": {
         "type": "armor",
-        "defense": 8,
+        "defense": 6,
         "ability": "即死耐性（即死攻撃無効）",
         "description": "死者が被っていた兜。死を恐れない。"
     },
@@ -143,7 +143,7 @@ ITEMS_DATABASE = {
     },
     "幽霊の布": {
         "type": "armor",
-        "defense": 15,
+        "defense": 12,
         "ability": "回避率+10%",
         "description": "幽霊が纏っていた布。攻撃をすり抜ける。"
     },
@@ -683,7 +683,8 @@ ENEMY_ZONES = {
                     {"item": "none", "weight": 50},
                     {"item": "腐った肉", "weight": 20},
                     {"item": "呪いの剣", "weight": 10},
-                    {"item": "死者の兜", "weight": 10},
+                    {"item": "死者の兜", "weight": 5},
+                    {"item": "鉄の盾", "weight": 5},
                     {"item": "coins", "amount": [25, 40], "weight": 10}
                 ]
             },
