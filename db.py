@@ -81,9 +81,20 @@ def update_player_distance(user_id, distance):
     stage = distance // 1000
     update_player(user_id, distance=distance, current_floor=floor, current_stage=stage)
 
-def add_player_distance(user_id, increment):
-    """プレイヤーの距離を加算"""
-    player = get_player(user_id)
+def add_player_distance(user_id, increment, current_player_data=None):
+    """プレイヤーの距離を加算
+    
+    Args:
+        user_id: ユーザーID
+        increment: 加算する距離
+        current_player_data: 既に取得済みのplayerデータ（省略可）
+    """
+    # playerデータが渡されていればそれを使う（DBアクセス不要）
+    if current_player_data:
+        player = current_player_data
+    else:
+        player = get_player(user_id)
+    
     if not player:
         return 0
 
