@@ -2718,69 +2718,27 @@ class BattleView(View):
 
         text = f"防御した！ ダメージを {reduction}% 軽減！\n敵の攻撃で {enemy_dmg} のダメージを受けた！"
 
-        if self.player["hp"] <= 0:
-            # 死亡処理
-            death_result = await handle_death_with_triggers(
-                self.ctx if hasattr(self, 'ctx') else interaction.channel,
-                interaction.user.id, 
-                self.user_processing if hasattr(self, 'user_processing') else {},
-                enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
-                enemy_type='boss' if hasattr(self, 'boss') else 'normal'
-            )
-            if death_result:
-                await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
-            else:
-                await self.update_embed(text + "\n💀 あなたは倒れた…")
-            self.disable_all_items()
-            await self.message.edit(view=self)
-            # 処理完了フラグをクリア
-            if self.ctx.author.id in self.user_processing:
-                self.user_processing[self.ctx.author.id] = False
-            return
-
-        # HPを保存
-        db.update_player(interaction.user.id, hp=self.player["hp"])
-        await self.update_embed(text)
-
-    # =====================================
-    # 🏃‍♂️ 逃げる
-    # =====================================
-    @button(label="逃げる", style=discord.ButtonStyle.success, emoji="🏃‍♂️")
-    async def run(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.ctx.author.id:
-            return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
-
-        # 逃走確率（仮に進んだ距離がplayer["distance"]）
-        distance = self.player.get("distance", 0)
-        chance = max(10, 100 - int(distance / 100))
-        if random.randint(1, 100) <= chance:
-            # 逃走成功 - HPを保存
-            db.update_player(interaction.user.id, hp=self.player["hp"])
-            text = "🏃‍♂️ うまく逃げ切れた！\n『戦っとけば良かったかな――。』"
-            self.disable_all_items()
-            await self.update_embed(text)
-            await self.message.edit(view=self)
-            # 処理完了フラグをクリア
-            if self.ctx.author.id in self.user_processing:
-                self.user_processing[self.ctx.author.id] = False
-        else:
-            enemy_dmg = max(0, self.enemy["atk"] - self.player["defense"])
-            self.player["hp"] -= enemy_dmg
-            self.player["hp"] = max(0, self.player["hp"])
-            text = f"逃げられなかった！ 敵の攻撃で {enemy_dmg} のダメージ！"
-            if self.player["hp"] <= 0:
+                    if self.player["hp"] <= 0:
                 # 死亡処理
-                death_result = await handle_death_with_triggers(
-                    self.ctx if hasattr(self, 'ctx') else interaction.channel,
-                    interaction.user.id, 
-                    self.user_processing if hasattr(self, 'user_processing') else {},
-                    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
-                    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
-                )
-                if death_result:
-                    text += f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt"
-                else:
-                    text += "\n💀 あなたは倒れた…"
+                db.increment_death_count(interaction.user.id)
+                db.record_death(interaction.user.id, getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明')
+                
+                # 死亡回数とアップグレードポイント計算
+                player = db.get_player(interaction.user.id)
+                death_count = player.get("death_count", 0) if player else 0
+                upgrade_points = death_count * 5
+                
+                # トリガーチェック
+                trigger_result = death_system.check_death_triggers(interaction.user.id)
+                
+                text += f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{upgrade_points}pt"
+                
+                if trigger_result["type"] == "story":
+                    text += f"\n\n📖 新しいストーリーが解放されました！"
+                elif trigger_result["type"] == "title":
+                    title_name = trigger_result["data"].get("name", "称号")
+                    text += f"\n\n🏆 称号「{title_name}」を獲得しました！"
+                
                 self.disable_all_items()
             else:
                 # HPを保存
@@ -2869,17 +2827,26 @@ class BattleView(View):
             text += f"\n敵の攻撃！ {enemy_dmg} のダメージを受けた！"
 
             if self.player["hp"] <= 0:
-                death_result = await handle_death_with_triggers(
-                    self.ctx, 
-                    self.ctx.author.id, 
-                    self.user_processing if hasattr(self, 'user_processing') else {},
-                    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
-                    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
-                )
-                if death_result:
-                    text += f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！\n（死亡回数: {death_result['death_count']}回）"
-                else:
-                    text += "\n💀 あなたは倒れた…"
+                # 死亡処理
+                db.increment_death_count(self.ctx.author.id)
+                db.record_death(self.ctx.author.id, getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明')
+                
+                # 死亡回数とアップグレードポイント計算
+                player = db.get_player(self.ctx.author.id)
+                death_count = player.get("death_count", 0) if player else 0
+                upgrade_points = death_count * 5
+                
+                # トリガーチェック
+                trigger_result = death_system.check_death_triggers(self.ctx.author.id)
+                
+                text += f"\n\n💀 あなたは倒れた…\n\n⭐ {upgrade_points}アップグレードポイントを獲得！\n（死亡回数: {death_count}回）"
+                
+                if trigger_result["type"] == "story":
+                    text += f"\n\n📖 新しいストーリーが解放されました！"
+                elif trigger_result["type"] == "title":
+                    title_name = trigger_result["data"].get("name", "称号")
+                    text += f"\n\n🏆 称号「{title_name}」を獲得しました！"
+                
                 self.disable_all_items()
                 await self.update_embed(text)
                 await self.message.edit(view=self)
