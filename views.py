@@ -4,6 +4,7 @@ import random
 import asyncio
 import game
 from db import get_player, update_player, delete_player
+from death_system import handle_death_with_triggers
 
 # -------------------------
 # 名前入力View
