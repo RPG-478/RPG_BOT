@@ -11,6 +11,14 @@ supabase = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
 
 def get_player(user_id):
     """プレイヤーデータを取得"""
+    import traceback
+    
+    # 🔍 どこから呼ばれたか表示
+    stack = traceback.extract_stack()
+    caller = stack[-2]  # 1つ前の呼び出し元
+    filename = caller.filename.split('/')[-1]  # ファイル名のみ
+    print(f"🔍 get_player called from: {filename}:{caller.lineno} in {caller.name}()")
+    
     res = supabase.table("players").select("*").eq("user_id", str(user_id)).execute()
     return res.data[0] if res.data else None
 
