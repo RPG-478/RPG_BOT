@@ -188,14 +188,14 @@ async def move(ctx: commands.Context):
     view_delegated = False
 
     try:
-        # プレイヤーデータチェック
+        # ✅ プレイヤーデータを1回だけ取得
         player = get_player(user.id)
         if not player:
             await ctx.send("!start で冒険を始めてみてね。")
             return
 
-        # クリア状態チェック
-        if db.is_game_cleared(user.id):
+        # ✅ クリア状態チェック（playerデータを直接使用）
+        if player.get("game_cleared", False):
             embed = discord.Embed(
                 title="🏆 ダンジョン制覇済み！",
                 description="ダンジョンをクリアしました！\n\n次の冒険を始めるには `!reset` でデータをリセットしてください。\n\n使用可能なコマンド:\n• `!reset` - データをリセット\n• `!inventory` - インベントリ確認\n• `!status` - ステータス確認",
@@ -204,9 +204,10 @@ async def move(ctx: commands.Context):
             await ctx.send(embed=embed)
             return
 
-        # intro_2: 1回目の死亡後、最初のmove時に表示
-        loop_count = db.get_loop_count(user.id)
-        intro_2_flag = db.get_story_flag(user.id, "intro_2")
+        # ✅ intro_2チェック（playerデータから直接取得）
+        loop_count = player.get("death_count", 0)
+        story_flags = player.get("story_flags", {})
+        intro_2_flag = story_flags.get("intro_2", False)
 
         # デバッグログ（本番環境では削除可能）
         print(f"[DEBUG] intro_2チェック - User: {user.id}, loop_count: {loop_count}, intro_2_flag: {intro_2_flag}")
@@ -228,7 +229,7 @@ async def move(ctx: commands.Context):
 
         # 移動距離（5〜15m）
         distance = random.randint(5, 15)
-        previous_distance = db.get_previous_distance(user.id)
+        previous_distance = player.get("distance", 0)
         total_distance = db.add_player_distance(user.id, distance)
 
         current_floor = total_distance // 100 + 1
@@ -256,11 +257,12 @@ async def move(ctx: commands.Context):
             if passed_through(boss_distance):
                 boss_stage = boss_distance // 1000
 
-                # ボス未撃破の場合のみ処理
-                if not db.is_boss_defeated(user.id, boss_stage):
+                # ✅ ボス撃破フラグチェック（playerデータから）
+                boss_defeated_flags = player.get("boss_defeated_flags", {})
+                if not boss_defeated_flags.get(str(boss_stage), False):
                     # boss_preストーリーチェック（未表示の場合のみ表示）
                     story_id = f"boss_pre_{boss_stage}"
-                    if not db.get_story_flag(user.id, story_id):
+                    if not story_flags.get(story_id, False):
                         # ラスボス判定（10000m）
                         if boss_stage == 10:
                             embed = discord.Embed(
@@ -295,6 +297,8 @@ async def move(ctx: commands.Context):
                         player_data = {
                             "hp": player.get("hp", 50),
                             "mp": player.get("mp", 20),
+                            "max_hp": player.get("max_hp", 100),
+                            "max_mp": player.get("max_mp", 100),
                             "attack": player.get("atk", 5),
                             "defense": player.get("def", 2),
                             "inventory": player.get("inventory", []),
@@ -354,10 +358,10 @@ async def move(ctx: commands.Context):
                 if loop_count >= 2:
                     loop_story_id = f"story_{story_distance}_loop{loop_count}"
                     # 周回専用ストーリーが存在するかチェック
-                    if not db.get_story_flag(user.id, loop_story_id):
+                    if not story_flags.get(loop_story_id, False):
                         story_id = loop_story_id
 
-                if not db.get_story_flag(user.id, story_id):
+                if not story_flags.get(story_id, False):
                     embed = discord.Embed(
                         title="📖 探索中に何かを見つけた",
                         description="不思議な出来事が起こる予感…",
@@ -387,7 +391,7 @@ async def move(ctx: commands.Context):
             ]
 
             # 未体験の選択肢ストーリーをフィルタリング
-            available_stories = [sid for sid in choice_story_ids if not db.get_story_flag(user.id, sid)]
+            available_stories = [sid for sid in choice_story_ids if not story_flags.get(sid, False)]
 
             # 未体験のストーリーがある場合、ランダムに選択
             if available_stories:
@@ -434,6 +438,7 @@ async def move(ctx: commands.Context):
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
+            
         # 30% 敵との遭遇（10～40%）
         elif event_roll < 40:
             # game.pyから距離に応じた敵を取得
@@ -442,6 +447,8 @@ async def move(ctx: commands.Context):
             player_data = {
                 "hp": player.get("hp", 50),
                 "mp": player.get("mp", 50),
+                "max_hp": player.get("max_hp", 100),
+                "max_mp": player.get("max_mp", 100),
                 "attack": player.get("atk", 5),
                 "defense": player.get("def", 2),
                 "inventory": player.get("inventory", []),
@@ -449,23 +456,29 @@ async def move(ctx: commands.Context):
                 "user_id": user.id
             }
 
-            # 戦闘Embed呼び出し
-            await exploring_msg.edit(content="⚔️ 敵が現れた！ 戦闘開始！")
+            embed = discord.Embed(
+                title=f"⚔️ {enemy['name']} が現れた！",
+                description=f"戦闘開始！",
+                color=discord.Color.red()
+            )
+            await exploring_msg.edit(content=None, embed=embed)
+            await asyncio.sleep(1.5)
+
             view = BattleView(ctx, player_data, enemy, user_processing)
             await view.send_initial_embed()
             view_delegated = True
             return
 
-        # 3. 何もなし
-        embed = discord.Embed(
-            title="📜 探索結果",
-            description=f"→ {distance}m進んだ！\n何も見つからなかったようだ。",
-            color=discord.Color.dark_grey()
-        )
-        embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-        await exploring_msg.edit(content=None, embed=embed)
+        # 60% 何も起こらない
+        else:
+            embed = discord.Embed(
+                title="👣 何もなかった",
+                description=f"無事に {distance}m 進んだ。\n\n現在地：**{total_distance}m** (第{current_floor}階層)",
+                color=discord.Color.blue()
+            )
+            await exploring_msg.edit(content=None, embed=embed)
+
     finally:
-        # Viewに委譲していない場合のみクリア（View自身がクリアする責任を持つ）
         if not view_delegated:
             user_processing[user.id] = False
 
