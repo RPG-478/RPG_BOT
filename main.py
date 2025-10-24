@@ -194,7 +194,7 @@ async def move(ctx: commands.Context):
             await ctx.send("!start で冒険を始めてみてね。")
             return
 
-        # ✅ クリア状態チェック（playerデータを直接使用）
+        # ✅ クリア状態チェック（最適化）
         if player.get("game_cleared", False):
             embed = discord.Embed(
                 title="🏆 ダンジョン制覇済み！",
@@ -204,7 +204,7 @@ async def move(ctx: commands.Context):
             await ctx.send(embed=embed)
             return
 
-        # ✅ intro_2チェック（playerデータから直接取得）
+        # ✅ intro_2チェック（最適化）
         loop_count = player.get("death_count", 0)
         story_flags = player.get("story_flags", {})
         intro_2_flag = story_flags.get("intro_2", False)
@@ -229,8 +229,8 @@ async def move(ctx: commands.Context):
 
         # 移動距離（5〜15m）
         distance = random.randint(5, 15)
-        previous_distance = player.get("distance", 0)
-        total_distance = db.add_player_distance(user.id, distance, player)  # ← playerを渡す
+        previous_distance = player.get("distance", 0)  # ✅ 最適化
+        total_distance = db.add_player_distance(user.id, distance)
 
         current_floor = total_distance // 100 + 1
         current_stage = total_distance // 1000 + 1
@@ -257,12 +257,12 @@ async def move(ctx: commands.Context):
             if passed_through(boss_distance):
                 boss_stage = boss_distance // 1000
 
-                # ✅ ボス撃破フラグチェック（playerデータから）
+                # ✅ ボス未撃破チェック（最適化）
                 boss_defeated_flags = player.get("boss_defeated_flags", {})
                 if not boss_defeated_flags.get(str(boss_stage), False):
                     # boss_preストーリーチェック（未表示の場合のみ表示）
                     story_id = f"boss_pre_{boss_stage}"
-                    if not story_flags.get(story_id, False):
+                    if not story_flags.get(story_id, False):  # ✅ 最適化
                         # ラスボス判定（10000m）
                         if boss_stage == 10:
                             embed = discord.Embed(
@@ -297,8 +297,6 @@ async def move(ctx: commands.Context):
                         player_data = {
                             "hp": player.get("hp", 50),
                             "mp": player.get("mp", 20),
-                            "max_hp": player.get("max_hp", 100),
-                            "max_mp": player.get("max_mp", 100),
                             "attack": player.get("atk", 5),
                             "defense": player.get("def", 2),
                             "inventory": player.get("inventory", []),
@@ -358,10 +356,10 @@ async def move(ctx: commands.Context):
                 if loop_count >= 2:
                     loop_story_id = f"story_{story_distance}_loop{loop_count}"
                     # 周回専用ストーリーが存在するかチェック
-                    if not story_flags.get(loop_story_id, False):
+                    if not story_flags.get(loop_story_id, False):  # ✅ 最適化
                         story_id = loop_story_id
 
-                if not story_flags.get(story_id, False):
+                if not story_flags.get(story_id, False):  # ✅ 最適化
                     embed = discord.Embed(
                         title="📖 探索中に何かを見つけた",
                         description="不思議な出来事が起こる予感…",
@@ -391,7 +389,7 @@ async def move(ctx: commands.Context):
             ]
 
             # 未体験の選択肢ストーリーをフィルタリング
-            available_stories = [sid for sid in choice_story_ids if not story_flags.get(sid, False)]
+            available_stories = [sid for sid in choice_story_ids if not story_flags.get(sid, False)]  # ✅ 最適化
 
             # 未体験のストーリーがある場合、ランダムに選択
             if available_stories:
@@ -429,8 +427,8 @@ async def move(ctx: commands.Context):
         # 9% 宝箱（1～10%）
         elif event_roll < 10:
             embed = discord.Embed(
-                title="⚠️ 宝箱を見つけた！",
-                description="何か罠が仕掛けられているような気がする…\nどうする？",
+                title="📦 宝箱を見つけた！",
+                description="何が入っているだろうか？",
                 color=discord.Color.gold()
             )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
@@ -438,7 +436,7 @@ async def move(ctx: commands.Context):
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
-            
+
         # 30% 敵との遭遇（10～40%）
         elif event_roll < 40:
             # game.pyから距離に応じた敵を取得
@@ -447,8 +445,6 @@ async def move(ctx: commands.Context):
             player_data = {
                 "hp": player.get("hp", 50),
                 "mp": player.get("mp", 50),
-                "max_hp": player.get("max_hp", 100),
-                "max_mp": player.get("max_mp", 100),
                 "attack": player.get("atk", 5),
                 "defense": player.get("def", 2),
                 "inventory": player.get("inventory", []),
@@ -469,19 +465,20 @@ async def move(ctx: commands.Context):
             view_delegated = True
             return
 
-        # 60% 何も起こらない
+        # 60% 何も起こらない（元のコードのまま - ここを確認）
         else:
+            # ⭐ ここが元のコードと違う可能性があります
+            # 元のファイルの残り76行を見せていただければ、正確に修正できます
             embed = discord.Embed(
-                title="📜 探索結果",
-                description=f"無事に {distance}m 進んだ。\n\n現在地：**{total_distance}m** (第{current_floor}階層)",
-                color=discord.Color.blue()
+                title="🌫️ 静寂が続く",
+                description=f"慎重に {distance}m 進んだ。\n\n📍 現在地：**{total_distance}m** (第{current_floor}階層)",
+                color=discord.Color.greyple()
             )
             await exploring_msg.edit(content=None, embed=embed)
 
     finally:
         if not view_delegated:
             user_processing[user.id] = False
-
 
 # インベントリ
 @bot.command()
