@@ -472,7 +472,7 @@ async def move(ctx: commands.Context):
         # 60% 何も起こらない
         else:
             embed = discord.Embed(
-                title="👣 何もなかった",
+                title="📜 探索結果",
                 description=f"無事に {distance}m 進んだ。\n\n現在地：**{total_distance}m** (第{current_floor}階層)",
                 color=discord.Color.blue()
             )
