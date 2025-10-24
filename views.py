@@ -2718,7 +2718,7 @@ class BattleView(View):
 
         text = f"防御した！ ダメージを {reduction}% 軽減！\n敵の攻撃で {enemy_dmg} のダメージを受けた！"
 
-                    if self.player["hp"] <= 0:
+            if self.player["hp"] <= 0:
                 # 死亡処理
                 db.increment_death_count(interaction.user.id)
                 db.record_death(interaction.user.id, getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明')
