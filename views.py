@@ -2740,7 +2740,7 @@ class BattleView(View):
                     text += f"\n\n🏆 称号「{title_name}」を獲得しました！"
                 
                 self.disable_all_items()
-            else:
+        else:
                 # HPを保存
                 db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
