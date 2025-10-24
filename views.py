@@ -2719,34 +2719,33 @@ class BattleView(View):
         text = f"防御した！ ダメージを {reduction}% 軽減！\n敵の攻撃で {enemy_dmg} のダメージを受けた！"
 
         if self.player["hp"] <= 0:
-                # 死亡処理
-                db.increment_death_count(interaction.user.id)
-                db.record_death(interaction.user.id, getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明')
-                
-                # 死亡回数とアップグレードポイント計算
-                player = db.get_player(interaction.user.id)
-                death_count = player.get("death_count", 0) if player else 0
-                upgrade_points = death_count * 5
-                
-                # トリガーチェック
-                trigger_result = death_system.check_death_triggers(interaction.user.id)
-                
-                text += f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{upgrade_points}pt"
-                
-                if trigger_result["type"] == "story":
-                    text += f"\n\n📖 新しいストーリーが解放されました！"
-                elif trigger_result["type"] == "title":
-                    title_name = trigger_result["data"].get("name", "称号")
-                    text += f"\n\n🏆 称号「{title_name}」を獲得しました！"
-                
-                self.disable_all_items()
+            # 死亡処理
+            db.increment_death_count(interaction.user.id)
+            db.record_death(interaction.user.id, getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明')
+            
+            # 死亡回数とアップグレードポイント計算
+            player = db.get_player(interaction.user.id)
+            death_count = player.get("death_count", 0) if player else 0
+            upgrade_points = death_count * 5
+            
+            # トリガーチェック
+            trigger_result = death_system.check_death_triggers(interaction.user.id)
+            
+            text += f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{upgrade_points}pt"
+            
+            if trigger_result["type"] == "story":
+                text += f"\n\n📖 新しいストーリーが解放されました！"
+            elif trigger_result["type"] == "title":
+                title_name = trigger_result["data"].get("name", "称号")
+                text += f"\n\n🏆 称号「{title_name}」を獲得しました！"
+            
+            self.disable_all_items()
         else:
-                # HPを保存
-                db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-            await self.message.edit(view=self)
-        await interaction.response.defer()
-
+            # HPを保存
+            db.update_player(interaction.user.id, hp=self.player["hp"])
+        
+        await self.update_embed(text)
+        await self.message.edit(view=self)
     # =====================================
     # 💊 アイテム使用
     # =====================================
