@@ -230,7 +230,7 @@ async def move(ctx: commands.Context):
         # 移動距離（5〜15m）
         distance = random.randint(5, 15)
         previous_distance = player.get("distance", 0)
-        total_distance = db.add_player_distance(user.id, distance)
+        total_distance = db.add_player_distance(user.id, distance, player)  # ← playerを渡す
 
         current_floor = total_distance // 100 + 1
         current_stage = total_distance // 1000 + 1
