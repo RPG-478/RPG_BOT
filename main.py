@@ -465,18 +465,18 @@ async def move(ctx: commands.Context):
             view_delegated = True
             return
 
-        # 60% 何も起こらない（元のコードのまま - ここを確認）
+        # 60% 何も起こらない
         else:
-            # ⭐ ここが元のコードと違う可能性があります
-            # 元のファイルの残り76行を見せていただければ、正確に修正できます
             embed = discord.Embed(
-                title="🌫️ 静寂が続く",
-                description=f"慎重に {distance}m 進んだ。\n\n📍 現在地：**{total_distance}m** (第{current_floor}階層)",
-                color=discord.Color.greyple()
+                title="🌫 探索結果",
+                description=f"✅ {distance}m進んだ！\n何も見つからなかったようだ",
+                color=discord.Color.dark_grey()
             )
+            embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
             await exploring_msg.edit(content=None, embed=embed)
 
     finally:
+        # Viewに委譲していない場合のみクリア（View自身がクリアする責任を持つ）
         if not view_delegated:
             user_processing[user.id] = False
 
