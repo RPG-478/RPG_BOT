@@ -3,6 +3,7 @@ from discord.ext import commands
 import random
 import asyncio
 import os
+import logging
 from dotenv import load_dotenv
 from aiohttp import web
 import db
