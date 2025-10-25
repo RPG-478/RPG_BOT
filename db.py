@@ -1,5 +1,7 @@
 from supabase import create_client
 import config
+import logging, threading, inspect
+logger = logging.getLogger("rpgbot")
 
 supabase = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
 
@@ -857,3 +859,49 @@ def unequip_title(user_id):
     """称号を外す"""
     update_player(user_id, active_title=None)
     return True
+
+
+_original_update_player = globals().get("update_player")
+if _original_update_player and not getattr(_original_update_player, "_is_wrapped_logger", False):
+
+    # スレッドローカルで再入制御
+    _wrapper_state = threading.local()
+
+    def update_player(*args, **kwargs):
+        # 抽出できれば user_id をログに載せる
+        user_id = None
+        if args:
+            user_id = args[0]
+        elif "user_id" in kwargs:
+            user_id = kwargs.get("user_id")
+
+        # すでに wrapper 内なら内部の呼び出しはログせず直接実行
+        if getattr(_wrapper_state, "in_update_player", False):
+            # 直接元の関数を呼ぶ（ログは出さない）
+            return _original_update_player(*args, **kwargs)
+
+        # ログ出力して元関数を呼ぶ
+        _wrapper_state.in_update_player = True
+        try:
+            # 呼び出し元の簡易スタックを取得
+            try:
+                stack = inspect.stack()[1:6]  # 少数のフレームを取る
+                callers = " | ".join(f"{s.filename.split('/')[-1]}:{s.lineno}" for s in stack)
+            except Exception:
+                callers = "stack-unavailable"
+
+            logger.debug("db.update_player called user=%s args=%s kwargs=%s callers=%s",
+                         user_id, args, kwargs, callers)
+
+            return _original_update_player(*args, **kwargs)
+        finally:
+            _wrapper_state.in_update_player = False
+
+    # マーカーを付けて二重ラップを防ぐ
+    update_player._is_wrapped_logger = True
+
+    # 置き換え
+    globals()["update_player"] = update_player
+
+else:
+    logger.debug("db.update_player wrapper: original_update_player not found or already wrapped.")
