@@ -234,19 +234,19 @@ def get_upgrade_cost(upgrade_type, user_id):
     
     if upgrade_type == 1:  # HP
         current_level = upgrades["max_hp"]
-        return 3 + (current_level * 1)
+        return 2 + (current_level * 1)
     elif upgrade_type == 2:  # MP
         current_level = upgrades["max_mp"]
-        return 3 + (current_level * 1)
+        return 2 + (current_level * 1)
     elif upgrade_type == 3:  # コイン取得量
         current_level = upgrades["coin_gain"]
-        return 5 + (current_level * 2)
+        return 3 + (current_level * 2)
     elif upgrade_type == 4:  # ATK
         current_level = upgrades["atk"]
         return 3 + (current_level * 2)
     elif upgrade_type == 5:  # DEF
         current_level = upgrades["def_upgrade"]
-        return 5 + (current_level * 2)
+        return 5 + (current_level * 5)
     
     return 1  # デフォルト
 
@@ -255,7 +255,7 @@ def upgrade_initial_hp(user_id):
     player = get_player(user_id)
     if player:
         current_level = player.get("initial_hp_upgrade", 0)
-        new_max_hp = player.get("max_hp", 100) + 20
+        new_max_hp = player.get("max_hp", 50) + 5
         update_player(user_id, initial_hp_upgrade=current_level + 1, max_hp=new_max_hp)
         return True
     return False
@@ -265,7 +265,7 @@ def upgrade_initial_mp(user_id):
     player = get_player(user_id)
     if player:
         current_level = player.get("initial_mp_upgrade", 0)
-        new_max_mp = player.get("max_mp", 100) + 15
+        new_max_mp = player.get("max_mp", 20) + 5
         update_player(user_id, initial_mp_upgrade=current_level + 1, max_mp=new_max_mp)
         return True
     return False
@@ -341,8 +341,8 @@ def handle_player_death(user_id, killed_by_enemy_name=None, enemy_type="normal")
 
         # 死亡時リセット：全アイテム消失、装備解除、ゴールドリセット、フラグクリア、ゲームクリア状態リセット
         update_player(user_id, 
-                      hp=player.get("max_hp", 100),
-                      mp=player.get("max_mp", 100),
+                      hp=player.get("max_hp", 50),
+                      mp=player.get("max_mp", 50),
                       distance=0, 
                       current_floor=0, 
                       current_stage=0,
@@ -481,10 +481,10 @@ def add_exp(user_id, amount):
         current_level += 1
 
         # ステータス上昇
-        new_hp = player.get("hp", 100) + 5
-        new_max_hp = player.get("max_hp", 100) + 5
+        new_hp = player.get("hp", 50) + 5
+        new_max_hp = player.get("max_hp", 50) + 5
         new_atk = player.get("atk", 5) + 1
-        new_def = player.get("def", 3) + 1
+        new_def = player.get("def", 2) + 1
 
         update_data = {
             "level": current_level,
@@ -542,8 +542,8 @@ def restore_mp(user_id, amount):
     if not player:
         return 0
 
-    current_mp = player.get("mp", 100)
-    max_mp = player.get("max_mp", 100)
+    current_mp = player.get("mp", 20)
+    max_mp = player.get("max_mp", 20)
     new_mp = min(current_mp + amount, max_mp)
     update_player(user_id, mp=new_mp)
 
