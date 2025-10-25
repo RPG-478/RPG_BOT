@@ -428,7 +428,7 @@ async def move(ctx: commands.Context):
 
             player_data = {
                 "hp": player.get("hp", 50),
-                "mp": player.get("mp", 50),
+                "mp": player.get("mp", 20),
                 "attack": player.get("atk", 5),
                 "defense": player.get("def", 2),
                 "inventory": player.get("inventory", []),
