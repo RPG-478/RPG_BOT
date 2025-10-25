@@ -1,9 +1,30 @@
+import logging  # ← 最初
+from dotenv import load_dotenv
+
+load_dotenv()
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(name)s - %(funcName)s:%(lineno)d - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.StreamHandler(),
+    ]
+)
+
+logger = logging.getLogger("rpgbot")
+logger.setLevel(logging.DEBUG)
+
+logging.getLogger("discord").setLevel(logging.INFO)
+logging.getLogger("discord.http").setLevel(logging.WARNING)
+
+print("✅ ロギング設定完了")
+
 import discord
 from discord.ext import commands
 import random
 import asyncio
 import os
-import logging
 from dotenv import load_dotenv
 from aiohttp import web
 import db
