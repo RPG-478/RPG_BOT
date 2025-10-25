@@ -1,9 +1,3 @@
-#logger を確実に取得
-import logging
-logger = logging.getLogger("rpgbot")
-
-
-
 from supabase import create_client
 import config
 
@@ -11,14 +5,6 @@ supabase = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
 
 def get_player(user_id):
     """プレイヤーデータを取得"""
-    import traceback
-    
-    # 🔍 どこから呼ばれたか表示
-    stack = traceback.extract_stack()
-    caller = stack[-2]  # 1つ前の呼び出し元
-    filename = caller.filename.split('/')[-1]  # ファイル名のみ
-    print(f"🔍 get_player called from: {filename}:{caller.lineno} in {caller.name}()")
-    
     res = supabase.table("players").select("*").eq("user_id", str(user_id)).execute()
     return res.data[0] if res.data else None
 
@@ -81,20 +67,9 @@ def update_player_distance(user_id, distance):
     stage = distance // 1000
     update_player(user_id, distance=distance, current_floor=floor, current_stage=stage)
 
-def add_player_distance(user_id, increment, current_player_data=None):
-    """プレイヤーの距離を加算
-    
-    Args:
-        user_id: ユーザーID
-        increment: 加算する距離
-        current_player_data: 既に取得済みのplayerデータ（省略可）
-    """
-    # playerデータが渡されていればそれを使う（DBアクセス不要）
-    if current_player_data:
-        player = current_player_data
-    else:
-        player = get_player(user_id)
-    
+def add_player_distance(user_id, increment):
+    """プレイヤーの距離を加算"""
+    player = get_player(user_id)
     if not player:
         return 0
 
@@ -273,8 +248,38 @@ def get_upgrade_cost(upgrade_type, user_id):
     
     return 1  # デフォルト
 
+def upgrade_initial_hp(user_id):
+    """初期HP最大量をアップグレード"""
+    player = get_player(user_id)
+    if player:
+        current_level = player.get("initial_hp_upgrade", 0)
+        new_max_hp = player.get("max_hp", 100) + 20
+        update_player(user_id, initial_hp_upgrade=current_level + 1, max_hp=new_max_hp)
+        return True
+    return False
+
+def upgrade_initial_mp(user_id):
+    """初期MP最大量をアップグレード"""
+    player = get_player(user_id)
+    if player:
+        current_level = player.get("initial_mp_upgrade", 0)
+        new_max_mp = player.get("max_mp", 100) + 15
+        update_player(user_id, initial_mp_upgrade=current_level + 1, max_mp=new_max_mp)
+        return True
+    return False
+
+def upgrade_coin_gain(user_id):
+    """コイン取得量をアップグレード"""
+    player = get_player(user_id)
+    if player:
+        current_level = player.get("coin_gain_upgrade", 0)
+        new_multiplier = player.get("coin_multiplier", 1.0) + 0.1
+        update_player(user_id, coin_gain_upgrade=current_level + 1, coin_multiplier=new_multiplier)
+        return True
+    return False
+
 def upgrade_max_hp(user_id):
-    """最大HP初期値をアップグレード（3PT で +5HP）"""
+    """最大HP初期値をアップグレード（5PT で +5HP）"""
     player = get_player(user_id)
     if player:
         current_level = player.get("max_hp_upgrade", 0)
@@ -292,16 +297,6 @@ def upgrade_max_mp(user_id):
         new_max_mp = player.get("max_mp", 20) + 5
         new_mp = player.get("mp", 20) + 5
         update_player(user_id, max_mp_upgrade=current_level + 1, max_mp=new_max_mp, mp=new_mp)
-        return True
-    return False
-    
-def upgrade_coin_gain(user_id):
-    """コイン取得量をアップグレード"""
-    player = get_player(user_id)
-    if player:
-        current_level = player.get("coin_gain_upgrade", 0)
-        new_multiplier = player.get("coin_multiplier", 1.0) + 0.1
-        update_player(user_id, coin_gain_upgrade=current_level + 1, coin_multiplier=new_multiplier)
         return True
     return False
 
@@ -862,55 +857,3 @@ def unequip_title(user_id):
     """称号を外す"""
     update_player(user_id, active_title=None)
     return True
-
-
-# --- 安全な update_player ラッパー（ファイル末尾に追加） ---
-import logging, threading, inspect
-logger = logging.getLogger("rpgbot")
-
-# 既にラップ済みかどうか確認して、重複登録を防ぐ
-_original_update_player = globals().get("update_player")
-if _original_update_player and not getattr(_original_update_player, "_is_wrapped_logger", False):
-
-    # スレッドローカルで再入制御（再帰呼び出しを検知する）
-    _wrapper_state = threading.local()
-
-    def update_player(*args, **kwargs):
-        # 抽出できれば user_id をログに載せる
-        user_id = None
-        if args:
-            user_id = args[0]
-        elif "user_id" in kwargs:
-            user_id = kwargs.get("user_id")
-
-        # 再入チェック：すでに wrapper 内なら、内部の呼び出しはログせず直接実行
-        if getattr(_wrapper_state, "in_update_player", False):
-            # 直接元の関数を呼ぶ（ログは出さない） → 二重ログ／二重処理防止
-            return _original_update_player(*args, **kwargs)
-
-        # 通常パス：ログ出力して元関数を呼ぶ
-        _wrapper_state.in_update_player = True
-        try:
-            # 呼び出し元の簡易スタックを取得（上位数フレーム）
-            try:
-                stack = inspect.stack()[1:6]  # 少数のフレームを取る
-                callers = " | ".join(f"{s.filename.split('/')[-1]}:{s.lineno}" for s in stack)
-            except Exception:
-                callers = "stack-unavailable"
-
-            logger.debug("db.update_player called user=%s args=%s kwargs=%s callers=%s",
-                         user_id, args, kwargs, callers)
-
-            return _original_update_player(*args, **kwargs)
-        finally:
-            _wrapper_state.in_update_player = False
-
-    # マーカーを付けて二重ラップを防ぐ（他の場所で再度同じラッパーが入るのを防止）
-    update_player._is_wrapped_logger = True
-
-    # 置き換え（globals に書き戻す）
-    globals()["update_player"] = update_player
-
-else:
-    logger.debug("db.update_player wrapper: original_update_player not found or already wrapped.")
-# ---------------------------------------------------------------
