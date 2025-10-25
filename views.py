@@ -478,7 +478,7 @@ class TreasureView(View):
             )[0]
 
             if reward_type == "coins":
-                amount = random.randint(30, 150)
+                amount = random.randint(30, 70)
                 db.add_gold(interaction.user.id, amount)
 
                 embed = discord.Embed(
@@ -522,10 +522,10 @@ class TreasureView(View):
 
         msg = self.message or interaction.message
         
-        # --- HP10%ダメージ ---
+        # --- HP20%ダメージ ---
         if trap_type == "damage":
-            damage = int(player.get("hp", 100) * 0.1)
-            new_hp = max(0, player.get("hp", 100) - damage)
+            damage = int(player.get("hp", 50) * 0.2)
+            new_hp = max(0, player.get("hp", 50) - damage)
             update_player(interaction.user.id, hp=new_hp)
 
             embed = discord.Embed(
@@ -612,8 +612,8 @@ class TrapChestView(View):
             return
 
         if trap_type == "damage":
-            damage = random.randint(20, 50)
-            new_hp = max(1, player.get("hp", 100) - damage)
+            damage = random.randint(10, 20)
+            new_hp = max(1, player.get("hp", 50) - damage)
             update_player(interaction.user.id, hp=new_hp)
 
             embed = discord.Embed(
@@ -637,9 +637,9 @@ class TrapChestView(View):
             enemy = game.get_random_enemy(distance)
 
             player_data = {
-                "hp": player.get("hp", 100),
-                "attack": player.get("attack", 10),
-                "defense": player.get("defense", 5),
+                "hp": player.get("hp", 50),
+                "attack": player.get("attack", 5),
+                "defense": player.get("defense", 2),
                 "inventory": player.get("inventory", []),
                 "distance": distance,
                 "user_id": interaction.user.id
@@ -771,9 +771,9 @@ class SpecialEventView(View):
         await asyncio.sleep(2)
 
         player_data = {
-            "hp": player.get("hp", 100),
-            "attack": player.get("attack", 10),
-            "defense": player.get("defense", 5),
+            "hp": player.get("hp", 50),
+            "attack": player.get("attack", 5),
+            "defense": player.get("defense", 2),
             "inventory": player.get("inventory", []),
             "distance": self.distance,
             "user_id": interaction.user.id
@@ -978,8 +978,8 @@ class FinalBossBattleView(View):
         
         if "user_id" in player:
             equipment_bonus = game.calculate_equipment_bonus(player["user_id"])
-            self.player["attack"] = player.get("attack", 10) + equipment_bonus["attack_bonus"]
-            self.player["defense"] = player.get("defense", 5) + equipment_bonus["defense_bonus"]
+            self.player["attack"] = player.get("attack", 5) + equipment_bonus["attack_bonus"]
+            self.player["defense"] = player.get("defense", 2) + equipment_bonus["defense_bonus"]
             
             unlocked_skills = db.get_unlocked_skills(player["user_id"])
             if unlocked_skills:
@@ -1061,7 +1061,7 @@ class FinalBossBattleView(View):
             return await interaction.followup.send("⚠️ スキル情報が見つかりません。", ephemeral=True)
         
         player_data = db.get_player(interaction.user.id)
-        current_mp = player_data.get("mp", 100)
+        current_mp = player_data.get("mp", 20)
         mp_cost = skill_info["mp_cost"]
         
         if current_mp < mp_cost:
@@ -1134,7 +1134,7 @@ class FinalBossBattleView(View):
         
         elif skill_info["type"] == "heal":
             heal_amount = skill_info["heal_amount"]
-            max_hp = self.player.get("max_hp", 100)
+            max_hp = self.player.get("max_hp", 50)
             old_hp = self.player["hp"]
             self.player["hp"] = min(max_hp, self.player["hp"] + heal_amount)
             actual_heal = self.player["hp"] - old_hp
@@ -1172,11 +1172,11 @@ class FinalBossBattleView(View):
         
         # HP吸収
         if ability_result["lifesteal"] > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 100), self.player["hp"] + ability_result["lifesteal"])
+            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
         
         # 召喚回復
         if ability_result.get("summon_heal", 0) > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 100), self.player["hp"] + ability_result["summon_heal"])
+            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
         
         # 自傷ダメージ
         if ability_result.get("self_damage", 0) > 0:
@@ -1232,7 +1232,7 @@ class FinalBossBattleView(View):
             enemy_base_dmg, 
             armor_ability, 
             self.player["hp"], 
-            self.player.get("max_hp", 100),
+            self.player.get("max_hp", 50),
             enemy_base_dmg,
             self.boss.get("attribute", "none")
         )
@@ -1302,7 +1302,7 @@ class FinalBossBattleView(View):
             
             # HP回復
             if armor_result["hp_regen"] > 0:
-                self.player["hp"] = min(self.player.get("max_hp", 100), self.player["hp"] + armor_result["hp_regen"])
+                self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + armor_result["hp_regen"])
 
         if self.player["hp"] <= 0:
             if armor_result.get("revived", False):
