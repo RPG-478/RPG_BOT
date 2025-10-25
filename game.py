@@ -1485,7 +1485,7 @@ CRAFTING_RECIPES = {
     "蜘蛛の短剣": {
         "materials": {"蜘蛛の糸": 2},
         "result_type": "weapon",
-        "attack": 9,
+        "attack": 7,
         "ability": "毒付与（10%の確率で追加ダメージ）",
         "description": "蜘蛛の糸から作られた短剣。強力な毒を持つ。"
     },
