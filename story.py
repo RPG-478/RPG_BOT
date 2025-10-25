@@ -5739,10 +5739,10 @@ STORY_DATA = {
                         },
                         {
                             "speaker": "ナレーション",
-                            "text": "かつての勇者たちの戦いが蘇る。経験値を得た！"
+                            "text": "かつての勇者たちの戦いの記憶が蘇る。戦いの経験値を得た！"
                         }
                     ],
-                    "reward": "exp_boost"
+                    "reward": "attack_boost"
                 }
             },
             {
@@ -5756,7 +5756,7 @@ STORY_DATA = {
                         },
                         {
                             "speaker": "ナレーション",
-                            "text": "恐ろしい敵が待ち受けている…しかし、対策が分かった！"
+                            "text": "恐ろしい敵が待ち受けている…しかし、対策法が分かった！"
                         }
                     ],
                     "reward": "defense_boost"
@@ -6286,9 +6286,9 @@ class StoryView(View):
                 if boss:
                     player = db.get_player(self.user_id)
                     player_data = {
-                        "hp": player.get("hp", 100),
-                        "attack": player.get("atk", 10),
-                        "defense": player.get("def", 5),
+                        "hp": player.get("hp", 50),
+                        "attack": player.get("atk", 5),
+                        "defense": player.get("def", 2),
                         "inventory": player.get("inventory", []),
                         "distance": player.get("distance", 0),
                         "user_id": self.user_id
@@ -6365,9 +6365,9 @@ class StoryChoiceView(View):
             player = db.get_player(self.user_id)
 
             if result.get("reward") == "hp_restore":
-                max_hp = player.get("max_hp", 100)
-                heal_amount = int(max_hp * 0.5)
-                new_hp = min(max_hp, player.get("hp", 100) + heal_amount)
+                max_hp = player.get("max_hp", 50)
+                heal_amount = int(max_hp * 1)
+                new_hp = min(max_hp, player.get("hp", 50) + heal_amount)
                 db.update_player(self.user_id, hp=new_hp)
                 reward_text = f"\n\n💚 HP +{heal_amount} 回復！"
 
@@ -6392,7 +6392,7 @@ class StoryChoiceView(View):
                     reward_text = f"\n\n💸 ゴールドが足りない…（必要: {gold_cost}G）"
 
             elif result.get("reward") == "small_gold":
-                gold_amount = random.randint(30, 80)
+                gold_amount = random.randint(50, 100)
                 db.add_gold(self.user_id, gold_amount)
                 reward_text = f"\n\n💰 {gold_amount}G を手に入れた！"
 
@@ -6401,8 +6401,8 @@ class StoryChoiceView(View):
                 if rare_items:
                     item = random.choice(rare_items)
                     db.add_item_to_inventory(self.user_id, item)
-                    damage = random.randint(15, 30)
-                    new_hp = max(1, player.get("hp", 100) - damage)
+                    damage = random.randint(10, 20)
+                    new_hp = max(1, player.get("hp", 50) - damage)
                     db.update_player(self.user_id, hp=new_hp)
                     reward_text = f"\n\n📦 **{item}** を手に入れた！\n💔 HP -{damage}"
 
@@ -6411,7 +6411,7 @@ class StoryChoiceView(View):
                 current_gold = player.get("gold", 0)
 
                 if current_gold >= gold_cost:
-                    current_max_hp = player.get("max_hp", 100)
+                    current_max_hp = player.get("max_hp", 50)
                     new_max_hp = current_max_hp + 20
                     db.update_player(self.user_id, max_hp=new_max_hp)
                     db.add_gold(self.user_id, -gold_cost)
@@ -6429,32 +6429,26 @@ class StoryChoiceView(View):
             elif result.get("reward") == "gold_with_damage":
                 gold_amount = random.randint(200, 400)
                 db.add_gold(self.user_id, gold_amount)
-                damage = random.randint(20, 40)
-                new_hp = max(1, player.get("hp", 100) - damage)
+                damage = random.randint(10, 20)
+                new_hp = max(1, player.get("hp", 50) - damage)
                 db.update_player(self.user_id, hp=new_hp)
                 reward_text = f"\n\n💰 {gold_amount}G を手に入れた！\n💔 HP -{damage}"
 
             elif result.get("reward") == "mp_restore":
-                max_mp = player.get("max_mp", 100)
-                heal_amount = int(max_mp * 0.5)
-                new_mp = min(max_mp, player.get("mp", 100) + heal_amount)
+                max_mp = player.get("max_mp", 20)
+                heal_amount = int(max_mp * 1)
+                new_mp = min(max_mp, player.get("mp", 20) + heal_amount)
                 db.update_player(self.user_id, mp=new_mp)
                 reward_text = f"\n\n💙 MP +{heal_amount} 回復！"
 
-            elif result.get("reward") == "exp_boost":
-                atk_boost = random.randint(3, 8)
-                current_atk = player.get("atk", 10)
-                db.update_player(self.user_id, atk=current_atk + atk_boost)
-                reward_text = f"\n\n⚔️ 攻撃力 +{atk_boost}！（{current_atk} → {current_atk + atk_boost}）"
-
             elif result.get("reward") == "defense_boost":
-                def_boost = random.randint(3, 8)
+                def_boost = random.randint(1, 3)
                 current_def = player.get("def", 5)
                 db.update_player(self.user_id, def_=current_def + def_boost)
                 reward_text = f"\n\n🛡️ 防御力 +{def_boost}！（{current_def} → {current_def + def_boost}）"
 
             elif result.get("reward") == "attack_boost":
-                atk_boost = random.randint(5, 10)
+                atk_boost = random.randint(3, 5)
                 current_atk = player.get("atk", 10)
                 db.update_player(self.user_id, atk=current_atk + atk_boost)
                 reward_text = f"\n\n⚔️ 攻撃力 +{atk_boost}！（{current_atk} → {current_atk + atk_boost}）"
