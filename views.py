@@ -197,7 +197,7 @@ class TutorialView(discord.ui.View):
         self.pages = [
             discord.Embed(
                 title="なぜ……ここに？(1/5)",
-                description="ここは『イニシエダンジョン』──100階層まで続く階層を持つ謎の空間だ。\n人工的に作られたかのように100m区切りで1階層となっているようだ……",
+                description="ここは『アビスダンジョン』──100階層まで続く階層を持つ謎の空間だ。\n人工的に作られたかのように100m区切りで1階層となっているようだ……",
                 color=discord.Color.purple()
             ),
             discord.Embed(
