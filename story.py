@@ -3,7 +3,7 @@ from discord.ui import View, button
 
 STORY_DATA = {
     "voice_1": {
-        "title": "どこからか声がする",
+        "title": "どこからか微かに声がする",
         "loop_requirement": 0,
         "lines": [
             {
@@ -12,11 +12,11 @@ STORY_DATA = {
             },
             {
                 "speaker": "???",
-                "text": "お前、まだ何も知らないのか？"
+                "text": "さすがにまだ聞こえないか…？"
             },
             {
                 "speaker": "???",
-                "text": "とっとと戻れ。戻り方？頑張ってくれ。進んでもいい事ないぞ――。"
+                "text": "とっとと戻れ。進んでもいい事ないぞ――。"
             }
         ]
     },
@@ -25,16 +25,23 @@ STORY_DATA = {
         "loop_requirement": 1,
         "lines": [
             {
-                "speaker": "???",
-                "text": "お前…2回目だな？なんで進んだんだ。"
+                "speaker": "冒険者",
+                "text": "私は…死んだのか…？"
             },
             {
-                "speaker": "???",
-                "text": "死んだ時にポイント獲得したろ？あれで己を強化できる。"
+                "speaker": "ナレーション",
+                "text": "冒険者は周りを見渡してみる。"
             },
             {
+                "speaker": "ナレーション",
+                "text": "全く同じ景色が広がっている。"
+            },
+            {
+                "speaker": "冒険者",
+                "text": "夢だったのか…？しかし相変わらず地獄のような光景だ。"
+            {
                 "speaker": "???",
-                "text": "試しに `!upgrade` してみな。!buy_upgrade <番号> を忘れずにな。"
+                "text": "まだまだ力不足だ。 `!upgrade` をしてみろ。!buy_upgrade <番号> を忘れずにな。"
             }
         ]
     },
@@ -52,7 +59,7 @@ STORY_DATA = {
             },
             {
                 "speaker": "冒険者",
-                "text": "こいつ、最初の無責任なやつにどこか似ているような、気のせいか"
+                "text": "無駄なことに運を使った気がする…"
             }
         ]
     },
