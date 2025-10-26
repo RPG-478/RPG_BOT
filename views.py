@@ -72,7 +72,7 @@ class NameModal(discord.ui.Modal):
             await self.channel.send(
                 embed=discord.Embed(
                     title="第1節 ~冒険の始まり~",
-                    description="あなたはこのダンジョンを踏破しに来た者。\n目を覚ますと、見知らぬ洞窟の中だった。\n体にはなにも身につけていない。そしてどこかで誰かの声がする――。\n\n『ようこそ、挑戦者よ。ここは終わりなき迷宮。』\n\n『最初の一歩を踏み出す準備はできているか？』",
+                    description="あなたはこのダンジョンに迷い込んだ者。\n目を覚ますと、見知らぬ洞窟の中だった。\n体にはなにも身につけていない。そしてどこかで誰かの声がする――。\n\n『ようこそ、挑戦者よ。ここは終わりなき迷宮。』\n\n『最初の一歩を踏み出す準備はできているか？』",
                     color=discord.Color.purple()
                 )
             )
@@ -197,7 +197,7 @@ class TutorialView(discord.ui.View):
         self.pages = [
             discord.Embed(
                 title="なぜ……ここに？(1/5)",
-                description="ここは『アビスダンジョン』──100階層まで続く階層を持つ謎の空間だ。\n人工的に作られたかのように100m区切りで1階層となっているようだ……",
+                description="ここは『アビスダンジョン』──100階層まで続く階層を持つのが特徴のとても深い謎のダンジョンだ。\n人工的に作られたかのように100m区切りで1階層となっているようだ……",
                 color=discord.Color.purple()
             ),
             discord.Embed(
@@ -745,8 +745,8 @@ class SpecialEventView(View):
             return
 
         special_enemies = [
-            {"name": "財宝の守護者", "hp": 200, "atk": 25, "def": 15, "gold_drop": (200, 500)},
-            {"name": "レアモンスター", "hp": 150, "atk": 30, "def": 10, "gold_drop": (300, 600)}
+            {"name": "財宝の守護者", "hp": 200, "atk": 20, "def": 10, "gold_drop": (200, 500)},
+            {"name": "レアモンスター", "hp": 150, "atk": 25, "def": 8, "gold_drop": (300, 600)}
         ]
         enemy = random.choice(special_enemies)
 
