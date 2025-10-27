@@ -2136,8 +2136,8 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
     self.enemy["hp"] -= player_dmg
 
         # HP吸収
-        if ability_result["lifesteal"] > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
+    if ability_result["lifesteal"] > 0:
+        self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
 
         # 召喚回復
         if ability_result.get("summon_heal", 0) > 0:
