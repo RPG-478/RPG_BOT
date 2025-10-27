@@ -382,7 +382,7 @@ async def move(ctx: commands.Context):
 
         # 優先度4: 超低確率で選択肢分岐ストーリー（3%）
         choice_story_roll = random.random() * 100
-        if choice_story_roll < 3:
+        if choice_story_roll < 0.1:
             # 選択肢ストーリーのリスト
             choice_story_ids = [
                 "choice_mysterious_door",
