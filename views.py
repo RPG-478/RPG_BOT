@@ -2568,6 +2568,8 @@ def status_embed(player):
     embed.add_field(name="所持金", value=f'{player.get("gold", 0)}G')
     return embed
 
+from collections import Counter
+
 class InventorySelectView(discord.ui.View):
     def __init__(self, player):
         super().__init__(timeout=60)
@@ -2585,33 +2587,37 @@ class InventorySelectView(discord.ui.View):
             select.callback = self.select_callback
             self.add_item(select)
         else:
+            # アイテムをカウント（集約）
+            item_counts = Counter(inventory)
+            
             # アイテムを種類別に分類
             potions = []
             weapons = []
             armors = []
             materials = []
             
-            for idx, item in enumerate(inventory):
-                item_info = game.get_item_info(item)
+            for item_name, count in item_counts.items():
+                item_info = game.get_item_info(item_name)
                 if item_info:
                     if item_info['type'] == 'potion':
-                        potions.append((idx, item, item_info))
+                        potions.append((item_name, count, item_info))
                     elif item_info['type'] == 'weapon':
-                        weapons.append((idx, item, item_info))
+                        weapons.append((item_name, count, item_info))
                     elif item_info['type'] == 'armor':
-                        armors.append((idx, item, item_info))
+                        armors.append((item_name, count, item_info))
                     else:
-                        materials.append((idx, item, item_info))
+                        materials.append((item_name, count, item_info))
             
-            # ポーションのプルダウン（最大15個）
+            # ポーションのプルダウン（最大25個）
             if potions:
                 potion_options = []
-                for idx, item, info in potions[:15]:
-                    desc = info.get('description', 'ポーション')[:100]
+                for i, (item_name, count, info) in enumerate(potions[:25]):
+                    desc = info.get('description', 'ポーション')[:80]
+                    label = f"{item_name} ×{count}" if count > 1 else item_name
                     potion_options.append(discord.SelectOption(
-                        label=str(item),
+                        label=label,
                         description=desc,
-                        value=f"{idx}_{item}",
+                        value=f"potion_{i}_{item_name}",  # 重複回避
                         emoji="🧪"
                     ))
                 
@@ -2623,15 +2629,16 @@ class InventorySelectView(discord.ui.View):
                 potion_select.callback = self.select_callback
                 self.add_item(potion_select)
             
-            # 武器のプルダウン（最大15個）
+            # 武器のプルダウン（最大25個）
             if weapons:
                 weapon_options = []
-                for idx, item, info in weapons[:15]:
-                    desc = f"攻撃力:{info.get('attack', 0)}"
+                for i, (item_name, count, info) in enumerate(weapons[:25]):
+                    desc = f"攻撃力:{info.get('attack', 0)} | 所持数:{count}"
+                    label = f"{item_name} ×{count}" if count > 1 else item_name
                     weapon_options.append(discord.SelectOption(
-                        label=str(item),
+                        label=label,
                         description=desc[:100],
-                        value=f"{idx}_{item}",
+                        value=f"weapon_{i}_{item_name}",
                         emoji="⚔️"
                     ))
                 
@@ -2643,15 +2650,16 @@ class InventorySelectView(discord.ui.View):
                 weapon_select.callback = self.select_callback
                 self.add_item(weapon_select)
             
-            # 防具のプルダウン（最大15個）
+            # 防具のプルダウン（最大25個）
             if armors:
                 armor_options = []
-                for idx, item, info in armors[:15]:
-                    desc = f"防御力:{info.get('defense', 0)}"
+                for i, (item_name, count, info) in enumerate(armors[:25]):
+                    desc = f"防御力:{info.get('defense', 0)} | 所持数:{count}"
+                    label = f"{item_name} ×{count}" if count > 1 else item_name
                     armor_options.append(discord.SelectOption(
-                        label=str(item),
+                        label=label,
                         description=desc[:100],
-                        value=f"{idx}_{item}",
+                        value=f"armor_{i}_{item_name}",
                         emoji="🛡️"
                     ))
                 
@@ -2663,15 +2671,16 @@ class InventorySelectView(discord.ui.View):
                 armor_select.callback = self.select_callback
                 self.add_item(armor_select)
             
-            # 素材のプルダウン（最大15個）
+            # 素材のプルダウン（最大25個）
             if materials:
                 material_options = []
-                for idx, item, info in materials[:15]:
-                    desc = info.get('description', '素材')[:100]
+                for i, (item_name, count, info) in enumerate(materials[:25]):
+                    desc = f"{info.get('description', '素材')[:80]} | 所持数:{count}"
+                    label = f"{item_name} ×{count}" if count > 1 else item_name
                     material_options.append(discord.SelectOption(
-                        label=str(item),
-                        description=desc,
-                        value=f"{idx}_{item}",
+                        label=label,
+                        description=desc[:100],
+                        value=f"material_{i}_{item_name}",
                         emoji="📦"
                     ))
                 
@@ -2691,11 +2700,20 @@ class InventorySelectView(discord.ui.View):
         if selected_value == "none":
             return await interaction.response.send_message("アイテムがありません。", ephemeral=True)
 
-        idx, item_name = selected_value.split("_", 1)
+        # valueから型、インデックス、アイテム名を分離
+        parts = selected_value.split("_", 2)
+        if len(parts) < 3:
+            return await interaction.response.send_message("不正な選択です。", ephemeral=True)
+        
+        item_type, idx, item_name = parts
         item_info = game.get_item_info(item_name)
 
         if not item_info:
             return await interaction.response.send_message("アイテム情報が見つかりません。", ephemeral=True)
+
+        # 所持数を取得
+        inventory = self.player.get("inventory", [])
+        item_count = inventory.count(item_name)
 
         # アイテムタイプ別処理
         if item_info['type'] == 'potion':
@@ -2710,6 +2728,9 @@ class InventorySelectView(discord.ui.View):
             if 'MP+' in effect or 'MP全回復' in effect:
                 current_mp = player.get('mp', 20)
                 max_mp = player.get('max_mp', 20)
+                
+                if current_mp >= max_mp:
+                    return await interaction.response.send_message("MPは既に最大です！", ephemeral=True)
                 
                 if 'MP+30' in effect:
                     mp_heal = 30
@@ -2728,14 +2749,18 @@ class InventorySelectView(discord.ui.View):
                 update_player(interaction.user.id, mp=new_mp)
                 db.remove_item_from_inventory(interaction.user.id, item_name)
                 
+                remaining = item_count - 1
                 await interaction.response.send_message(
-                    f"✨ **{item_name}** を使用した！\nMP +{actual_mp_heal} 回復！（{current_mp} → {new_mp}）",
+                    f"✨ **{item_name}** を使用した！\nMP +{actual_mp_heal} 回復！（{current_mp} → {new_mp}）\n残り: {remaining}個",
                     ephemeral=True
                 )
             # HP回復薬の処理
             else:
                 current_hp = player.get('hp', 50)
                 max_hp = player.get('max_hp', 50)
+                
+                if current_hp >= max_hp:
+                    return await interaction.response.send_message("HPは既に最大です！", ephemeral=True)
 
                 if 'HP+30' in effect:
                     heal = 30
@@ -2754,8 +2779,9 @@ class InventorySelectView(discord.ui.View):
                 update_player(interaction.user.id, hp=new_hp)
                 db.remove_item_from_inventory(interaction.user.id, item_name)
 
+                remaining = item_count - 1
                 await interaction.response.send_message(
-                    f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！（{current_hp} → {new_hp}）",
+                    f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！（{current_hp} → {new_hp}）\n残り: {remaining}個",
                     ephemeral=True
                 )
 
@@ -2764,7 +2790,7 @@ class InventorySelectView(discord.ui.View):
             ability = item_info.get('ability', 'なし')
             description = item_info.get('description', '')
             await interaction.response.send_message(
-                f"⚔️ **{item_name}**\n攻撃力: {attack}\n能力: {ability}\n\n{description}\n\n装備するには `!status` コマンドから装備変更してください。",
+                f"⚔️ **{item_name}** (所持数: {item_count})\n攻撃力: {attack}\n能力: {ability}\n\n{description}\n\n装備するには `!status` コマンドから装備変更してください。",
                 ephemeral=True
             )
 
@@ -2773,12 +2799,15 @@ class InventorySelectView(discord.ui.View):
             ability = item_info.get('ability', 'なし')
             description = item_info.get('description', '')
             await interaction.response.send_message(
-                f"🛡️ **{item_name}**\n防御力: {defense}\n能力: {ability}\n\n{description}\n\n装備するには `!status` コマンドから装備変更してください。",
+                f"🛡️ **{item_name}** (所持数: {item_count})\n防御力: {defense}\n能力: {ability}\n\n{description}\n\n装備するには `!status` コマンドから装備変更してください。",
                 ephemeral=True
             )
 
         else:
-            await interaction.response.send_message(f"📦 {item_name}\n{item_info.get('description', '')}", ephemeral=True)
+            await interaction.response.send_message(
+                f"📦 {item_name} (所持数: {item_count})\n{item_info.get('description', '')}",
+                ephemeral=True
+            )
 
 
 class EquipmentSelectView(discord.ui.View):
