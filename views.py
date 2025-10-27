@@ -2132,7 +2132,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
     ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
     
 
-        player_dmg = ability_result["damage"]
+    player_dmg = ability_result["damage"]
         self.enemy["hp"] -= player_dmg
 
         # HP吸収
