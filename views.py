@@ -1038,6 +1038,7 @@ class FinalBossBattleView(View):
         skill_info = game.get_skill_info(skill_id)
 
         if not skill_info:
+            self.is_processing = False
             return await interaction.response.send_message("⚠️ スキル情報が見つかりません。", ephemeral=True)
 
         player_data = db.get_player(interaction.user.id)
@@ -1045,9 +1046,11 @@ class FinalBossBattleView(View):
         mp_cost = skill_info["mp_cost"]
 
         if current_mp < mp_cost:
+            self.is_processing = False
             return await interaction.response.send_message(f"⚠️ MPが足りません！（必要: {mp_cost}, 現在: {current_mp}）", ephemeral=True)
 
         if not db.consume_mp(interaction.user.id, mp_cost):
+            self.is_processing = False
             return await interaction.response.send_message("⚠️ MP消費に失敗しました。", ephemeral=True)
 
         player_data = db.get_player(interaction.user.id)
@@ -1513,6 +1516,7 @@ class BossBattleView(View):
         skill_info = game.get_skill_info(skill_id)
 
         if not skill_info:
+            self.is_processing = False
             return await interaction.response.send_message("⚠️ スキル情報が見つかりません。", ephemeral=True)
 
         player_data = db.get_player(interaction.user.id)
@@ -1520,9 +1524,11 @@ class BossBattleView(View):
         mp_cost = skill_info["mp_cost"]
 
         if current_mp < mp_cost:
+            self.is_processing = False
             return await interaction.response.send_message(f"⚠️ MPが足りません！（必要: {mp_cost}, 現在: {current_mp}）", ephemeral=True)
 
         if not db.consume_mp(interaction.user.id, mp_cost):
+            self.is_processing = False
             return await interaction.response.send_message("⚠️ MP消費に失敗しました。", ephemeral=True)
 
         player_data = db.get_player(interaction.user.id)
@@ -1896,6 +1902,7 @@ class BattleView(View):
         self.enemy = enemy    # { "name": str, "hp": int, "atk": int, "def": int }
         self.message = None
         self.user_processing = user_processing
+        self.is_processing = False  # 連打防止フラグ
 
         if "user_id" in player:
             equipment_bonus = game.calculate_equipment_bonus(player["user_id"])
@@ -1968,15 +1975,23 @@ class BattleView(View):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
+        # 連打防止チェック
+        if self.is_processing:
+            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
+        
+        self.is_processing = True
+
         if db.is_mp_stunned(interaction.user.id):
             db.set_mp_stunned(interaction.user.id, False)
             await interaction.response.send_message("⚠️ MP枯渇で行動不能！\n『嘘だろ!?』\n次のターンから行動可能になります。", ephemeral=True)
+            self.is_processing = False
             return
 
         skill_id = interaction.data['values'][0]
         skill_info = game.get_skill_info(skill_id)
 
         if not skill_info:
+            self.is_processing = False
             return await interaction.response.send_message("⚠️ スキル情報が見つかりません。", ephemeral=True)
 
         player_data = db.get_player(interaction.user.id)
@@ -1984,9 +1999,11 @@ class BattleView(View):
         mp_cost = skill_info["mp_cost"]
 
         if current_mp < mp_cost:
+            self.is_processing = False
             return await interaction.response.send_message(f"⚠️ MPが足りません！（必要: {mp_cost}, 現在: {current_mp}）", ephemeral=True)
 
         if not db.consume_mp(interaction.user.id, mp_cost):
+            self.is_processing = False
             return await interaction.response.send_message("⚠️ MP消費に失敗しました。", ephemeral=True)
 
         player_data = db.get_player(interaction.user.id)
@@ -2020,6 +2037,7 @@ class BattleView(View):
                 await self.message.edit(view=self)
                 if self.ctx.author.id in self.user_processing:
                     self.user_processing[self.ctx.author.id] = False
+                self.is_processing = False
                 await interaction.response.defer()
                 return
 
@@ -2044,6 +2062,7 @@ class BattleView(View):
                 await self.message.edit(view=self)
                 if self.ctx.author.id in self.user_processing:
                     self.user_processing[self.ctx.author.id] = False
+                self.is_processing = False
                 await interaction.response.defer()
                 return
 
@@ -2057,6 +2076,7 @@ class BattleView(View):
 
         db.update_player(interaction.user.id, hp=self.player["hp"])
         await self.update_embed(text)
+        self.is_processing = False  # 処理完了
         await interaction.response.defer()
 
     # =====================================
@@ -2067,6 +2087,12 @@ class BattleView(View):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
+        # 連打防止チェック
+        if self.is_processing:
+            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
+        
+        self.is_processing = True
+
         # 最初にdeferして3秒タイムアウトを回避
         await interaction.response.defer()
 
@@ -2074,6 +2100,7 @@ class BattleView(View):
             db.set_mp_stunned(interaction.user.id, False)
             text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
             await self.update_embed(text)
+            self.is_processing = False
             return
 
         # プレイヤー攻撃
@@ -2135,6 +2162,7 @@ class BattleView(View):
             await self.message.edit(view=self)
             if self.ctx.author.id in self.user_processing:
                 self.user_processing[self.ctx.author.id] = False
+            self.is_processing = False
             return
 
         # 怯み効果で敵がスキップ
@@ -2143,6 +2171,7 @@ class BattleView(View):
             # HPを保存
             db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
+            self.is_processing = False
             return
 
         # 凍結効果で敵がスキップ
@@ -2151,6 +2180,7 @@ class BattleView(View):
             # HPを保存
             db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
+            self.is_processing = False
             return
 
         # 敵反撃
@@ -2189,6 +2219,7 @@ class BattleView(View):
                     await self.message.edit(view=self)
                     if self.ctx.author.id in self.user_processing:
                         self.user_processing[self.ctx.author.id] = False
+                    self.is_processing = False
                     return
 
             # 反射ダメージ
@@ -2203,6 +2234,7 @@ class BattleView(View):
                     await self.message.edit(view=self)
                     if self.ctx.author.id in self.user_processing:
                         self.user_processing[self.ctx.author.id] = False
+                    self.is_processing = False
                     return
 
             # HP回復
@@ -2231,11 +2263,13 @@ class BattleView(View):
                 await self.message.edit(view=self)
                 if self.ctx.author.id in self.user_processing:
                     self.user_processing[self.ctx.author.id] = False
+                self.is_processing = False
                 return
 
         # HPを保存（戦闘継続時）
         db.update_player(interaction.user.id, hp=self.player["hp"])
         await self.update_embed(text)
+        self.is_processing = False  # 処理完了
 
     # =====================================
     # 🛡️ 防御
@@ -2244,6 +2278,12 @@ class BattleView(View):
     async def defend(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+
+        # 連打防止チェック
+        if self.is_processing:
+            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
+        
+        self.is_processing = True
 
         # 最初にdeferして3秒タイムアウトを回避
         await interaction.response.defer()
@@ -2273,11 +2313,13 @@ class BattleView(View):
             # 処理完了フラグをクリア
             if self.ctx.author.id in self.user_processing:
                 self.user_processing[self.ctx.author.id] = False
+            self.is_processing = False
             return
 
         # HPを保存
         db.update_player(interaction.user.id, hp=self.player["hp"])
         await self.update_embed(text)
+        self.is_processing = False  # 処理完了
 
     # =====================================
     # 🏃‍♂️ 逃げる
@@ -2338,66 +2380,137 @@ class BattleView(View):
         if not items:
             return await interaction.response.send_message("使えるアイテムがありません！", ephemeral=True)
 
-        # 使用可能なポーション類を抽出
-        usable_items = []
+        # HP回復薬とMP回復薬を分類
+        hp_potions = []
+        mp_potions = []
+        
         for item in items:
             item_info = game.get_item_info(item)
             if item_info and item_info.get('type') == 'potion':
-                usable_items.append(item)
+                effect = item_info.get('effect', '')
+                if 'MP+' in effect or 'MP全回復' in effect:
+                    mp_potions.append((item, item_info))
+                else:
+                    hp_potions.append((item, item_info))
 
-        if not usable_items:
+        if not hp_potions and not mp_potions:
             return await interaction.response.send_message("戦闘で使えるアイテムがありません！", ephemeral=True)
 
-        # アイテム選択メニューを作成
-        options = []
-        for idx, item in enumerate(usable_items[:25]):
-            item_info = game.get_item_info(item)
-            effect = item_info.get('effect', '回復') if item_info else '回復'
-            options.append(discord.SelectOption(
-                label=item,
-                description=effect,
-                value=f"{idx}_{item}"
-            ))
+        # Viewを作成
+        item_view = discord.ui.View(timeout=60)
+        
+        # HP回復薬のプルダウン（最大15個）
+        if hp_potions:
+            hp_options = []
+            for idx, (item, info) in enumerate(hp_potions[:15]):
+                effect = info.get('effect', 'HP回復')
+                hp_options.append(discord.SelectOption(
+                    label=item,
+                    description=effect,
+                    value=f"hp_{idx}_{item}",
+                    emoji="💚"
+                ))
+            
+            hp_select = discord.ui.Select(
+                placeholder="💚 HP回復薬",
+                options=hp_options,
+                custom_id="hp_potion_select"
+            )
+            hp_select.callback = self.make_item_callback(hp_potions)
+            item_view.add_item(hp_select)
+        
+        # MP回復薬のプルダウン（最大15個）
+        if mp_potions:
+            mp_options = []
+            for idx, (item, info) in enumerate(mp_potions[:15]):
+                effect = info.get('effect', 'MP回復')
+                mp_options.append(discord.SelectOption(
+                    label=item,
+                    description=effect,
+                    value=f"mp_{idx}_{item}",
+                    emoji="💙"
+                ))
+            
+            mp_select = discord.ui.Select(
+                placeholder="💙 MP回復薬",
+                options=mp_options,
+                custom_id="mp_potion_select"
+            )
+            mp_select.callback = self.make_item_callback(mp_potions)
+            item_view.add_item(mp_select)
 
-        select = discord.ui.Select(
-            placeholder="使用するアイテムを選択",
-            options=options,
-            custom_id="battle_item_select"
-        )
+        await interaction.response.send_message("アイテムを選択してください:", view=item_view, ephemeral=True)
+    
+    def make_item_callback(self, potion_list):
+        """アイテム選択のコールバック関数を生成"""
 
         async def item_select_callback(select_interaction: discord.Interaction):
             if select_interaction.user.id != self.ctx.author.id:
                 return await select_interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
             selected_value = select_interaction.data['values'][0]
-            idx, item_name = selected_value.split("_", 1)
+            parts = selected_value.split("_", 2)  # 例: "hp_0_小さい回復薬"
+            potion_type = parts[0]
+            idx = int(parts[1])
+            item_name = parts[2]
 
             item_info = game.get_item_info(item_name)
             if not item_info:
                 return await select_interaction.response.send_message("アイテム情報が見つかりません。", ephemeral=True)
 
-            # HP回復処理
-            current_hp = self.player.get('hp', 50)
-            max_hp = self.player.get('max_hp', 50)
-
-            if 'HP+50' in item_info.get('effect', ''):
-                heal = 50
-            elif 'HP+100' in item_info.get('effect', ''):
-                heal = 100
-            elif 'HP全回復' in item_info.get('effect', ''):
-                heal = max_hp
+            text = ""
+            
+            # MP回復薬の処理
+            if potion_type == "mp":
+                current_mp = self.player.get('mp', 20)
+                max_mp = self.player.get('max_mp', 20)
+                effect = item_info.get('effect', '')
+                
+                if 'MP+30' in effect:
+                    mp_heal = 30
+                elif 'MP+60' in effect:
+                    mp_heal = 60
+                elif 'MP+100' in effect:
+                    mp_heal = 100
+                elif 'MP全回復' in effect:
+                    mp_heal = max_mp
+                else:
+                    mp_heal = 30
+                
+                new_mp = min(max_mp, current_mp + mp_heal)
+                actual_mp_heal = new_mp - current_mp
+                self.player['mp'] = new_mp
+                
+                db.remove_item_from_inventory(self.ctx.author.id, item_name)
+                db.update_player(self.ctx.author.id, mp=new_mp)
+                
+                text = f"✨ **{item_name}** を使用した！\nMP +{actual_mp_heal} 回復！"
+            
+            # HP回復薬の処理
             else:
-                heal = 30
+                current_hp = self.player.get('hp', 50)
+                max_hp = self.player.get('max_hp', 50)
+                effect = item_info.get('effect', '')
 
-            new_hp = min(max_hp, current_hp + heal)
-            actual_heal = new_hp - current_hp
-            self.player['hp'] = new_hp
+                if 'HP+30' in effect:
+                    heal = 30
+                elif 'HP+50' in effect:
+                    heal = 50
+                elif 'HP+100' in effect:
+                    heal = 100
+                elif 'HP全回復' in effect:
+                    heal = max_hp
+                else:
+                    heal = 30
 
-            # インベントリから削除
-            db.remove_item_from_inventory(self.ctx.author.id, item_name)
-            db.update_player(self.ctx.author.id, hp=new_hp)
+                new_hp = min(max_hp, current_hp + heal)
+                actual_heal = new_hp - current_hp
+                self.player['hp'] = new_hp
 
-            text = f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！"
+                db.remove_item_from_inventory(self.ctx.author.id, item_name)
+                db.update_player(self.ctx.author.id, hp=new_hp)
+
+                text = f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！"
 
             # 敵の反撃
             enemy_dmg = max(0, self.enemy["atk"] + random.randint(-3, 3) - self.player["defense"])
@@ -2429,13 +2542,8 @@ class BattleView(View):
             db.update_player(self.ctx.author.id, hp=self.player["hp"])
             await self.update_embed(text)
             await select_interaction.response.defer()
-
-        select.callback = item_select_callback
-
-        view = discord.ui.View(timeout=60)
-        view.add_item(select)
-
-        await interaction.response.send_message("アイテムを選択してください:", view=view, ephemeral=True)
+        
+        return item_select_callback
 
     # =====================================
     # 終了時無効化
@@ -2469,24 +2577,111 @@ class InventorySelectView(discord.ui.View):
 
         if not inventory:
             options = [discord.SelectOption(label="アイテムなし", description="インベントリは空です", value="none")]
+            select = discord.ui.Select(
+                placeholder="アイテムを選んで詳細を表示",
+                options=options,
+                custom_id="inventory_select"
+            )
+            select.callback = self.select_callback
+            self.add_item(select)
         else:
-            options = []
-            for idx, item in enumerate(inventory[:25]):
+            # アイテムを種類別に分類
+            potions = []
+            weapons = []
+            armors = []
+            materials = []
+            
+            for idx, item in enumerate(inventory):
                 item_info = game.get_item_info(item)
-                desc = item_info.get('description', 'アイテム')[:100] if item_info else 'アイテム'
-                options.append(discord.SelectOption(
-                    label=str(item),
-                    description=desc,
-                    value=f"{idx}_{item}"
-                ))
-
-        select = discord.ui.Select(
-            placeholder="アイテムを選んで詳細を表示",
-            options=options,
-            custom_id="inventory_select"
-        )
-        select.callback = self.select_callback
-        self.add_item(select)
+                if item_info:
+                    if item_info['type'] == 'potion':
+                        potions.append((idx, item, item_info))
+                    elif item_info['type'] == 'weapon':
+                        weapons.append((idx, item, item_info))
+                    elif item_info['type'] == 'armor':
+                        armors.append((idx, item, item_info))
+                    else:
+                        materials.append((idx, item, item_info))
+            
+            # ポーションのプルダウン（最大15個）
+            if potions:
+                potion_options = []
+                for idx, item, info in potions[:15]:
+                    desc = info.get('description', 'ポーション')[:100]
+                    potion_options.append(discord.SelectOption(
+                        label=str(item),
+                        description=desc,
+                        value=f"{idx}_{item}",
+                        emoji="🧪"
+                    ))
+                
+                potion_select = discord.ui.Select(
+                    placeholder="🧪 ポーション",
+                    options=potion_options,
+                    custom_id="potion_select"
+                )
+                potion_select.callback = self.select_callback
+                self.add_item(potion_select)
+            
+            # 武器のプルダウン（最大15個）
+            if weapons:
+                weapon_options = []
+                for idx, item, info in weapons[:15]:
+                    desc = f"攻撃力:{info.get('attack', 0)}"
+                    weapon_options.append(discord.SelectOption(
+                        label=str(item),
+                        description=desc[:100],
+                        value=f"{idx}_{item}",
+                        emoji="⚔️"
+                    ))
+                
+                weapon_select = discord.ui.Select(
+                    placeholder="⚔️ 武器",
+                    options=weapon_options,
+                    custom_id="weapon_select"
+                )
+                weapon_select.callback = self.select_callback
+                self.add_item(weapon_select)
+            
+            # 防具のプルダウン（最大15個）
+            if armors:
+                armor_options = []
+                for idx, item, info in armors[:15]:
+                    desc = f"防御力:{info.get('defense', 0)}"
+                    armor_options.append(discord.SelectOption(
+                        label=str(item),
+                        description=desc[:100],
+                        value=f"{idx}_{item}",
+                        emoji="🛡️"
+                    ))
+                
+                armor_select = discord.ui.Select(
+                    placeholder="🛡️ 防具",
+                    options=armor_options,
+                    custom_id="armor_select"
+                )
+                armor_select.callback = self.select_callback
+                self.add_item(armor_select)
+            
+            # 素材のプルダウン（最大15個）
+            if materials:
+                material_options = []
+                for idx, item, info in materials[:15]:
+                    desc = info.get('description', '素材')[:100]
+                    material_options.append(discord.SelectOption(
+                        label=str(item),
+                        description=desc,
+                        value=f"{idx}_{item}",
+                        emoji="📦"
+                    ))
+                
+                material_select = discord.ui.Select(
+                    placeholder="📦 素材",
+                    options=material_options,
+                    custom_id="material_select"
+                )
+                material_select.callback = self.select_callback
+                self.add_item(material_select)
 
     async def select_callback(self, interaction: discord.Interaction):
         if self.player.get("user_id") and interaction.user.id != int(self.player.get("user_id")):
@@ -2509,28 +2704,60 @@ class InventorySelectView(discord.ui.View):
             if not player:
                 return await interaction.response.send_message("プレイヤーデータが見つかりません。", ephemeral=True)
 
-            current_hp = player.get('hp', 50)
-            max_hp = player.get('max_hp', 50)
-
-            if 'HP+50' in item_info.get('effect', ''):
-                heal = 50
-            elif 'HP+100' in item_info.get('effect', ''):
-                heal = 100
-            elif 'HP全回復' in item_info.get('effect', ''):
-                heal = max_hp
+            effect = item_info.get('effect', '')
+            
+            # MP回復薬の処理
+            if 'MP+' in effect or 'MP全回復' in effect:
+                current_mp = player.get('mp', 20)
+                max_mp = player.get('max_mp', 20)
+                
+                if 'MP+30' in effect:
+                    mp_heal = 30
+                elif 'MP+60' in effect:
+                    mp_heal = 60
+                elif 'MP+100' in effect:
+                    mp_heal = 100
+                elif 'MP全回復' in effect:
+                    mp_heal = max_mp
+                else:
+                    mp_heal = 30
+                
+                new_mp = min(max_mp, current_mp + mp_heal)
+                actual_mp_heal = new_mp - current_mp
+                
+                update_player(interaction.user.id, mp=new_mp)
+                db.remove_item_from_inventory(interaction.user.id, item_name)
+                
+                await interaction.response.send_message(
+                    f"✨ **{item_name}** を使用した！\nMP +{actual_mp_heal} 回復！（{current_mp} → {new_mp}）",
+                    ephemeral=True
+                )
+            # HP回復薬の処理
             else:
-                heal = 30
+                current_hp = player.get('hp', 50)
+                max_hp = player.get('max_hp', 50)
 
-            new_hp = min(max_hp, current_hp + heal)
-            actual_heal = new_hp - current_hp
+                if 'HP+30' in effect:
+                    heal = 30
+                elif 'HP+50' in effect:
+                    heal = 50
+                elif 'HP+100' in effect:
+                    heal = 100
+                elif 'HP全回復' in effect:
+                    heal = max_hp
+                else:
+                    heal = 30
 
-            update_player(interaction.user.id, hp=new_hp)
-            db.remove_item_from_inventory(interaction.user.id, item_name)
+                new_hp = min(max_hp, current_hp + heal)
+                actual_heal = new_hp - current_hp
 
-            await interaction.response.send_message(
-                f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！（{current_hp} → {new_hp}）",
-                ephemeral=True
-            )
+                update_player(interaction.user.id, hp=new_hp)
+                db.remove_item_from_inventory(interaction.user.id, item_name)
+
+                await interaction.response.send_message(
+                    f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！（{current_hp} → {new_hp}）",
+                    ephemeral=True
+                )
 
         elif item_info['type'] == 'weapon':
             attack = item_info.get('attack', 0)
@@ -2636,7 +2863,7 @@ class BlacksmithView(discord.ui.View):
         self.user_processing = user_processing
         self.materials = materials
 
-        available_recipes = []
+        self.available_recipes = []
         for recipe_name, recipe in game.CRAFTING_RECIPES.items():
             can_craft = True
             for material, required_count in recipe["materials"].items():
@@ -2644,11 +2871,11 @@ class BlacksmithView(discord.ui.View):
                     can_craft = False
                     break
             if can_craft:
-                available_recipes.append(recipe_name)
+                self.available_recipes.append(recipe_name)
 
-        if available_recipes:
+        if self.available_recipes:
             options = []
-            for recipe_name in available_recipes[:25]:
+            for recipe_name in self.available_recipes[:25]:
                 recipe = game.CRAFTING_RECIPES[recipe_name]
                 materials_str = ", ".join([f"{mat}x{count}" for mat, count in recipe["materials"].items()])
                 desc = f"{materials_str}"
@@ -2672,10 +2899,16 @@ class BlacksmithView(discord.ui.View):
             color=discord.Color.blue()
         )
 
-        for material, count in self.materials.items():
-            embed.add_field(name=material, value=f"x{count}", inline=True)
+        if self.materials:
+            for material, count in self.materials.items():
+                embed.add_field(name=material, value=f"x{count}", inline=True)
+        else:
+            embed.add_field(name="素材なし", value="素材を集めてきてください", inline=False)
 
-        embed.add_field(name="\n合成可能なレシピ", value="下のメニューから選択してください", inline=False)
+        if self.available_recipes:
+            embed.add_field(name="\n合成可能なレシピ", value="下のメニューから選択してください", inline=False)
+        else:
+            embed.add_field(name="\n合成可能なレシピ", value="現在の素材では合成できるアイテムがありません。\nもっと素材を集めてきてください。", inline=False)
 
         return embed
 
