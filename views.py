@@ -2095,39 +2095,42 @@ class BattleView(View):
         self.is_processing = False  # 処理完了
         await interaction.response.defer()
 
-    # =====================================
-    # 🗡️ 戦う
-    # =====================================
-    @button(label="戦う", style=discord.ButtonStyle.danger, emoji="🗡️")
-    async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.ctx.author.id:
-            return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+# =====================================
+# 🗡️ 戦う
+# =====================================
+@button(label="戦う", style=discord.ButtonStyle.danger, emoji="🗡️")
+async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
+    # 🔥 最優先：一番最初にdefer()
+    await interaction.response.defer()
+    
+    # 権限チェック（defer後はfollowup.sendを使う）
+    if interaction.user.id != self.ctx.author.id:
+        return await interaction.followup.send("これはあなたの戦闘ではありません！", ephemeral=True)
 
-        # 連打防止チェック
-        if self.is_processing:
-            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
-        
-        self.is_processing = True
+    # 連打防止チェック
+    if self.is_processing:
+        return await interaction.followup.send("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
+    
+    self.is_processing = True
 
-        # 最初にdeferして3秒タイムアウトを回避
-        await interaction.response.defer()
+    # MP枯渇チェック
+    if db.is_mp_stunned(interaction.user.id):
+        db.set_mp_stunned(interaction.user.id, False)
+        text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
+        await self.update_embed(text)
+        self.is_processing = False
+        return
 
-        if db.is_mp_stunned(interaction.user.id):
-            db.set_mp_stunned(interaction.user.id, False)
-            text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
-            await self.update_embed(text)
-            self.is_processing = False
-            return
+    # プレイヤー攻撃
+    base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.enemy["def"])
 
-        # プレイヤー攻撃
-        base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.enemy["def"])
+    # ability効果を適用
+    enemy_type = game.get_enemy_type(self.enemy["name"])
+    equipment_bonus = game.calculate_equipment_bonus(self.player["user_id"]) if "user_id" in self.player else {}
+    weapon_ability = equipment_bonus.get("weapon_ability", "")
 
-        # ability効果を適用
-        enemy_type = game.get_enemy_type(self.enemy["name"])
-        equipment_bonus = game.calculate_equipment_bonus(self.player["user_id"]) if "user_id" in self.player else {}
-        weapon_ability = equipment_bonus.get("weapon_ability", "")
-
-        ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
+    ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
+    
 
         player_dmg = ability_result["damage"]
         self.enemy["hp"] -= player_dmg
