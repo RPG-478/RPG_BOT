@@ -2936,6 +2936,15 @@ class BlacksmithView(discord.ui.View):
             )
             select.callback = self.craft_callback
             self.add_item(select)
+        
+        # 「戻る」ボタンを常に追加
+        close_button = discord.ui.Button(
+            label="戻る",
+            style=discord.ButtonStyle.secondary,
+            emoji="🚪"
+        )
+        close_button.callback = self.close_callback
+        self.add_item(close_button)
 
     def get_embed(self):
         embed = discord.Embed(
@@ -2953,7 +2962,11 @@ class BlacksmithView(discord.ui.View):
         if self.available_recipes:
             embed.add_field(name="\n合成可能なレシピ", value="下のメニューから選択してください", inline=False)
         else:
-            embed.add_field(name="\n合成可能なレシピ", value="現在の素材では合成できるアイテムがありません。\nもっと素材を集めてきてください。", inline=False)
+            embed.add_field(
+                name="\n⚠️ 合成可能なレシピなし", 
+                value="現在の素材では合成できるアイテムがありません。\nもっと素材を集めてから来てください。\n\n「戻る」ボタンで特殊イベント選択に戻れます。", 
+                inline=False
+            )
 
         return embed
 
@@ -2962,18 +2975,24 @@ class BlacksmithView(discord.ui.View):
             return await interaction.response.send_message("これはあなたの鍛冶屋ではありません！", ephemeral=True)
 
         recipe_name = interaction.data['values'][0]
-        recipe = game.CRAFTING_RECIPES[recipe_name]
+        recipe = game.CRAFTING_RECIPES.get(recipe_name)
+        
+        if not recipe:
+            return await interaction.response.send_message("⚠️ レシピ情報が見つかりません。", ephemeral=True)
 
         player = get_player(interaction.user.id)
         if not player:
-            return await interaction.response.send_message("プレイヤーデータが見つかりません。", ephemeral=True)
+            return await interaction.response.send_message("⚠️ プレイヤーデータが見つかりません。", ephemeral=True)
 
+        # 素材を消費
         for material, required_count in recipe["materials"].items():
             for _ in range(required_count):
                 db.remove_item_from_inventory(interaction.user.id, material)
 
+        # アイテムを追加
         db.add_item_to_inventory(interaction.user.id, recipe_name)
 
+        # アイテムデータベースに登録（存在しない場合）
         if recipe_name not in game.ITEMS_DATABASE:
             game.ITEMS_DATABASE[recipe_name] = {
                 "type": recipe["result_type"],
@@ -3004,6 +3023,26 @@ class BlacksmithView(discord.ui.View):
         if self.user_id in self.user_processing:
             self.user_processing[self.user_id] = False
 
+    async def close_callback(self, interaction: discord.Interaction):
+        """戻るボタン"""
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("これはあなたの鍛冶屋ではありません！", ephemeral=True)
+
+        embed = discord.Embed(
+            title="🏛️ 特殊イベント",
+            description="鍛冶屋を後にした。\n\n他の選択肢を選んでください。",
+            color=discord.Color.blue()
+        )
+
+        await interaction.response.edit_message(embed=embed, view=None)
+
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False
+
+    async def on_timeout(self):
+        """タイムアウト時にuser_processingをクリア"""
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False
 
 class MaterialMerchantView(discord.ui.View):
     """素材商人View - 素材を売却"""
