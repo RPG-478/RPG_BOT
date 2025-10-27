@@ -834,6 +834,8 @@ class SpecialEventView(View):
 # ==============================
 # ラスボスクリア時のアイテム持ち帰りView
 # ==============================
+from collections import Counter
+
 class FinalBossClearView(discord.ui.View):
     def __init__(self, user_id: int, ctx, user_processing: dict, boss_stage: int):
         super().__init__(timeout=300)
@@ -850,10 +852,13 @@ class FinalBossClearView(discord.ui.View):
         inventory = player.get("inventory", []) if player else []
 
         if inventory:
+            # アイテムをカウント（集約）
+            item_counts = Counter(inventory)
+            
             # アイテムを選択肢に変換（最大25個）
             options = []
-            for item in inventory[:25]:
-                item_info = game.get_item_info(item)
+            for i, (item_name, count) in enumerate(list(item_counts.items())[:25]):
+                item_info = game.get_item_info(item_name)
                 item_type = item_info.get("type", "material") if item_info else "material"
 
                 # 絵文字を選択
@@ -865,10 +870,14 @@ class FinalBossClearView(discord.ui.View):
                 }
                 emoji = emoji_map.get(item_type, "📦")
 
+                # ラベルに個数表示
+                label = f"{item_name} ×{count}" if count > 1 else item_name
+                desc = f"{item_type.upper()} - {item_info.get('description', '')[:50]}" if item_info else item_type.upper()
+
                 options.append(discord.SelectOption(
-                    label=item,
-                    description=f"{item_type.upper()} - {item_info.get('description', '')[:50]}" if item_info else item_type.upper(),
-                    value=item,
+                    label=label,
+                    description=desc,
+                    value=f"{i}_{item_name}",  # インデックスを付けて重複回避
                     emoji=emoji
                 ))
 
@@ -886,7 +895,14 @@ class FinalBossClearView(discord.ui.View):
         if interaction.user.id != self.user_id:
             return await interaction.response.send_message("これはあなたの選択ではありません！", ephemeral=True)
 
-        selected_item = interaction.data['values'][0]
+        selected_value = interaction.data['values'][0]
+        
+        # valueから型とアイテム名を分離
+        parts = selected_value.split("_", 1)
+        if len(parts) < 2:
+            return await interaction.response.send_message("不正な選択です。", ephemeral=True)
+        
+        idx, selected_item = parts
 
         # アイテム情報取得
         item_info = game.get_item_info(selected_item)
