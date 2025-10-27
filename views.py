@@ -2133,7 +2133,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
     
 
     player_dmg = ability_result["damage"]
-        self.enemy["hp"] -= player_dmg
+    self.enemy["hp"] -= player_dmg
 
         # HP吸収
         if ability_result["lifesteal"] > 0:
