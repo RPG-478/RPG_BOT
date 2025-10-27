@@ -99,6 +99,7 @@ async def start(ctx: commands.Context):
         player = get_player(user_id)
         if player and player.get("name"):
             await ctx.send("⚠️ あなたはすでにゲームを開始しています！", delete_after=10)
+            user_processing[user.id] = False
             return
 
         # プレイヤーデータが存在しない場合は作成
@@ -111,19 +112,36 @@ async def start(ctx: commands.Context):
         if not category:
             category = await guild.create_category("RPG")
 
-        # 個人チャンネル検索 or 作成
-        channel_name = f"{user.name}-冒険"
-        existing_channel = discord.utils.get(category.channels, name=channel_name.lower())
+        # 【重要】ユーザーIDベースで既存チャンネルをチェック
+        # トピックにユーザーIDを保存して検索
+        existing_channel = None
+        for ch in category.channels:
+            if ch.topic and str(user.id) in ch.topic:
+                existing_channel = ch
+                break
+        
         if existing_channel:
             await ctx.send(f"⚠️ すでにチャンネルが存在します: {existing_channel.mention}", delete_after=10)
+            user_processing[user.id] = False
             return
 
+        # チャンネル名を作成（表示名を使うが、IDで管理）
+        channel_name = f"{user.name}-冒険"
+
+        # パーミッション設定
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
             guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
         }
-        channel = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
+        
+        # 【重要】トピックにユーザーIDを保存
+        channel = await guild.create_text_channel(
+            channel_name, 
+            category=category, 
+            overwrites=overwrites,
+            topic=f"UserID:{user.id}"  # ← ここでユーザーIDを保存
+        )
 
         await ctx.send(f"✅ 冒険チャンネルを作成しました！ {channel.mention}", delete_after=10)
 
@@ -150,6 +168,9 @@ async def start(ctx: commands.Context):
                 )
         except Exception as e:
             print(f"通知送信エラー: {e}")
+    except Exception as e:
+        print(f"!startコマンドエラー: {e}")
+        await ctx.send(f"⚠️ エラーが発生しました: {e}", delete_after=10)
     finally:
         user_processing[user.id] = False
 
