@@ -2095,13 +2095,13 @@ class BattleView(View):
         self.is_processing = False  # 処理完了
         await interaction.response.defer()
 
-# =====================================
-# 🗡️ 戦う
-# =====================================
-@button(label="戦う", style=discord.ButtonStyle.danger, emoji="🗡️")
-async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
-    # 🔥 最優先：一番最初にdefer()
-    await interaction.response.defer()
+    # =====================================
+    # 🗡️ 戦う
+    # =====================================
+    @button(label="戦う", style=discord.ButtonStyle.danger, emoji="🗡️")
+    async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # 🔥 最優先：一番最初にdefer()
+        await interaction.response.defer()
     
     # 権限チェック（defer後はfollowup.sendを使う）
     if interaction.user.id != self.ctx.author.id:
