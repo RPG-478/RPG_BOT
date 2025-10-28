@@ -1,23 +1,24 @@
-from supabase import acreate_client, AsyncClient
+from supabase import create_client, Client
 import config
 import logging
 import asyncio
 import inspect
 import threading
+
 logger = logging.getLogger("rpgbot")
 
-_supabase_client: AsyncClient | None = None
+_supabase_client: Client | None = None
 _client_lock = asyncio.Lock()
 
-async def get_client() -> AsyncClient:
-    """非同期Supabaseクライアントを取得（シングルトンパターン）"""
+async def get_client() -> Client:
+    """Supabaseクライアントを取得（シングルトンパターン）"""
     global _supabase_client
     
     if _supabase_client is None:
         async with _client_lock:
             if _supabase_client is None:
-                _supabase_client = await acreate_client(config.SUPABASE_URL, config.SUPABASE_KEY)
-                logger.info("✅ Supabase非同期クライアントを初期化しました")
+                _supabase_client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
+                logger.info("✅ Supabaseクライアントを初期化しました")
     
     return _supabase_client
 
@@ -25,7 +26,6 @@ async def close_client():
     """Supabaseクライアントをクローズ（Bot終了時に呼び出し）"""
     global _supabase_client
     if _supabase_client is not None:
-        await _supabase_client.aclose()
         _supabase_client = None
         logger.info("✅ Supabaseクライアントをクローズしました")
 
@@ -34,7 +34,6 @@ async def get_player(user_id):
     client = await get_client()
     res = await client.table("players").select("*").eq("user_id", str(user_id)).execute()
     return res.data[0] if res.data else None
-
 async def create_player(user_id: int):
     """新規プレイヤーを作成（デフォルト値を明示的に設定）"""
     client = await get_client()
