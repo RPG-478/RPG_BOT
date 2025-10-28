@@ -6263,7 +6263,7 @@ class StoryView(View):
                 return
 
             # 選択肢がない場合は通常通り完了
-            db.set_story_flag(self.user_id, self.story_id)
+            await db.set_story_flag(self.user_id, self.story_id)
 
             embed = discord.Embed(
                 title="📘 ストーリー完了！",
@@ -6284,7 +6284,7 @@ class StoryView(View):
 
                 boss = game.get_boss(boss_stage)
                 if boss:
-                    player = db.get_player(self.user_id)
+                    player = await db.get_player(self.user_id)
                     player_data = {
                         "hp": player.get("hp", 50),
                         "attack": player.get("atk", 5),
@@ -6303,7 +6303,7 @@ class StoryView(View):
                         await ctx.channel.send(embed=embed)
                         await asyncio.sleep(2)
 
-                        view = FinalBossBattleView(ctx, player_data, boss, self.user_processing, boss_stage)
+                        view = await FinalBossBattleView.create(ctx, player_data, boss, self.user_processing, boss_stage)
                         await view.send_initial_embed()
                     else:
                         embed = discord.Embed(
@@ -6314,7 +6314,7 @@ class StoryView(View):
                         await ctx.channel.send(embed=embed)
                         await asyncio.sleep(1.5)
 
-                        view = BossBattleView(ctx, player_data, boss, self.user_processing, boss_stage)
+                        view = await BossBattleView.create(ctx, player_data, boss, self.user_processing, boss_stage)
                         await view.send_initial_embed()
             else:
                 if self.user_id in self.user_processing:
@@ -6362,20 +6362,20 @@ class StoryChoiceView(View):
             )
 
             reward_text = ""
-            player = db.get_player(self.user_id)
+            player = await db.get_player(self.user_id)
 
             if result.get("reward") == "hp_restore":
                 max_hp = player.get("max_hp", 50)
                 heal_amount = int(max_hp * 1)
                 new_hp = min(max_hp, player.get("hp", 50) + heal_amount)
-                db.update_player(self.user_id, hp=new_hp)
+                await db.update_player(self.user_id, hp=new_hp)
                 reward_text = f"\n\n💚 HP +{heal_amount} 回復！"
 
             elif result.get("reward") == "weapon_drop":
                 weapons = [w for w, info in game.ITEMS_DATABASE.items() if info.get('type') == 'weapon']
                 if weapons:
                     weapon = random.choice(weapons)
-                    db.add_item_to_inventory(self.user_id, weapon)
+                    await db.add_item_to_inventory(self.user_id, weapon)
                     reward_text = f"\n\n⚔️ **{weapon}** を手に入れた！"
 
             elif result.get("reward") == "item_drop":
@@ -6385,25 +6385,25 @@ class StoryChoiceView(View):
                 if current_gold >= gold_cost:
                     items = list(game.ITEMS_DATABASE.keys())
                     item = random.choice(items)
-                    db.add_item_to_inventory(self.user_id, item)
-                    db.add_gold(self.user_id, -gold_cost)
+                    await db.add_item_to_inventory(self.user_id, item)
+                    await db.add_gold(self.user_id, -gold_cost)
                     reward_text = f"\n\n💰 -{gold_cost}G\n📦 **{item}** を手に入れた！"
                 else:
                     reward_text = f"\n\n💸 ゴールドが足りない…（必要: {gold_cost}G）"
 
             elif result.get("reward") == "small_gold":
                 gold_amount = random.randint(50, 100)
-                db.add_gold(self.user_id, gold_amount)
+                await db.add_gold(self.user_id, gold_amount)
                 reward_text = f"\n\n💰 {gold_amount}G を手に入れた！"
 
             elif result.get("reward") == "rare_item_with_damage":
                 rare_items = [w for w, info in game.ITEMS_DATABASE.items() if info.get('attack', 0) >= 20 or info.get('defense', 0) >= 15]
                 if rare_items:
                     item = random.choice(rare_items)
-                    db.add_item_to_inventory(self.user_id, item)
+                    await db.add_item_to_inventory(self.user_id, item)
                     damage = random.randint(10, 20)
                     new_hp = max(1, player.get("hp", 50) - damage)
-                    db.update_player(self.user_id, hp=new_hp)
+                    await db.update_player(self.user_id, hp=new_hp)
                     reward_text = f"\n\n📦 **{item}** を手に入れた！\n💔 HP -{damage}"
 
             elif result.get("reward") == "max_hp_boost":
@@ -6413,8 +6413,8 @@ class StoryChoiceView(View):
                 if current_gold >= gold_cost:
                     current_max_hp = player.get("max_hp", 50)
                     new_max_hp = current_max_hp + 20
-                    db.update_player(self.user_id, max_hp=new_max_hp)
-                    db.add_gold(self.user_id, -gold_cost)
+                    await db.update_player(self.user_id, max_hp=new_max_hp)
+                    await db.add_gold(self.user_id, -gold_cost)
                     reward_text = f"\n\n💰 -{gold_cost}G\n❤️ 最大HP +20！（{current_max_hp} → {new_max_hp}）"
                 else:
                     reward_text = f"\n\n💸 ゴールドが足りない…（必要: {gold_cost}G）"
@@ -6423,47 +6423,47 @@ class StoryChoiceView(View):
                 legendary_items = [w for w, info in game.ITEMS_DATABASE.items() if info.get('attack', 0) >= 30 or info.get('defense', 0) >= 25]
                 if legendary_items:
                     item = random.choice(legendary_items)
-                    db.add_item_to_inventory(self.user_id, item)
+                    await db.add_item_to_inventory(self.user_id, item)
                     reward_text = f"\n\n✨ 伝説の **{item}** を手に入れた！"
 
             elif result.get("reward") == "gold_with_damage":
                 gold_amount = random.randint(200, 400)
-                db.add_gold(self.user_id, gold_amount)
+                await db.add_gold(self.user_id, gold_amount)
                 damage = random.randint(10, 20)
                 new_hp = max(1, player.get("hp", 50) - damage)
-                db.update_player(self.user_id, hp=new_hp)
+                await db.update_player(self.user_id, hp=new_hp)
                 reward_text = f"\n\n💰 {gold_amount}G を手に入れた！\n💔 HP -{damage}"
 
             elif result.get("reward") == "mp_restore":
                 max_mp = player.get("max_mp", 20)
                 heal_amount = int(max_mp * 1)
                 new_mp = min(max_mp, player.get("mp", 20) + heal_amount)
-                db.update_player(self.user_id, mp=new_mp)
+                await db.update_player(self.user_id, mp=new_mp)
                 reward_text = f"\n\n💙 MP +{heal_amount} 回復！"
 
             elif result.get("reward") == "defense_boost":
                 def_boost = random.randint(1, 3)
                 current_def = player.get("def", 5)
-                db.update_player(self.user_id, def_=current_def + def_boost)
+                await db.update_player(self.user_id, def_=current_def + def_boost)
                 reward_text = f"\n\n🛡️ 防御力 +{def_boost}！（{current_def} → {current_def + def_boost}）"
 
             elif result.get("reward") == "attack_boost":
                 atk_boost = random.randint(3, 5)
                 current_atk = player.get("atk", 10)
-                db.update_player(self.user_id, atk=current_atk + atk_boost)
+                await db.update_player(self.user_id, atk=current_atk + atk_boost)
                 reward_text = f"\n\n⚔️ 攻撃力 +{atk_boost}！（{current_atk} → {current_atk + atk_boost}）"
 
             elif result.get("reward") == "full_heal":
                 max_hp = player.get("max_hp", 100)
                 max_mp = player.get("max_mp", 100)
-                db.update_player(self.user_id, hp=max_hp, mp=max_mp)
+                await db.update_player(self.user_id, hp=max_hp, mp=max_mp)
                 reward_text = f"\n\n✨ HP・MP完全回復！"
 
             embed.description += reward_text
 
             await interaction.response.edit_message(embed=embed, view=None)
 
-            db.set_story_flag(self.user_id, self.story_id)
+            await db.set_story_flag(self.user_id, self.story_id)
 
             if self.user_id in self.user_processing:
                 self.user_processing[self.user_id] = False
