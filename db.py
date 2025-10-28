@@ -1,43 +1,64 @@
-from supabase import create_client, Client
+import httpx
 import config
 import logging
 import asyncio
 import inspect
 import threading
+from typing import Optional, Dict, List, Any
+import json
 
 logger = logging.getLogger("rpgbot")
 
-_supabase_client: Client | None = None
+_http_client: Optional[httpx.AsyncClient] = None
 _client_lock = asyncio.Lock()
 
-async def get_client() -> Client:
-    """Supabaseクライアントを取得（シングルトンパターン）"""
-    global _supabase_client
+def _get_headers() -> Dict[str, str]:
+    """Supabase REST API用のヘッダーを取得"""
+    return {
+        "apikey": config.SUPABASE_KEY or "",
+        "Authorization": f"Bearer {config.SUPABASE_KEY or ''}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"  # INSERT/UPDATEでデータを返す
+    }
+
+async def get_client() -> httpx.AsyncClient:
+    """非同期HTTPクライアントを取得（シングルトンパターン）"""
+    global _http_client
     
-    if _supabase_client is None:
+    if _http_client is None:
         async with _client_lock:
-            if _supabase_client is None:
-                _supabase_client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
-                logger.info("✅ Supabaseクライアントを初期化しました")
+            if _http_client is None:
+                _http_client = httpx.AsyncClient(timeout=30.0)
+                logger.info("✅ HTTPクライアントを初期化しました")
     
-    return _supabase_client
+    return _http_client
 
 async def close_client():
-    """Supabaseクライアントをクローズ（Bot終了時に呼び出し）"""
-    global _supabase_client
-    if _supabase_client is not None:
-        _supabase_client = None
-        logger.info("✅ Supabaseクライアントをクローズしました")
+    """HTTPクライアントをクローズ（Bot終了時に呼び出し）"""
+    global _http_client
+    if _http_client is not None:
+        await _http_client.aclose()
+        _http_client = None
+        logger.info("✅ HTTPクライアントをクローズしました")
 
 async def get_player(user_id):
     """プレイヤーデータを取得"""
     client = await get_client()
-    res = await client.table("players").select("*").eq("user_id", str(user_id)).execute()
-    return res.data[0] if res.data else None
+    url = f"{config.SUPABASE_URL}/rest/v1/players"
+    params = {"user_id": f"eq.{str(user_id)}", "select": "*"}
+    
+    response = await client.get(url, headers=_get_headers(), params=params)
+    response.raise_for_status()
+    
+    data = response.json()
+    return data[0] if data else None
+
 async def create_player(user_id: int):
     """新規プレイヤーを作成（デフォルト値を明示的に設定）"""
     client = await get_client()
-    await client.table("players").insert({
+    url = f"{config.SUPABASE_URL}/rest/v1/players"
+    
+    player_data = {
         "user_id": str(user_id),
         "hp": 50,
         "max_hp": 50,
@@ -45,17 +66,30 @@ async def create_player(user_id: int):
         "max_mp": 20,
         "atk": 5,
         "def": 2
-    }).execute()
+    }
+    
+    response = await client.post(url, headers=_get_headers(), json=player_data)
+    response.raise_for_status()
+    return response.json()
 
 async def update_player(user_id, **kwargs):
     """プレイヤーデータを更新"""
     client = await get_client()
-    await client.table("players").update(kwargs).eq("user_id", str(user_id)).execute()
+    url = f"{config.SUPABASE_URL}/rest/v1/players"
+    params = {"user_id": f"eq.{str(user_id)}"}
+    
+    response = await client.patch(url, headers=_get_headers(), params=params, json=kwargs)
+    response.raise_for_status()
+    return response.json()
 
 async def delete_player(user_id):
     """プレイヤーデータを削除"""
     client = await get_client()
-    await client.table("players").delete().eq("user_id", str(user_id)).execute()
+    url = f"{config.SUPABASE_URL}/rest/v1/players"
+    params = {"user_id": f"eq.{str(user_id)}"}
+    
+    response = await client.delete(url, headers=_get_headers(), params=params)
+    response.raise_for_status()
 
 async def add_item_to_inventory(user_id, item_name):
     """インベントリにアイテムを追加"""
@@ -441,10 +475,15 @@ async def clear_story_flags(user_id):
 async def get_global_weapon_count(weapon_id):
     """シークレット武器のグローバル排出数を取得"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/secret_weapons_global"
+    params = {"weapon_id": f"eq.{weapon_id}", "select": "total_dropped"}
+    
     try:
-        res = await client.table("secret_weapons_global").select("total_dropped").eq("weapon_id", weapon_id).execute()
-        if res.data and len(res.data) > 0:
-            return res.data[0].get("total_dropped", 0)
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+        if data and len(data) > 0:
+            return data[0].get("total_dropped", 0)
         return 0
     except:
         return 0
@@ -456,15 +495,20 @@ async def increment_global_weapon_count(weapon_id):
         current_count = await get_global_weapon_count(weapon_id)
 
         if current_count == 0:
-            await client.table("secret_weapons_global").insert({
+            url = f"{config.SUPABASE_URL}/rest/v1/secret_weapons_global"
+            weapon_data = {
                 "weapon_id": weapon_id,
                 "total_dropped": 1,
                 "max_limit": 10
-            }).execute()
+            }
+            response = await client.post(url, headers=_get_headers(), json=weapon_data)
+            response.raise_for_status()
         else:
-            await client.table("secret_weapons_global").update({
-                "total_dropped": current_count + 1
-            }).eq("weapon_id", weapon_id).execute()
+            url = f"{config.SUPABASE_URL}/rest/v1/secret_weapons_global"
+            params = {"weapon_id": f"eq.{weapon_id}"}
+            update_data = {"total_dropped": current_count + 1}
+            response = await client.patch(url, headers=_get_headers(), params=params, json=update_data)
+            response.raise_for_status()
 
         return True
     except Exception as e:
@@ -510,28 +554,29 @@ async def add_exp(user_id, amount):
         current_level += 1
 
         # ステータス上昇
-        new_hp = player.get("hp", 50) + 5
-        new_max_hp = player.get("max_hp", 50) + 5
-        new_atk = player.get("atk", 5) + 1
-        new_def = player.get("def", 2) + 1
+        if player:
+            new_hp = player.get("hp", 50) + 5
+            new_max_hp = player.get("max_hp", 50) + 5
+            new_atk = player.get("atk", 5) + 1
+            new_def = player.get("def", 2) + 1
 
-        update_data = {
-            "level": current_level,
-            "hp": new_hp,
-            "max_hp": new_max_hp,
-            "atk": new_atk,
-            "def": new_def
-        }
-        await update_player(user_id, **update_data)
+            update_data = {
+                "level": current_level,
+                "hp": new_hp,
+                "max_hp": new_max_hp,
+                "atk": new_atk,
+                "def": new_def
+            }
+            await update_player(user_id, **update_data)
 
-        level_ups.append({
-            "new_level": current_level,
-            "hp_gain": 5,
-            "atk_gain": 1,
-            "def_gain": 1
-        })
+            level_ups.append({
+                "new_level": current_level,
+                "hp_gain": 5,
+                "atk_gain": 1,
+                "def_gain": 1
+            })
 
-        player = await get_player(user_id)
+            player = await get_player(user_id)
 
     # 残りEXPを更新
     await update_player(user_id, exp=new_exp)
@@ -635,13 +680,17 @@ async def check_and_unlock_distance_skills(user_id, distance):
 async def add_to_storage(user_id, item_name, item_type):
     """倉庫にアイテムを追加"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/storage"
+    
     try:
-        await client.table("storage").insert({
+        storage_data = {
             "user_id": str(user_id),
             "item_name": item_name,
             "item_type": item_type,
             "is_taken": False
-        }).execute()
+        }
+        response = await client.post(url, headers=_get_headers(), json=storage_data)
+        response.raise_for_status()
         return True
     except Exception as e:
         print(f"Error adding to storage: {e}")
@@ -650,14 +699,21 @@ async def add_to_storage(user_id, item_name, item_type):
 async def get_storage_items(user_id, include_taken=False):
     """倉庫のアイテムリストを取得"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/storage"
+    
     try:
-        query = client.table("storage").select("*").eq("user_id", str(user_id))
-
+        params = {
+            "user_id": f"eq.{str(user_id)}",
+            "select": "*",
+            "order": "stored_at.desc"
+        }
+        
         if not include_taken:
-            query = query.eq("is_taken", False)
-
-        res = await query.order("stored_at", desc=True).execute()
-        return res.data if res.data else []
+            params["is_taken"] = "eq.false"
+        
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
         print(f"Error getting storage items: {e}")
         return []
@@ -665,12 +721,17 @@ async def get_storage_items(user_id, include_taken=False):
 async def take_from_storage(user_id, storage_id):
     """倉庫からアイテムを取り出す（is_takenをTrueにする）"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/storage"
+    
     try:
         from datetime import datetime
-        await client.table("storage").update({
+        params = {"id": f"eq.{storage_id}", "user_id": f"eq.{str(user_id)}"}
+        update_data = {
             "is_taken": True,
             "taken_at": datetime.now().isoformat()
-        }).eq("id", storage_id).eq("user_id", str(user_id)).execute()
+        }
+        response = await client.patch(url, headers=_get_headers(), params=params, json=update_data)
+        response.raise_for_status()
         return True
     except Exception as e:
         print(f"Error taking from storage: {e}")
@@ -679,9 +740,14 @@ async def take_from_storage(user_id, storage_id):
 async def get_storage_item_by_id(storage_id):
     """倉庫アイテムをIDで取得"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/storage"
+    params = {"id": f"eq.{storage_id}", "select": "*"}
+    
     try:
-        res = await client.table("storage").select("*").eq("id", storage_id).execute()
-        return res.data[0] if res.data else None
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+        return data[0] if data else None
     except Exception as e:
         print(f"Error getting storage item: {e}")
         return None
@@ -703,7 +769,7 @@ async def is_player_banned(user_id):
     """プレイヤーがBANされているかチェック"""
     player = await get_player(user_id)
     if player:
-        bot_banned = player.get("bot_banned", False)
+        bot_banned = player.get("is_banned", False)
         return bot_banned
     return False
 
@@ -712,7 +778,7 @@ async def get_ban_status(user_id):
     player = await get_player(user_id)
     if player:
         return {
-            "bot_banned": player.get("bot_banned", False),
+            "bot_banned": player.get("is_banned", False),
             "web_banned": player.get("web_banned", False)
         }
     return {"bot_banned": False, "web_banned": False}
@@ -722,15 +788,19 @@ async def get_ban_status(user_id):
 async def record_death_history(user_id, enemy_name, distance=0, floor=0, stage=0, enemy_type="normal"):
     """死亡履歴を記録"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/death_history"
+    
     try:
-        await client.table("death_history").insert({
+        death_data = {
             "user_id": str(user_id),
             "enemy_name": enemy_name,
             "enemy_type": enemy_type,
             "distance": distance,
             "floor": floor,
             "stage": stage
-        }).execute()
+        }
+        response = await client.post(url, headers=_get_headers(), json=death_data)
+        response.raise_for_status()
 
         # total_deaths カウントアップ（オプション）
         player = await get_player(user_id)
@@ -746,14 +816,18 @@ async def record_death_history(user_id, enemy_name, distance=0, floor=0, stage=0
 async def get_death_history(user_id, limit=100):
     """死亡履歴を取得（最新limit件）"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/death_history"
+    params = {
+        "user_id": f"eq.{str(user_id)}",
+        "select": "*",
+        "order": "died_at.desc",
+        "limit": limit
+    }
+    
     try:
-        res = await client.table("death_history")\
-            .select("*")\
-            .eq("user_id", str(user_id))\
-            .order("died_at", desc=True)\
-            .limit(limit)\
-            .execute()
-        return res.data if res.data else []
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
         print(f"Error getting death history: {e}")
         return []
@@ -761,13 +835,25 @@ async def get_death_history(user_id, limit=100):
 async def get_death_count_by_enemy(user_id, enemy_name):
     """特定の敵に殺された回数を取得"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/death_history"
+    params = {
+        "user_id": f"eq.{str(user_id)}",
+        "enemy_name": f"eq.{enemy_name}",
+        "select": "id"
+    }
+    headers = _get_headers()
+    headers["Prefer"] = "count=exact"
+    
     try:
-        res = await client.table("death_history")\
-            .select("id", count="exact")\
-            .eq("user_id", str(user_id))\
-            .eq("enemy_name", enemy_name)\
-            .execute()
-        return res.count if res.count else 0
+        response = await client.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        
+        # Content-Range ヘッダーから総数を取得
+        content_range = response.headers.get("Content-Range", "")
+        if content_range and "/" in content_range:
+            count_str = content_range.split("/")[1]
+            return int(count_str) if count_str != "*" else 0
+        return 0
     except Exception as e:
         print(f"Error getting death count: {e}")
         return 0
@@ -794,18 +880,7 @@ async def get_death_stats(user_id):
 
 async def get_recent_deaths(user_id, limit=5):
     """直近N回の死亡履歴を取得"""
-    client = await get_client()
-    try:
-        res = await client.table("death_history")\
-            .select("*")\
-            .eq("user_id", str(user_id))\
-            .order("died_at", desc=True)\
-            .limit(limit)\
-            .execute()
-        return res.data if res.data else []
-    except Exception as e:
-        print(f"Error getting recent deaths: {e}")
-        return []
+    return await get_death_history(user_id, limit=limit)
 
 async def check_death_pattern(user_id, pattern):
     """
@@ -831,16 +906,20 @@ async def check_death_pattern(user_id, pattern):
 async def add_title(user_id, title_id, title_name):
     """称号を追加（重複は無視）"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/player_titles"
+    
     try:
-        await client.table("player_titles").insert({
+        title_data = {
             "user_id": str(user_id),
             "title_id": title_id,
             "title_name": title_name
-        }).execute()
+        }
+        response = await client.post(url, headers=_get_headers(), json=title_data)
+        response.raise_for_status()
         return True
     except Exception as e:
         # UNIQUE制約違反（既に持っている）は無視
-        if "duplicate key" in str(e).lower():
+        if "duplicate key" in str(e).lower() or "409" in str(e):
             return False
         print(f"Error adding title: {e}")
         return False
@@ -848,13 +927,17 @@ async def add_title(user_id, title_id, title_name):
 async def get_player_titles(user_id):
     """プレイヤーが持っている称号一覧を取得"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/player_titles"
+    params = {
+        "user_id": f"eq.{str(user_id)}",
+        "select": "*",
+        "order": "unlocked_at.desc"
+    }
+    
     try:
-        res = await client.table("player_titles")\
-            .select("*")\
-            .eq("user_id", str(user_id))\
-            .order("unlocked_at", desc=True)\
-            .execute()
-        return res.data if res.data else []
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
     except Exception as e:
         print(f"Error getting titles: {e}")
         return []
@@ -862,13 +945,18 @@ async def get_player_titles(user_id):
 async def has_title(user_id, title_id):
     """特定の称号を持っているかチェック"""
     client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/player_titles"
+    params = {
+        "user_id": f"eq.{str(user_id)}",
+        "title_id": f"eq.{title_id}",
+        "select": "id"
+    }
+    
     try:
-        res = await client.table("player_titles")\
-            .select("id")\
-            .eq("user_id", str(user_id))\
-            .eq("title_id", title_id)\
-            .execute()
-        return len(res.data) > 0 if res.data else False
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+        return len(data) > 0
     except Exception as e:
         print(f"Error checking title: {e}")
         return False
@@ -879,14 +967,14 @@ async def set_active_title(user_id, title_id):
     if not await has_title(user_id, title_id):
         return False
 
-    await update_player(user_id, active_title=title_id)
+    await update_player(user_id, active_title_id=title_id)
     return True
 
 async def get_active_title(user_id):
     """現在装備中の称号を取得"""
     player = await get_player(user_id)
     if player:
-        title_id = player.get("active_title")
+        title_id = player.get("active_title_id")
         if title_id:
             # 称号名を取得
             titles = await get_player_titles(user_id)
@@ -897,7 +985,7 @@ async def get_active_title(user_id):
 
 async def unequip_title(user_id):
     """称号を外す"""
-    await update_player(user_id, active_title=None)
+    await update_player(user_id, active_title_id=None)
     return True
 
 
@@ -907,7 +995,7 @@ if _original_update_player and not getattr(_original_update_player, "_is_wrapped
     # スレッドローカルで再入制御
     _wrapper_state = threading.local()
 
-    def update_player(*args, **kwargs):
+    def update_player(*args, **kwargs):  # type: ignore[no-redef]
         # 抽出できれば user_id をログに載せる
         user_id = None
         if args:
@@ -938,7 +1026,7 @@ if _original_update_player and not getattr(_original_update_player, "_is_wrapped
             _wrapper_state.in_update_player = False
 
     # マーカーを付けて二重ラップを防ぐ
-    update_player._is_wrapped_logger = True
+    update_player._is_wrapped_logger = True  # type: ignore[attr-defined]
 
     # 置き換え
     globals()["update_player"] = update_player
