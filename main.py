@@ -53,6 +53,13 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 user_processing = {}
+user_locks = {}
+
+def get_user_lock(user_id: int) -> asyncio.Lock:
+    """ユーザー別ロックを取得（なければ作成）"""
+    if user_id not in user_locks:
+        user_locks[user_id] = asyncio.Lock()
+    return user_locks[user_id]
 
 from functools import wraps
 def check_ban():
@@ -63,7 +70,7 @@ def check_ban():
             user_id = str(ctx.author.id)
 
             # BAN確認
-            if db.is_player_banned(user_id):
+            if await db.is_player_banned(user_id):
                 embed = discord.Embed(
                     title="❌ BOT利用禁止",
                     description="あなたはBOT利用禁止処分を受けています。\n\n運営チームにお問い合わせください。",
@@ -96,7 +103,7 @@ async def start(ctx: commands.Context):
     user_processing[user.id] = True
     try:
         # DBからプレイヤー取得
-        player = get_player(user_id)
+        player = await get_player(user_id)
         if player and player.get("name"):
             await ctx.send("⚠️ あなたはすでにゲームを開始しています！", delete_after=10)
             user_processing[user.id] = False
@@ -104,7 +111,7 @@ async def start(ctx: commands.Context):
 
         # プレイヤーデータが存在しない場合は作成
         if not player:
-            db.create_player(user.id)
+            await db.create_player(user.id)
 
         # カテゴリ検索 or 作成
         guild = ctx.guild
@@ -188,7 +195,7 @@ async def reset(ctx: commands.Context):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
 
-    player = get_player(user_id)
+    player = await get_player(user_id)
 
     if not player:
         await ctx.send(embed=discord.Embed(title="未登録", description="あなたはまだゲームを開始していません。`!start` を使ってゲームを開始してください。", color=discord.Color.orange()))
@@ -219,13 +226,13 @@ async def move(ctx: commands.Context):
 
     try:
         # プレイヤーデータチェック
-        player = get_player(user.id)
+        player = await get_player(user.id)
         if not player:
             await ctx.send("!start で冒険を始めてみてね。")
             return
 
         # クリア状態チェック
-        if db.is_game_cleared(user.id):
+        if await db.is_game_cleared(user.id):
             embed = discord.Embed(
                 title="🏆 ダンジョン制覇済み！",
                 description="ダンジョンをクリアしました！\n\n次の冒険を始めるには `!reset` でデータをリセットしてください。\n\n使用可能なコマンド:\n• `!reset` - データをリセット\n• `!inventory` - インベントリ確認\n• `!status` - ステータス確認",
@@ -235,8 +242,8 @@ async def move(ctx: commands.Context):
             return
 
         # intro_2: 1回目の死亡後、最初のmove時に表示
-        loop_count = db.get_loop_count(user.id)
-        intro_2_flag = db.get_story_flag(user.id, "intro_2")
+        loop_count = await db.get_loop_count(user.id)
+        intro_2_flag = await db.get_story_flag(user.id, "intro_2")
 
         # デバッグログ（本番環境では削除可能）
         print(f"[DEBUG] intro_2チェック - User: {user.id}, loop_count: {loop_count}, intro_2_flag: {intro_2_flag}")
@@ -258,8 +265,8 @@ async def move(ctx: commands.Context):
 
         # 移動距離（5〜15m）
         distance = random.randint(5, 15)
-        previous_distance = db.get_previous_distance(user.id)
-        total_distance = db.add_player_distance(user.id, distance)
+        previous_distance = await db.get_previous_distance(user.id)
+        total_distance = await db.add_player_distance(user.id, distance)
 
         current_floor = total_distance // 100 + 1
         current_stage = total_distance // 1000 + 1
@@ -287,10 +294,10 @@ async def move(ctx: commands.Context):
                 boss_stage = boss_distance // 1000
 
                 # ボス未撃破の場合のみ処理
-                if not db.is_boss_defeated(user.id, boss_stage):
+                if not await db.is_boss_defeated(user.id, boss_stage):
                     # boss_preストーリーチェック（未表示の場合のみ表示）
                     story_id = f"boss_pre_{boss_stage}"
-                    if not db.get_story_flag(user.id, story_id):
+                    if not await db.get_story_flag(user.id, story_id):
                         # ラスボス判定（10000m）
                         if boss_stage == 10:
                             embed = discord.Embed(
@@ -342,7 +349,7 @@ async def move(ctx: commands.Context):
                             await exploring_msg.edit(content=None, embed=embed)
                             await asyncio.sleep(3)
 
-                            view = FinalBossBattleView(ctx, player_data, boss, user_processing, boss_stage)
+                            view = await FinalBossBattleView.create(ctx, player_data, boss, user_processing, boss_stage)
                             await view.send_initial_embed()
                             view_delegated = True
                             return
@@ -355,7 +362,7 @@ async def move(ctx: commands.Context):
                             await exploring_msg.edit(content=None, embed=embed)
                             await asyncio.sleep(2)
 
-                            view = BossBattleView(ctx, player_data, boss, user_processing, boss_stage)
+                            view = await BossBattleView.create(ctx, player_data, boss, user_processing, boss_stage)
                             await view.send_initial_embed()
                             view_delegated = True
                             return
@@ -384,10 +391,10 @@ async def move(ctx: commands.Context):
                 if loop_count >= 2:
                     loop_story_id = f"story_{story_distance}_loop{loop_count}"
                     # 周回専用ストーリーが存在するかチェック
-                    if not db.get_story_flag(user.id, loop_story_id):
+                    if not await db.get_story_flag(user.id, loop_story_id):
                         story_id = loop_story_id
 
-                if not db.get_story_flag(user.id, story_id):
+                if not await db.get_story_flag(user.id, story_id):
                     embed = discord.Embed(
                         title="📖 探索中に何かを見つけた",
                         description="不思議な出来事が起こる予感…",
@@ -417,7 +424,10 @@ async def move(ctx: commands.Context):
             ]
 
             # 未体験の選択肢ストーリーをフィルタリング
-            available_stories = [sid for sid in choice_story_ids if not db.get_story_flag(user.id, sid)]
+            available_stories = []
+            for sid in choice_story_ids:
+                if not await db.get_story_flag(user.id, sid):
+                    available_stories.append(sid)
 
             # 未体験のストーリーがある場合、ランダムに選択
             if available_stories:
@@ -481,7 +491,7 @@ async def move(ctx: commands.Context):
 
             # 戦闘Embed呼び出し
             await exploring_msg.edit(content="⚔️ 敵が現れた！ 戦闘開始！")
-            view = BattleView(ctx, player_data, enemy, user_processing)
+            view = await BattleView.create(ctx, player_data, enemy, user_processing)
             await view.send_initial_embed()
             view_delegated = True
             return
@@ -509,7 +519,7 @@ async def inventory(ctx):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
 
-    player = db.get_player(ctx.author.id)
+    player = await db.get_player(ctx.author.id)
     if not player:
         await ctx.send("!start で冒険を始めてね。")
         return
@@ -530,7 +540,7 @@ async def status(ctx):
         # プレイヤー情報取得
         player = None
         if 'db' in globals():
-            player = db.get_player(ctx.author.id)
+            player = await db.get_player(ctx.author.id)
 
         if not player:
             await ctx.send("!start で冒険を始めてね。")
@@ -539,14 +549,14 @@ async def status(ctx):
         # 装備情報取得
         equipped = {"weapon": "なし", "armor": "なし"}
         if 'db' in globals():
-            temp = db.get_equipped_items(ctx.author.id)
+            temp = await db.get_equipped_items(ctx.author.id)
             if isinstance(temp, dict):
                 equipped["weapon"] = str(temp.get("weapon") or "なし")
                 equipped["armor"] = str(temp.get("armor") or "なし")
 
         # 装備ボーナスを計算
         import game
-        equipment_bonus = game.calculate_equipment_bonus(ctx.author.id)
+        equipment_bonus = await game.calculate_equipment_bonus(ctx.author.id)
         base_attack = player.get("atk", 5)
         base_defense = player.get("def", 2)
         total_attack = base_attack + equipment_bonus.get("attack_bonus", 0)
@@ -586,13 +596,13 @@ async def upgrade(ctx):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
 
-    player = db.get_player(ctx.author.id)
+    player = await db.get_player(ctx.author.id)
     if not player:
         await ctx.send("!start で冒険を始めてね。")
         return
 
     # クリア状態チェック
-    if db.is_game_cleared(ctx.author.id):
+    if await db.is_game_cleared(ctx.author.id):
         embed = discord.Embed(
             title="⚠️ ダンジョン踏破済",
             description="あなたはダンジョンをクリアしています！\n`!reset` で'データをリセットして再度冒険を初めてください。\n\n※周回システムは実装予定です。アップデートにご期待ください！",
@@ -602,14 +612,14 @@ async def upgrade(ctx):
         return
 
     points = player.get("upgrade_points", 0)
-    upgrades = db.get_upgrade_levels(ctx.author.id)
+    upgrades = await db.get_upgrade_levels(ctx.author.id)
     
     # 動的コストを取得
-    cost_hp = db.get_upgrade_cost(1, ctx.author.id)
-    cost_mp = db.get_upgrade_cost(2, ctx.author.id)
-    cost_coin = db.get_upgrade_cost(3, ctx.author.id)
-    cost_atk = db.get_upgrade_cost(4, ctx.author.id)
-    cost_def = db.get_upgrade_cost(5, ctx.author.id)
+    cost_hp = await db.get_upgrade_cost(1, ctx.author.id)
+    cost_mp = await db.get_upgrade_cost(2, ctx.author.id)
+    cost_coin = await db.get_upgrade_cost(3, ctx.author.id)
+    cost_atk = await db.get_upgrade_cost(4, ctx.author.id)
+    cost_def = await db.get_upgrade_cost(5, ctx.author.id)
 
     embed = discord.Embed(title="⬆️ アップグレード", description=f"所持ポイント: **{points}**", color=0xFFD700)
     embed.add_field(
@@ -649,13 +659,13 @@ async def buy_upgrade(ctx, upgrade_type: int):
         await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
         return
 
-    player = db.get_player(ctx.author.id)
+    player = await db.get_player(ctx.author.id)
     if not player:
         await ctx.send("!start で冒険を始めてね。")
         return
 
     # クリア状態チェック
-    if db.is_game_cleared(ctx.author.id):
+    if await db.is_game_cleared(ctx.author.id):
         embed = discord.Embed(
             title="⚠️ ダンジョン踏破済",
             description="あなたはダンジョンをクリアしています！\n`!reset` で'データをリセットして再度冒険を初めてください。\n\n※周回システムは実装予定です。アップデートにご期待ください！",
@@ -669,7 +679,7 @@ async def buy_upgrade(ctx, upgrade_type: int):
         return
 
     # 動的コストを取得
-    cost = db.get_upgrade_cost(upgrade_type, ctx.author.id)
+    cost = await db.get_upgrade_cost(upgrade_type, ctx.author.id)
     points = player.get("upgrade_points", 0)
 
     if points < cost:
@@ -677,24 +687,24 @@ async def buy_upgrade(ctx, upgrade_type: int):
         return
 
     if upgrade_type == 1:
-        db.upgrade_initial_hp(ctx.author.id)
-        db.spend_upgrade_points(ctx.author.id, cost)
+        await db.upgrade_initial_hp(ctx.author.id)
+        await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ HP最大値をアップグレードしました！ 最大HP +5")
     elif upgrade_type == 2:
-        db.upgrade_initial_mp(ctx.author.id)
-        db.spend_upgrade_points(ctx.author.id, cost)
+        await db.upgrade_initial_mp(ctx.author.id)
+        await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ MP最大値をアップグレードしました！ 最大MP +5")
     elif upgrade_type == 3:
-        db.upgrade_coin_gain(ctx.author.id)
-        db.spend_upgrade_points(ctx.author.id, cost)
+        await db.upgrade_coin_gain(ctx.author.id)
+        await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ コイン取得量をアップグレードしました！ コイン取得 +10%")
     elif upgrade_type == 4:
-        db.upgrade_atk(ctx.author.id)
-        db.spend_upgrade_points(ctx.author.id, cost)
+        await db.upgrade_atk(ctx.author.id)
+        await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ 攻撃力初期値をアップグレードしました！ ATK +1")
     elif upgrade_type == 5:
-        db.upgrade_def(ctx.author.id)
-        db.spend_upgrade_points(ctx.author.id, cost)
+        await db.upgrade_def(ctx.author.id)
+        await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ 防御力初期値をアップグレードしました！ DEF +1")
 
 # デバッグコマンドの読み込み（削除可能）
@@ -834,7 +844,7 @@ async def show_servers(ctx: commands.Context):
 async def death_stats(ctx: commands.Context):
     """死亡統計を表示"""
     user = ctx.author
-    player = get_player(user.id)
+    player = await get_player(user.id)
 
     if not player:
         await ctx.send("!start で冒険を始めてみてね。")
@@ -842,7 +852,7 @@ async def death_stats(ctx: commands.Context):
 
     import death_system
 
-    summary = death_system.get_death_summary(user.id)
+    summary = await death_system.get_death_summary(user.id)
     total_deaths = summary.get("total_deaths", 0)
     top_killers = summary.get("top_killers", [])
 
@@ -870,7 +880,7 @@ async def death_stats(ctx: commands.Context):
     )
 
     # ストーリー進行状況
-    story_progress = death_system.get_death_story_progress(user.id)
+    story_progress = await death_system.get_death_story_progress(user.id)
     embed.add_field(
         name="📖 死亡ストーリー進行",
         value=f"{story_progress['unlocked']}/{story_progress['total']} ({story_progress['percentage']:.1f}%)",
@@ -886,7 +896,7 @@ async def death_stats(ctx: commands.Context):
 async def death_history(ctx: commands.Context, limit: int = 10):
     """最近の死亡履歴を表示"""
     user = ctx.author
-    player = get_player(user.id)
+    player = await get_player(user.id)
 
     if not player:
         await ctx.send("!start で冒険を始めてみてね。")
@@ -896,7 +906,7 @@ async def death_history(ctx: commands.Context, limit: int = 10):
         await ctx.send("⚠️ 表示件数は1〜50の範囲で指定してください。")
         return
 
-    recent_deaths = db.get_recent_deaths(user.id, limit)
+    recent_deaths = await db.get_recent_deaths(user.id, limit)
 
     if not recent_deaths:
         embed = discord.Embed(
@@ -932,7 +942,7 @@ async def death_history(ctx: commands.Context, limit: int = 10):
 async def titles(ctx: commands.Context):
     """所持している称号を表示"""
     user = ctx.author
-    player = get_player(user.id)
+    player = await get_player(user.id)
 
     if not player:
         await ctx.send("!start で冒険を始めてみてね。")
@@ -940,8 +950,8 @@ async def titles(ctx: commands.Context):
 
     from titles import get_title_rarity_emoji, RARITY_COLORS
 
-    player_titles = db.get_player_titles(user.id)
-    active_title = db.get_active_title(user.id)
+    player_titles = await db.get_player_titles(user.id)
+    active_title = await db.get_active_title(user.id)
 
     if not player_titles:
         embed = discord.Embed(
@@ -991,7 +1001,7 @@ async def titles(ctx: commands.Context):
 async def equip_title(ctx: commands.Context, *, title_name: str = None):
     """称号を装備する"""
     user = ctx.author
-    player = get_player(user.id)
+    player = await get_player(user.id)
 
     if not player:
         await ctx.send("!start で冒険を始めてみてね。")
@@ -1002,7 +1012,7 @@ async def equip_title(ctx: commands.Context, *, title_name: str = None):
         return
 
     # 称号を持っているか確認
-    player_titles = db.get_player_titles(user.id)
+    player_titles = await db.get_player_titles(user.id)
     matching_title = None
 
     for title in player_titles:
@@ -1015,7 +1025,7 @@ async def equip_title(ctx: commands.Context, *, title_name: str = None):
         return
 
     # 称号を装備
-    success = db.set_active_title(user.id, matching_title['title_id'])
+    success = await db.set_active_title(user.id, matching_title['title_id'])
 
     if success:
         from titles import get_title_rarity_emoji
@@ -1034,13 +1044,13 @@ async def equip_title(ctx: commands.Context, *, title_name: str = None):
 async def unequip_title(ctx: commands.Context):
     """称号を外す"""
     user = ctx.author
-    player = get_player(user.id)
+    player = await get_player(user.id)
 
     if not player:
         await ctx.send("!start で冒険を始めてみてね。")
         return
 
-    db.unequip_title(user.id)
+    await db.unequip_title(user.id)
 
     embed = discord.Embed(
         title="✅ 称号を外しました",
