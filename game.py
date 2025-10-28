@@ -47,14 +47,14 @@ ITEMS_DATABASE = {
     },
     "魔法の杖": {
         "type": "weapon",
-        "attack": 12,
+        "attack": 10,
         "ability": "魔力増幅（魔法攻撃+20%）",
         "description": "魔力が込められた杖。魔法使いに最適。"
     },
     "死神の鎌": {
         "type": "weapon",
         "attack": 16,
-        "ability": "攻撃時15%で即死効果（ボス無効）",
+        "ability": "攻撃時10%で即死効果（ボス無効）",
         "description": "死神が持つ恐るべき鎌。"
     },
     "炎の大剣": {
@@ -75,13 +75,13 @@ ITEMS_DATABASE = {
         "ability": "闇属性（闇の敵に+50%ダメージ）",
         "description": "黒騎士が使っていた漆黒の剣。"
     },
-    "業火の剣": {
+    "炎獄の剣": {
         "type": "weapon",
         "attack": 12,
-        "ability": "攻撃時30%で敵を燃焼（2ターン、ダメージ5）",
+        "ability": "攻撃時30%で敵を燃焼（2ターン、ダメージ10）",
         "description": "業火を纏う剣。敵を焼き尽くす。"
     },
-    "炎獄の剣": {
+    "業火の剣": {
         "type": "weapon",
         "attack": 12,
         "ability": "攻撃時20%で敵を燃焼状態にする（2ターン、ダメージ10）",
@@ -89,9 +89,51 @@ ITEMS_DATABASE = {
     },
     "影の短剣": {
         "type": "weapon",
-        "attack": 22,
+        "attack": 14,
         "ability": "クリティカル率+25%、背後攻撃時ダメージ2倍",
         "description": "影より生まれし短剣。"
+    },
+    "血の剣": {
+        "type": "weapon",
+        "attack": 16,
+        "ability": "攻撃時HP吸収（ダメージの25%）",
+        "description": "血を吸う魔剣。生命力を奪う。"
+    },
+    "死霊の杖": {
+        "type": "weapon",
+        "attack": 18,
+        "ability": "攻撃時25%でアンデッド召喚（次ターンHP10回復）",
+        "description": "死霊を操る杖。"
+    },
+    "雷神の槍": {
+        "type": "weapon",
+        "defense": 18,
+        "ability": "攻撃時20%で敵を麻痺状態にする",
+        "description": "雷の力を宿した槍。敵を麻痺させる。"
+    },
+    "暗黒の弓": {
+        "type": "weapon",
+        "attack": 18,
+        "ability": "遠距離攻撃、命中率+20%、貫通ダメージ",
+        "description": "闇の力を矢に込める弓。"
+    },
+    "破壊の斧": {
+        "type": "weapon",
+        "attack": 18,
+        "ability": "攻撃力+20%、防御力-10%、装甲貫通+30%",
+        "description": "全てを破壊する巨斧。"
+    },
+    "虚無の剣": {
+        "type": "weapon",
+        "attack": 22,
+        "ability": "攻撃時15%で敵の防御力無視、MP吸収10",
+        "description": "虚無の力を宿す剣。"
+    },
+    "氷結の杖": {
+        "type": "weapon",
+        "defense": 22,
+        "ability": "攻撃時20%で敵を凍結状態にする",
+        "description": "氷の力を宿した杖。敵を凍結させる。"
     },
     "革の盾": {
         "type": "armor",
@@ -119,8 +161,8 @@ ITEMS_DATABASE = {
     },
     "スライムの王冠": {
         "type": "armor",
-        "defense": 10,
-        "ability": "HP+50",
+        "defense": 5,
+        "ability": "HP+30",
         "description": "スライムキングが落とした王冠。生命力が強くなる。"
     }, 
     "骨の盾": {
@@ -143,19 +185,19 @@ ITEMS_DATABASE = {
     },
     "幽霊の布": {
         "type": "armor",
-        "defense": 12,
+        "defense": 10,
         "ability": "回避率+10%",
         "description": "幽霊が纏っていた布。攻撃をすり抜ける。"
     },
     "地獄の鎧": {
         "type": "armor",
-        "defense": 10,
+        "defense": 8,
         "ability": "炎耐性+50%",
         "description": "地獄の炎で鍛えられた鎧。"
     },
     "黒騎士の盾": {
         "type": "armor",
-        "defense": 12,
+        "defense": 9,
         "ability": "反撃（被ダメージの10%を返す）",
         "description": "黒騎士の盾。攻撃を跳ね返す。"
     },
@@ -167,19 +209,19 @@ ITEMS_DATABASE = {
     },
     "竜の鱗": {
         "type": "armor",
-        "defense": 16,
+        "defense": 13,
         "ability": "全属性耐性+20%",
         "description": "竜の鱗で作られた鎧。あらゆる攻撃に強い。"
     },
     "悪魔の盾": {
         "type": "armor",
-        "defense": 14,
+        "defense": 11,
         "ability": "魔法ダメージ30%軽減",
         "description": "悪魔の力が込められた盾。"
     },
     "冥界の盾": {
         "type": "armor",
-        "defense": 17,
+        "defense": 12,
         "ability": "アンデッド特効+30%、毒無効",
         "description": "冥界の力を宿した盾。"
     },
@@ -188,6 +230,48 @@ ITEMS_DATABASE = {
         "defense": 15,
         "ability": "被ダメージ時20%でHP吸収（ダメージの30%）、HP+50",
         "description": "死の力を纏う漆黒の鎧。"
+    },
+    "炎の鎧": {
+        "type": "armor",
+        "defense": 13,
+        "ability": "炎耐性+50%、被攻撃時10%で反射ダメージ10",
+        "description": "炎を纏う鎧。攻撃を焼き返す。"
+    },
+    "夜の外套": {
+        "type": "armor",
+        "defense": 14,
+        "ability": "回避率+20%、夜間戦闘時攻撃力+30%",
+        "description": "闇夜に溶け込む外套。"
+    },
+    "不死王の冠": {
+        "type": "armor",
+        "defense": 16,
+        "ability": "HP+30、毒・麻痺・呪い無効",
+        "description": "不死の王が被る冠。"
+    },
+    "祝福の盾": {
+        "type": "armor",
+        "defense": 16,
+        "ability": "全状態異常無効、HP自動回復+10/ターン",
+        "description": "神の加護を受けた盾。あらゆる異常を防ぐ。"
+    },
+    "巨人の鎧": {
+        "type": "armor",
+        "defense": 18,
+        "ability": "HP+50、被ダメージ-20%、移動速度-10%",
+        "description": "巨人族の鎧。圧倒的な防御力。"
+    },
+    "幻影の鎧": {
+        "type": "armor",
+        "defense": 21,
+        "ability": "回避率+20%、幻影分身（被攻撃時10%で回避）",
+        "description": "実体を持たぬ幻の鎧。"
+    },
+    "氷の鎧": {
+        "type": "armor",
+        "defense": 20,
+        "ability": "物理ダメージ軽減-30%",
+        "description": "氷で作られた鎧。この氷は永遠に溶けることがない。"
     },
     "呪いの首輪": {
         "type": "armor",
@@ -212,12 +296,6 @@ ITEMS_DATABASE = {
         "defense": -20,
         "ability": "攻撃力+100%、被ダメージ+50%（デバフ防具）",
         "description": "狂戦士が纏う鎧。攻撃力を劇的に上げるが致命的に脆くなる。"
-    },
-    "祝福の盾": {
-        "type": "armor",
-        "defense": 35,
-        "ability": "全状態異常無効、HP自動回復+10/ターン",
-        "description": "神の加護を受けた盾。あらゆる異常を防ぐ。"
     },
     "勇者の鎧": {
         "type": "armor",
@@ -288,90 +366,30 @@ ITEMS_DATABASE = {
         "ability": "素材",
         "description": "地獄の番犬の牙。炎属性武器の素材。"
     },
-    "炎の鎧": {
-        "type": "armor",
-        "defense": 36,
-        "ability": "炎無効、被攻撃時10%で反射ダメージ20",
-        "description": "炎を纏う鎧。攻撃を焼き返す。"
-    },
     "吸血鬼の牙": {
         "type": "material",
         "ability": "素材",
         "description": "吸血鬼の牙。HP吸収武器の素材。"
-    },
-    "血の剣": {
-        "type": "weapon",
-        "attack": 40,
-        "ability": "攻撃時HP吸収（ダメージの40%）",
-        "description": "血を吸う魔剣。生命力を奪う。"
-    },
-    "夜の外套": {
-        "type": "armor",
-        "defense": 32,
-        "ability": "回避率+20%、夜間戦闘時攻撃力+30%",
-        "description": "闇夜に溶け込む外套。"
     },
     "魔導書の欠片": {
         "type": "material",
         "ability": "素材",
         "description": "古代魔導書の欠片。魔法系装備の素材。"
     },
-    "死霊の杖": {
-        "type": "weapon",
-        "attack": 45,
-        "ability": "攻撃時25%でアンデッド召喚（次ターンHP20回復）",
-        "description": "死霊を操る杖。"
-    },
-    "不死王の冠": {
-        "type": "armor",
-        "defense": 38,
-        "ability": "HP+30、毒・麻痺・呪い無効",
-        "description": "不死の王が被る冠。"
-    },
     "闇の宝石": {
         "type": "material",
         "ability": "素材",
         "description": "漆黒の宝石。闇属性装備の核となる。"
-    },
-    "暗黒の弓": {
-        "type": "weapon",
-        "attack": 44,
-        "ability": "遠距離攻撃、命中率+20%、貫通ダメージ",
-        "description": "闇の力を矢に込める弓。"
     },
     "巨獣の皮": {
         "type": "material",
         "ability": "素材",
         "description": "巨大な獣の皮。強固な防具の素材。"
     },
-    "破壊の斧": {
-        "type": "weapon",
-        "attack": 50,
-        "ability": "攻撃力+20%、防御力-10%、装甲貫通+30%",
-        "description": "全てを破壊する巨斧。"
-    },
-    "巨人の鎧": {
-        "type": "armor",
-        "defense": 45,
-        "ability": "HP+50、被ダメージ-20%、移動速度-10%",
-        "description": "巨人族の鎧。圧倒的な防御力。"
-    },
     "影の欠片": {
         "type": "material",
         "ability": "素材",
         "description": "影そのものの欠片。幻影系装備の素材。"
-    },
-    "虚無の剣": {
-        "type": "weapon",
-        "attack": 48,
-        "ability": "攻撃時30%で敵の防御力無視、MP吸収10",
-        "description": "虚無の力を宿す剣。"
-    },
-    "幻影の鎧": {
-        "type": "armor",
-        "defense": 40,
-        "ability": "回避率+30%、幻影分身（被攻撃時20%で回避）",
-        "description": "実体を持たぬ幻の鎧。"
     },
     "混沌の欠片": {
         "type": "material",
@@ -610,9 +628,9 @@ ENEMY_ZONES = {
                 "exp": 8,
                 "drops": [
                     {"item": "none", "weight": 60},
-                    {"item": "木の剣", "weight": 15},
-                    {"item": "石の剣", "weight": 5},
-                    {"item": "鉄の剣", "weight": 2},
+                    {"item": "革の盾", "weight": 15},
+                    {"item": "木の盾", "weight": 5},
+                    {"item": "石の盾", "weight": 2},
                     {"item": "HP回復薬（小）", "weight": 8},
                     {"item": "coins", "amount": [10, 30], "weight": 10}
                 ]
@@ -627,9 +645,9 @@ ENEMY_ZONES = {
                 "exp": 12,
                 "drops": [
                     {"item": "none", "weight": 60},
-                    {"item": "革の盾", "weight": 15},
-                    {"item": "木の盾", "weight": 5},
-                    {"item": "石の盾", "weight": 2},
+                    {"item": "木の剣", "weight": 15},
+                    {"item": "石の剣", "weight": 5},
+                    {"item": "鉄の剣", "weight": 2},
                     {"item": "HP回復薬（小）", "weight": 8},
                     {"item": "coins", "amount": [15, 30], "weight": 10}
                 ]
@@ -656,9 +674,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "スケルトン",
-                "hp": 30,
+                "hp": 35,
                 "atk": 6,
-                "def": 3,
+                "def": 4,
                 "attribute": "dark",
                 "weight": 50,
                 "exp": 22,
@@ -673,9 +691,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "ゾンビ",
-                "hp": 40,
+                "hp": 45,
                 "atk": 7,
-                "def": 2,
+                "def": 3,
                 "attribute": "dark",
                 "weight": 35,
                 "exp": 25,
@@ -692,7 +710,7 @@ ENEMY_ZONES = {
                 "name": "ゴースト",
                 "hp": 40,
                 "atk": 8,
-                "def": 4,
+                "def": 5,
                 "attribute": "dark",
                 "weight": 15,
                 "exp": 40,
@@ -711,9 +729,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "デーモン",
-                "hp": 60,
-                "atk": 8,
-                "def": 5,
+                "hp": 70,
+                "atk": 9,
+                "def": 6,
                 "attribute": "fire",
                 "weight": 50,
                 "exp": 32,
@@ -732,8 +750,8 @@ ENEMY_ZONES = {
             {
                 "name": "ダークナイト",
                 "hp": 50,
-                "atk": 9,
-                "def": 6,
+                "atk": 10,
+                "def": 7,
                 "attribute": "dark",
                 "weight": 40,
                 "exp": 35,
@@ -751,9 +769,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "ドラゴン",
-                "hp": 70,
-                "atk": 12,
-                "def": 5,
+                "hp": 80,
+                "atk": 14,
+                "def": 6,
                 "attribute": "fire",
                 "weight": 10,
                 "exp": 60,
@@ -772,7 +790,7 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "デスナイト",
-                "hp": 80,
+                "hp": 100,
                 "atk": 12,
                 "def": 8,
                 "attribute": "dark",
@@ -792,7 +810,7 @@ ENEMY_ZONES = {
             },
             {
                 "name": "アークデーモン",
-                "hp": 70,
+                "hp": 80,
                 "atk": 13,
                 "def": 9,
                 "attribute": "fire",
@@ -812,7 +830,7 @@ ENEMY_ZONES = {
             },
             {
                 "name": "エンシェントドラゴン",
-                "hp": 100,
+                "hp": 120,
                 "atk": 15,
                 "def": 7,
                 "attribute": "fire",
@@ -833,50 +851,62 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "ヘルハウンド",
-                "hp": 160,
-                "atk": 25,
-                "def": 18,
+                "hp": 130,
+                "atk": 16,
+                "def": 10,
                 "attribute": "fire",
                 "weight": 40,
                 "exp": 60,
                 "drops": [
-                    {"item": "地獄犬の牙", "weight": 35},
-                    {"item": "業火の剣", "weight": 18},
-                    {"item": "炎の鎧", "weight": 10},
-                    {"item": "万能薬", "weight": 17},
-                    {"item": "coins", "amount": [180, 320], "weight": 20}
+                    {"item": "none", "weight": 50},
+                    {"item": "地獄犬の牙", "weight": 20},
+                    {"item": "業火の剣", "weight": 5},
+                    {"item": "炎の鎧", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 4},
+                    {"item": "MP回復薬（小）", "weight": 4},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
+                    {"item": "coins", "amount": [60, 90], "weight": 10}
                 ]
             },
             {
                 "name": "ヴァンパイアロード",
-                "hp": 150,
-                "atk": 27,
-                "def": 20,
+                "hp": 110,
+                "atk": 18,
+                "def": 11,
                 "attribute": "dark",
                 "weight": 30,
                 "exp": 65,
                 "drops": [
-                    {"item": "吸血鬼の牙", "weight": 30},
-                    {"item": "血の剣", "weight": 20},
-                    {"item": "夜の外套", "weight": 15},
-                    {"item": "万能薬", "weight": 15},
-                    {"item": "coins", "amount": [200, 350], "weight": 20}
+                    {"item": "none", "weight": 50},
+                    {"item": "吸血鬼の牙", "weight": 20},
+                    {"item": "血の剣", "weight": 2},
+                    {"item": "夜の外套", "weight": 10},
+                    {"item": "HP回復薬（小）", "weight": 3},
+                    {"item": "MP回復薬（小）", "weight": 3},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
+                    {"item": "coins", "amount": [70, 90], "weight": 10}
                 ]
             },
             {
                 "name": "リッチ",
                 "hp": 140,
-                "atk": 28,
-                "def": 22,
+                "atk": 20,
+                "def": 10,
                 "attribute": "dark",
                 "weight": 30,
                 "exp": 68,
                 "drops": [
-                    {"item": "魔導書の欠片", "weight": 28},
-                    {"item": "死霊の杖", "weight": 22},
-                    {"item": "不死王の冠", "weight": 12},
-                    {"item": "万能薬", "weight": 18},
-                    {"item": "coins", "amount": [220, 380], "weight": 20}
+                    {"item": "none", "weight": 50},
+                    {"item": "魔導書の欠片", "weight": 20},
+                    {"item": "死霊の杖", "weight": 5},
+                    {"item": "不死王の冠", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 4},
+                    {"item": "MP回復薬（小）", "weight": 4},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
+                    {"item": "coins", "amount": [70, 100], "weight": 10}
                 ]
             }
         ]
@@ -885,50 +915,62 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "ダークエルフ",
-                "hp": 180,
-                "atk": 30,
-                "def": 22,
+                "hp": 150,
+                "atk": 21,
+                "def": 12,
                 "attribute": "dark",
                 "weight": 40,
                 "exp": 75,
                 "drops": [
-                    {"item": "闇の宝石", "weight": 30},
-                    {"item": "影の短剣", "weight": 25},
-                    {"item": "暗黒の弓", "weight": 15},
-                    {"item": "万能薬", "weight": 10},
-                    {"item": "coins", "amount": [250, 420], "weight": 20}
+                    {"item": "none", "weight": 50},
+                    {"item": "闇の宝石", "weight": 20},
+                    {"item": "影の短剣", "weight": 8},
+                    {"item": "暗黒の弓", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 4},
+                    {"item": "MP回復薬（小）", "weight": 4},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
+                    {"item": "coins", "amount": [80, 120], "weight": 10}
                 ]
             },
             {
                 "name": "ベヒーモス",
-                "hp": 220,
-                "atk": 32,
-                "def": 25,
+                "hp": 190,
+                "atk": 19,
+                "def": 14,
                 "attribute": "none",
-                "weight": 25,
+                "weight": 30,
                 "exp": 85,
                 "drops": [
-                    {"item": "巨獣の皮", "weight": 30},
-                    {"item": "破壊の斧", "weight": 20},
-                    {"item": "巨人の鎧", "weight": 15},
-                    {"item": "万能薬", "weight": 15},
-                    {"item": "coins", "amount": [280, 450], "weight": 20}
+                    {"item": "none", "weight": 50},
+                    {"item": "巨獣の皮", "weight": 20},
+                    {"item": "破壊の斧", "weight": 8},
+                    {"item": "巨人の鎧", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 4},
+                    {"item": "MP回復薬（小）", "weight": 4},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
+                    {"item": "coins", "amount": [70, 135], "weight": 10}
                 ]
             },
             {
                 "name": "シャドウロード",
-                "hp": 190,
-                "atk": 33,
-                "def": 24,
+                "hp": 170,
+                "atk": 23,
+                "def": 13,
                 "attribute": "dark",
-                "weight": 35,
+                "weight": 30,
                 "exp": 80,
                 "drops": [
-                    {"item": "影の欠片", "weight": 28},
-                    {"item": "虚無の剣", "weight": 22},
-                    {"item": "幻影の鎧", "weight": 13},
-                    {"item": "万能薬", "weight": 17},
-                    {"item": "coins", "amount": [300, 480], "weight": 20}
+                    {"item": "none", "weight": 50},
+                    {"item": "影の欠片", "weight": 20},
+                    {"item": "虚無の剣", "weight": 5},
+                    {"item": "幻影の鎧", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 4},
+                    {"item": "MP回復薬（小）", "weight": 4},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
+                    {"item": "coins", "amount": [80, 130], "weight": 10}
                 ]
             }
         ]
@@ -1225,7 +1267,7 @@ def get_treasure_box_equipment(distance):
         drops = enemy.get("drops", [])
         for drop in drops:
             item_name = drop.get("item")
-            if item_name and item_name != "none" and item_name != "coins":
+            if item_name and item_name != "none" and item_name != "coins" and item_name != "毒の短剣" and item_name != "魔法の杖" and item_name != "幽霊の布" and item_name != "竜の鱗" and item_name != "死の鎧" and item_name != "血の剣" and item_name != "暗黒の弓" and item_name != "巨人の鎧":
                 item_info = ITEMS_DATABASE.get(item_name)
                 if item_info and item_info.get("type") in ["weapon", "armor"]:
                     if item_name not in equipment_list:
@@ -1302,7 +1344,7 @@ BOSS_DATA = {
         "name": "デスロード",
         "hp": 150,
         "atk": 12,
-        "def": 7,
+        "def": 8,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
@@ -1315,9 +1357,9 @@ BOSS_DATA = {
     },
     3: {
         "name": "炎獄の魔竜", 
-        "hp": 200,
-        "atk": 15,
-        "def": 8,
+        "hp": 250,
+        "atk": 16,
+        "def": 10,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
@@ -1330,9 +1372,9 @@ BOSS_DATA = {
     },
     4: {
         "name": "影の王",
-        "hp": 300,
+        "hp": 400,
         "atk": 20,
-        "def": 10,
+        "def": 12,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
@@ -1346,36 +1388,40 @@ BOSS_DATA = {
     5: {
         "name": "雷神",
         "hp": 600,
-        "atk": 40,
-        "def": 28,
+        "atk": 25,
+        "def": 15,
         "attribute": "thunder",
                 "attribute": "thunder",
         "drops": [
-            {"item": "雷神の槍", "weight": 35},
-            {"item": "祝福の盾", "weight": 30},
-            {"item": "万能薬", "weight": 25},
-            {"item": "coins", "amount": [1000, 2000], "weight": 10}
+            {"item": "雷神の槍", "weight": 15},
+            {"item": "祝福の盾", "weight": 15},
+            {"item": "HP回復薬（中）", "weight": 20},
+            {"item": "MP回復薬（中）", "weight": 20},
+            {"item": "coins", "amount": [300, 400], "weight": 30}
         ]
     },
     6: {
         "name": "氷の女王",
-        "hp": 700,
-        "atk": 42,
-        "def": 30,
+        "hp": 800,
+        "atk": 30,
+        "def": 18,
         "attribute": "ice",
                 "attribute": "ice",
         "drops": [
-            {"item": "氷結の杖", "weight": 35},
-            {"item": "氷の鎧", "weight": 30},
-            {"item": "万能薬", "weight": 25},
-            {"item": "coins", "amount": [1200, 2500], "weight": 10}
+            {"item": "氷結の杖", "weight": 15},
+            {"item": "氷の鎧", "weight": 15},
+            {"item": "HP回復薬（中）", "weight": 15},
+            {"item": "HP回復薬（大）", "weight": 5},
+            {"item": "MP回復薬（中）", "weight": 15},
+            {"item": "MP回復薬（大）", "weight": 5},
+            {"item": "coins", "amount": [400, 500], "weight": 10}
         ]
     },
     7: {
         "name": "獄炎の巨人",
-        "hp": 800,
-        "atk": 45,
-        "def": 32,
+        "hp": 1000,
+        "atk": 35,
+        "def": 24,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
@@ -1387,9 +1433,9 @@ BOSS_DATA = {
     },
     8: {
         "name": "深淵の守護者",
-        "hp": 900,
-        "atk": 48,
-        "def": 35,
+        "hp": 1250,
+        "atk": 40,
+        "def": 24,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
@@ -1401,9 +1447,9 @@ BOSS_DATA = {
     },
     9: {
         "name": "混沌の龍帝",
-        "hp": 1200,
-        "atk": 52,
-        "def": 38,
+        "hp": 1500,
+        "atk": 45,
+        "def": 30,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
@@ -1416,8 +1462,8 @@ BOSS_DATA = {
     10: {
         "name": "終焉の魔王",
         "hp": 2000,
-        "atk": 60,
-        "def": 45,
+        "atk": 50,
+        "def": 40,
         "attribute": "none",
                 "attribute": "none",
         "drops": [
@@ -1456,16 +1502,16 @@ MATERIAL_PRICES = {
     "腐った肉": 20,
     "悪魔の角": 40,
     "竜の牙": 60,
-    "魔界の結晶": 50,
+    "魔界の結晶": 60,
     "竜王の牙": 80,
     "古竜の心臓": 100,
     "闇の宝珠": 200,
-    "地獄犬の牙": 450,
-    "吸血鬼の牙": 500,
-    "魔導書の欠片": 550,
-    "闇の宝石": 650,
-    "巨獣の皮": 600,
-    "影の欠片": 700,
+    "地獄犬の牙": 100,
+    "吸血鬼の牙": 90,
+    "魔導書の欠片": 120,
+    "闇の宝石": 120,
+    "巨獣の皮": 130,
+    "影の欠片": 150,
     "混沌の欠片": 800,
     "不死鳥の羽": 850,
     "破壊の核": 900,
@@ -1492,42 +1538,42 @@ CRAFTING_RECIPES = {
     "悪魔の剣": {
         "materials": {"悪魔の角": 2, "闇の宝珠": 1},
         "result_type": "weapon",
-        "attack": 22,
+        "attack": 15,
         "ability": "闇属性（闇の敵に+60%ダメージ）",
         "description": "悪魔の角から鍛えられた剣。邪悪な力を宿す。"
     },
     "竜牙の剣": {
         "materials": {"竜の牙": 1, "悪魔の角": 2},
         "result_type": "weapon",
-        "attack": 16,
+        "attack": 11,
         "ability": "竜の力（全ステータス+25%）",
         "description": "竜の牙から作られた伝説の剣。"
     },
     "闇の盾": {
         "materials": {"闇の宝珠": 1, "腐った肉": 3},
         "result_type": "armor",
-        "defense": 22,
+        "defense": 15,
         "ability": "闇耐性+60%",
         "description": "闇の力が込められた盾。"
     },
     "蜘蛛の鎧": {
         "materials": {"蜘蛛の糸": 3, "悪魔の角": 1},
         "result_type": "armor",
-        "defense": 13,
+        "defense": 11,
         "ability": "回避率+15%、毒耐性+50%",
         "description": "蜘蛛の糸で織られた鎧。軽くて頑丈。"
     },
     "竜鱗の鎧": {
         "materials": {"古龍の心臓": 1, "竜の牙": 2, "闇の宝珠": 1},
         "result_type": "armor",
-        "defense": 20,
+        "defense": 13,
         "ability": "全属性耐性+30%、HP自動回復+5/ターン",
         "description": "竜の素材から作られた究極の鎧。"
     },
     "腐肉の兜": {
         "materials": {"腐った肉": 4},
         "result_type": "armor",
-        "defense": 10,
+        "defense": 8,
         "ability": "毒無効、アンデッド特効+40%",
         "description": "腐った肉で作られた兜。アンデッドに強い。"
     }
@@ -1828,6 +1874,14 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         if random.randint(1, 100) <= freeze_chance:
             result["freeze"] = True
             result["effect_text"] += "❄️凍結! "
+
+    # 麻痺効果（攻撃時X%で敵を麻痺）
+    paralyze_match = re.search(r'攻撃時(\d+)%で(?:敵を)?麻痺', ability_text)
+    if paralyze_match:
+        paralyze_chance = int(paralyze_match.group(1))
+        if random.randint(1, 100) <= paralyze_chance:
+            result["paralyze"] = True
+            result["effect_text"] += "⚡麻痺! "
 
     # 分身攻撃（2回攻撃）
     if "分身攻撃" in ability_text and "2回攻撃" in ability_text:
@@ -2218,7 +2272,7 @@ async def check_story_trigger(previous_distance, current_distance, user_id):
 
     return None
 
-# MP回復薬・EXP薬をITEMS_DATABASEに追加
+# MP回復薬をITEMS_DATABASEに追加
 ITEMS_DATABASE["MP回復薬（小）"] = {
     "type": "potion",
     "effect": "MP+30",
@@ -2229,13 +2283,13 @@ ITEMS_DATABASE["MP回復薬（中）"] = {
     "type": "potion",
     "effect": "MP+60",
     "ability": "MP回復",
-    "description": "MPを60回復する薬。"
+    "description": "MPを60回復する高級な薬。"
 }
 ITEMS_DATABASE["MP回復薬（大）"] = {
     "type": "potion",
     "effect": "MP+100",
     "ability": "MP大回復",
-    "description": "MPを100回復する高級な薬。"
+    "description": "MPを100回復する貴重な薬。"
 }
 
 # スキルデータベース
