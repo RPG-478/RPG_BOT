@@ -1607,10 +1607,10 @@ def parse_ability_bonuses(ability_text):
 
     return bonuses
 
-def calculate_equipment_bonus(user_id):
+async def calculate_equipment_bonus(user_id):
     """装備中のアイテムから攻撃力・防御力ボーナスと特殊効果を計算"""
     import db
-    equipped = db.get_equipped_items(user_id)
+    equipped = await db.get_equipped_items(user_id)
 
     attack_bonus = 0
     defense_bonus = 0
@@ -2168,7 +2168,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
     return result
 
 
-def check_story_trigger(previous_distance, current_distance, user_id):
+async def check_story_trigger(previous_distance, current_distance, user_id):
     """
     ストーリートリガーをチェック
 
@@ -2183,7 +2183,7 @@ def check_story_trigger(previous_distance, current_distance, user_id):
     import db
     from story import STORY_DATA
 
-    player = db.get_player(user_id)
+    player = await db.get_player(user_id)
     if not player:
         return None
 
@@ -2210,10 +2210,10 @@ def check_story_trigger(previous_distance, current_distance, user_id):
             if loop_requirement is None:
                 return story_id
             elif loop_requirement == 0 and loop_count == 0:
-                if not db.get_story_flag(user_id, story_id):
+                if not await db.get_story_flag(user_id, story_id):
                     return story_id
             elif loop_requirement > 0 and loop_count >= loop_requirement:
-                if not db.get_story_flag(user_id, story_id):
+                if not await db.get_story_flag(user_id, story_id):
                     return story_id
 
     return None
