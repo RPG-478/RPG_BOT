@@ -2179,16 +2179,16 @@ class BattleView(View):
     # 🗡️ 戦う
     # =====================================
 @button(label="戦う", style=discord.ButtonStyle.danger, emoji="⚔️")
-    async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.ctx.author.id:
-            return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
+    if interaction.user.id != self.ctx.author.id:
+        return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
-        if db.is_mp_stunned(interaction.user.id):
-            db.set_mp_stunned(interaction.user.id, False)
-            text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
-            await self.update_embed(text)
-            await interaction.response.defer()
-            return
+    if db.is_mp_stunned(interaction.user.id):
+        db.set_mp_stunned(interaction.user.id, False)
+        text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
+        await self.update_embed(text)
+        await interaction.response.defer()
+        return
 
         # プレイヤー攻撃
         base_damage = max(0, self.player["attack"] + random.randint(-5, 5) - self.boss["def"])
