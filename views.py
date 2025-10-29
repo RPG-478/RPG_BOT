@@ -2742,7 +2742,32 @@ class BattleView(View):
                 await db.update_player(self.ctx.author.id, hp=new_hp)
 
                 text = f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！"
+
+            # エリクサーの処理
+            else:
+                current_hp = self.player.get('hp', 50)
+                max_hp = self.player.get('max_hp', 50)
+                current_mp = self.player.get('mp', 20)
+                max_mp = self.player.get('max_mp', 20)
+                effect = item_info.get('effect', '')
+
+                if 'HPMPMAX' in effect:
+                    new_hp = max_hp
+                    new_mp = max_mp
+                else:
+                    heal = 30
+
                 
+                actual_heal = new_hp - current_hp
+                actual_mp_heal = new_mp - current_mp
+                self.player['hp'] = new_hp
+                self.player['mp'] = new_mp
+
+                await db.remove_item_from_inventory(self.ctx.author.id, item_name)
+                await db.update_player(self.ctx.author.id, hp=new_hp)
+                await db.update_player(self.ctx.author.id, mp=new_mp)
+
+                text = f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！\nMP +{actual_mp_heal} 回復！"
             # 敵の反撃
             enemy_dmg = max(0, self.enemy["atk"] + random.randint(-3, 3) - self.player["defense"])
             self.player["hp"] -= enemy_dmg
