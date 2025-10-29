@@ -2178,142 +2178,142 @@ class BattleView(View):
     # =====================================
     # 🗡️ 戦う
     # =====================================
-@button(label="戦う", style=discord.ButtonStyle.danger, emoji="🗡️")
-async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
-    # 権限チェック
-    if interaction.user.id != self.ctx.author.id:
-        return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+    @button(label="戦う", style=discord.ButtonStyle.danger, emoji="🗡️")
+    async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # 権限チェック
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
-    # アトミックなロックチェック
-    if self._battle_lock.locked():
-        return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
+        # アトミックなロックチェック
+        if self._battle_lock.locked():
+            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
     
-    # 先に応答
-    await interaction.response.defer()
+        # 先に応答
+        await interaction.response.defer()
     
-    async with self._battle_lock:
-        try:
-            # プレイヤーデータを最新化
-            fresh_player_data = await db.get_player(interaction.user.id)
-            if not fresh_player_data:
-                await interaction.followup.send("❌ プレイヤーデータが見つかりません", ephemeral=True)
-                return
+        async with self._battle_lock:
+            try:
+                # プレイヤーデータを最新化
+                fresh_player_data = await db.get_player(interaction.user.id)
+                if not fresh_player_data:
+                    await interaction.followup.send("❌ プレイヤーデータが見つかりません", ephemeral=True)
+                    return
                 
-            self.player["hp"] = fresh_player_data.get("hp", self.player["hp"])
-            self.player["max_hp"] = fresh_player_data.get("max_hp", self.player.get("max_hp", 50))
+                self.player["hp"] = fresh_player_data.get("hp", self.player["hp"])
+                self.player["max_hp"] = fresh_player_data.get("max_hp", self.player.get("max_hp", 50))
             
-            # HPチェック
-            if self.player["hp"] <= 0:
-                await interaction.followup.send("❌ HPが0のため戦闘を続行できません", ephemeral=True)
-                return
+                # HPチェック
+                if self.player["hp"] <= 0:
+                    await interaction.followup.send("❌ HPが0のため戦闘を続行できません", ephemeral=True)
+                    return
             
-            # 装備ボーナスを再計算
-            base_atk = fresh_player_data.get("atk", 5)
-            base_def = fresh_player_data.get("def", 2)
-            equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
-            self.player["attack"] = base_atk + equipment_bonus["attack_bonus"]
-            self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
+                # 装備ボーナスを再計算
+                base_atk = fresh_player_data.get("atk", 5)
+                base_def = fresh_player_data.get("def", 2)
+                equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
+                self.player["attack"] = base_atk + equipment_bonus["attack_bonus"]
+                self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
             
-            print(f"[DEBUG] fight - HP={self.player['hp']}, ATK={self.player['attack']}, DEF={self.player['defense']}")
+                print(f"[DEBUG] fight - HP={self.player['hp']}, ATK={self.player['attack']}, DEF={self.player['defense']}")
 
-            # MP枯渇チェック
-            if await db.is_mp_stunned(interaction.user.id):
-                await db.set_mp_stunned(interaction.user.id, False)
-                text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
-                await self.update_embed(text)
-                return
+                # MP枯渇チェック
+                if await db.is_mp_stunned(interaction.user.id):
+                    await db.set_mp_stunned(interaction.user.id, False)
+                    text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
+                    await self.update_embed(text)
+                    return
 
-            # プレイヤー攻撃
-            base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.enemy["def"])
+                # プレイヤー攻撃
+                base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.enemy["def"])
             
-            print(f"[DEBUG] fight - base_damage={base_damage}")
+                print(f"[DEBUG] fight - base_damage={base_damage}")
 
-            # ability効果を適用
-            enemy_type = game.get_enemy_type(self.enemy["name"])
-            weapon_ability = equipment_bonus.get("weapon_ability", "")
+                # ability効果を適用
+                enemy_type = game.get_enemy_type(self.enemy["name"])
+                weapon_ability = equipment_bonus.get("weapon_ability", "")
 
-            ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
+                ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
             
-            player_dmg = ability_result["damage"]
-            self.enemy["hp"] -= player_dmg
+                player_dmg = ability_result["damage"]
+                self.enemy["hp"] -= player_dmg
             
-            print(f"[DEBUG] fight - player_dmg={player_dmg}, enemy残りHP={self.enemy['hp']}")
+                print(f"[DEBUG] fight - player_dmg={player_dmg}, enemy残りHP={self.enemy['hp']}")
 
-            # HP吸収
-            if ability_result["lifesteal"] > 0:
-                self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
+                # HP吸収
+                if ability_result["lifesteal"] > 0:
+                    self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
 
-            # 召喚回復
-            if ability_result.get("summon_heal", 0) > 0:
-                self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
+                # 召喚回復
+                if ability_result.get("summon_heal", 0) > 0:
+                    self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
 
-            # 自傷ダメージ
-            if ability_result.get("self_damage", 0) > 0:
-                self.player["hp"] -= ability_result["self_damage"]
-                self.player["hp"] = max(0, self.player["hp"])
+                # 自傷ダメージ
+                if ability_result.get("self_damage", 0) > 0:
+                    self.player["hp"] -= ability_result["self_damage"]
+                    self.player["hp"] = max(0, self.player["hp"])
 
-            text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
-            if ability_result["effect_text"]:
-                text += f"\n{ability_result['effect_text']}"
+                text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
+                if ability_result["effect_text"]:
+                    text += f"\n{ability_result['effect_text']}"
 
-            # 即死判定
-            if ability_result["instant_kill"]:
-                self.enemy["hp"] = 0
+                # 即死判定
+                if ability_result["instant_kill"]:
+                    self.enemy["hp"] = 0
 
-            # 勝利チェック
-            if self.enemy["hp"] <= 0:
-                await db.update_player(interaction.user.id, hp=self.player["hp"])
+                # 勝利チェック
+                if self.enemy["hp"] <= 0:
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
 
-                distance = self.player.get("distance", 0)
-                drop_result = game.get_enemy_drop(self.enemy["name"], distance)
+                    distance = self.player.get("distance", 0)
+                    drop_result = game.get_enemy_drop(self.enemy["name"], distance)
 
-                drop_text = ""
-                if drop_result:
-                    if drop_result["type"] == "coins":
-                        await db.add_gold(interaction.user.id, drop_result["amount"])
-                        drop_text = f"\n💰 **{drop_result['amount']}コイン** を手に入れた！"
-                    elif drop_result["name"] == "none":
-                        drop_text = f"\n **敵は何も落とさなかった...**"
-                    elif drop_result["type"] == "item":
-                        await db.add_item_to_inventory(interaction.user.id, drop_result["name"])
-                        drop_text = f"\n🎁 **{drop_result['name']}** を手に入れた！"
+                    drop_text = ""
+                    if drop_result:
+                        if drop_result["type"] == "coins":
+                            await db.add_gold(interaction.user.id, drop_result["amount"])
+                            drop_text = f"\n💰 **{drop_result['amount']}コイン** を手に入れた！"
+                        elif drop_result["name"] == "none":
+                            drop_text = f"\n **敵は何も落とさなかった...**"
+                        elif drop_result["type"] == "item":
+                            await db.add_item_to_inventory(interaction.user.id, drop_result["name"])
+                            drop_text = f"\n🎁 **{drop_result['name']}** を手に入れた！"
 
-                await self.update_embed(text + "\n🏆 敵を倒した！" + drop_text)
-                self.disable_all_items()
-                await self.message.edit(view=self)
-                if self.ctx.author.id in self.user_processing:
-                    self.user_processing[self.ctx.author.id] = False
-                return
+                    await self.update_embed(text + "\n🏆 敵を倒した！" + drop_text)
+                    self.disable_all_items()
+                    await self.message.edit(view=self)
+                    if self.ctx.author.id in self.user_processing:
+                        self.user_processing[self.ctx.author.id] = False
+                    return
 
-            # 怯み効果
-            if ability_result.get("enemy_flinch", False):
-                text += "\n敵は怯んで動けない！\n『よしっ！』"
-                await db.update_player(interaction.user.id, hp=self.player["hp"])
-                await self.update_embed(text)
-                return
+                # 怯み効果
+                if ability_result.get("enemy_flinch", False):
+                    text += "\n敵は怯んで動けない！\n『よしっ！』"
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self.update_embed(text)
+                    return
 
-            # 凍結効果
-            if ability_result.get("freeze", False):
-                text += "\n敵は凍結して動けない！"
-                await db.update_player(interaction.user.id, hp=self.player["hp"])
-                await self.update_embed(text)
-                return
+                # 凍結効果
+                if ability_result.get("freeze", False):
+                    text += "\n敵は凍結して動けない！"
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self.update_embed(text)
+                    return
 
-            # 敵反撃
-            enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
+                # 敵反撃
+                enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
             
-            print(f"[DEBUG] fight - enemy_base_dmg={enemy_base_dmg}")
+                print(f"[DEBUG] fight - enemy_base_dmg={enemy_base_dmg}")
 
-            # 防具効果を適用
-            armor_ability = equipment_bonus.get("armor_ability", "")
-            armor_result = game.apply_armor_effects(
-                enemy_base_dmg, 
-                armor_ability, 
-                self.player["hp"], 
-                self.player.get("max_hp", 50),
-                enemy_base_dmg,
-                self.enemy.get("attribute", "none")
-            )
+                # 防具効果を適用
+                armor_ability = equipment_bonus.get("armor_ability", "")
+                armor_result = game.apply_armor_effects(
+                    enemy_base_dmg, 
+                    armor_ability, 
+                    self.player["hp"], 
+                    self.player.get("max_hp", 50),
+                    enemy_base_dmg,
+                    self.enemy.get("attribute", "none")
+                )
 
             if armor_result["evaded"]:
                 text += f"\n敵の攻撃！ {armor_result['effect_text']}"
