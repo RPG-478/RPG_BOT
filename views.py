@@ -2194,7 +2194,7 @@ class BattleView(View):
                     return
 
                 # プレイヤー攻撃
-                base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.enemy["def"])
+                base_damage = max(0, self.player["atk"] + random.randint(-3, 3) - self.enemy["def"])
 
                 # ability効果を適用
                 enemy_type = game.get_enemy_type(self.enemy["name"])
