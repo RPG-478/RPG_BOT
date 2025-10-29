@@ -1933,9 +1933,12 @@ class BossBattleView(View):
             self.user_processing[self.ctx.author.id] = False
 
 #戦闘Embed
-import discord
 from discord.ui import View, button, Select
+import discord
+import asyncio
 import random
+import db
+import game
 
 class BattleView(View):
     def __init__(self, ctx, player, enemy, user_processing: dict):
@@ -1955,11 +1958,11 @@ class BattleView(View):
         return instance
 
     async def _async_init(self):
-        """Async initialization logic"""
+        """非同期初期化"""
         if "user_id" in self.player:
             equipment_bonus = await game.calculate_equipment_bonus(self.player["user_id"])
-            self.player["attack"] = self.player.get("attack", 10) + equipment_bonus["attack_bonus"]
-            self.player["defense"] = self.player.get("defense", 5) + equipment_bonus["defense_bonus"]
+            self.player["attack"] = self.player.get("atk", 5) + equipment_bonus["attack_bonus"]
+            self.player["defense"] = self.player.get("def", 2) + equipment_bonus["defense_bonus"]
 
             unlocked_skills = await db.get_unlocked_skills(self.player["user_id"])
             if unlocked_skills:
@@ -1983,10 +1986,12 @@ class BattleView(View):
                     self.add_item(skill_select)
 
     async def send_initial_embed(self):
+        """初期戦闘画面を送信"""
         embed = await self.create_battle_embed()
         self.message = await self.ctx.send(embed=embed, view=self)
 
     async def create_battle_embed(self):
+        """戦闘用embedを作成"""
         embed = discord.Embed(
             title="⚔️ 戦闘開始！",
             description=f"敵が現れた！：**{self.enemy['name']}**",
@@ -2013,12 +2018,16 @@ class BattleView(View):
         )
         embed.set_footer(text="行動を選択してください。")
         return embed
-
     async def update_embed(self, text=""):
+        """embedを更新"""
         embed = await self.create_battle_embed()
         if text:
             embed.description += f"\n\n{text}"
         await self.message.edit(embed=embed, view=self)
+    def disable_all_items(self):
+        """すべてのボタンを無効化"""
+        for item in self.children:
+            item.disabled = True
 
     # =====================================
     # ✨ スキル使用
@@ -2377,7 +2386,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
             if self.player["hp"] <= 0:
                 if armor_result.get("revived", False):
                     self.player["hp"] = 1
-                    text += "\n蘇生効果で生き残った！\n『死んだかと思った……どんなシステムなんだろう』"
+                    text += "\n蘇生効果で生き残った！\n『死んだかと思った……』"
                 else:
                     from views import handle_death_with_triggers
                     death_result = await handle_death_with_triggers(
