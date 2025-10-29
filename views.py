@@ -2315,17 +2315,17 @@ class BattleView(View):
                     self.enemy.get("attribute", "none")
                 )
 
-            if armor_result["evaded"]:
-                text += f"\n敵の攻撃！ {armor_result['effect_text']}"
-            else:
-                enemy_dmg = armor_result["damage"]
-                self.player["hp"] -= enemy_dmg
-                self.player["hp"] = max(0, self.player["hp"])
-                text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
+                if armor_result["evaded"]:
+                    text += f"\n敵の攻撃！ {armor_result['effect_text']}"
+                else:
+                    enemy_dmg = armor_result["damage"]
+                    self.player["hp"] -= enemy_dmg
+                    self.player["hp"] = max(0, self.player["hp"])
+                    text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
                 if armor_result["effect_text"]:
                     text += f"\n{armor_result['effect_text']}"
                 
-                print(f"[DEBUG] fight - enemy_dmg={enemy_dmg}, 残りHP={self.player['hp']}")
+                    print(f"[DEBUG] fight - enemy_dmg={enemy_dmg}, 残りHP={self.player['hp']}")
 
                 # 反撃ダメージ
                 if armor_result["counter_damage"] > 0:
