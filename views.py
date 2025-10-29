@@ -2521,9 +2521,7 @@ class BattleView(View):
                     print(f"[DEBUG] run - プレイヤーデータ最新化: HP={self.player['hp']}, DEF={base_def}+{equipment_bonus['defense_bonus']}={self.player['defense']}")
 
                 # 逃走確率（仮に進んだ距離がplayer["distance"]）
-                distance = self.player.get("distance", 0)
-                chance = max(10, 100 - int(distance / 100))
-                if random.randint(1, 100) <= chance:
+                if random.randint(1, 100) <= 50:
                     # 逃走成功 - HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
                     text = "🏃‍♂️ うまく逃げ切れた！\n『戦っとけば良かったかな――。』"
