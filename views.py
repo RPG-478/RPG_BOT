@@ -2178,7 +2178,7 @@ class BattleView(View):
     # =====================================
     # 🗡️ 戦う
     # =====================================
-    @button(label="戦う", style=discord.ButtonStyle.danger, emoji="🗡️")
+@button(label="戦う", style=discord.ButtonStyle.danger, emoji="🗡️")
 async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
     # 権限チェック
     if interaction.user.id != self.ctx.author.id:
