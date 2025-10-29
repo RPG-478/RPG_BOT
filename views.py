@@ -3366,7 +3366,7 @@ async def handle_death_with_triggers(ctx, user_id, user_processing, enemy_name=N
     )
 
     # トリガーチェック
-    trigger_result = death_system.check_death_triggers(user_id)
+    trigger_result = await death_system.check_death_triggers(user_id)
 
     # ストーリーイベント発動
     if trigger_result["type"] == "story":
