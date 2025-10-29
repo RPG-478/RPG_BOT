@@ -197,7 +197,7 @@ class TutorialView(discord.ui.View):
         self.pages = [
             discord.Embed(
                 title="なぜ……ここに？(1/5)",
-                description="ここは『アビスダンジョン』──100階層まで続く階層を持つのが特徴のとても深い謎のダンジョンだ。\n人工的に作られたかのように100m区切りで1階層となっているようだ……",
+                description="ここは『イニシエダンジョン』──100階層まで続く階層を持つのが特徴の謎のダンジョンだ。\n人工的に作られたかのように100m区切りで1階層となっているようだ……",
                 color=discord.Color.purple()
             ),
             discord.Embed(
@@ -2703,12 +2703,10 @@ class BattleView(View):
                 
                 if 'MP+30' in effect:
                     mp_heal = 30
-                elif 'MP+60' in effect:
-                    mp_heal = 60
-                elif 'MP+100' in effect:
-                    mp_heal = 100
-                elif 'MP全回復' in effect:
-                    mp_heal = max_mp
+                elif 'MP+80' in effect:
+                    mp_heal = 80
+                elif 'MP+200' in effect:
+                    mp_heal = 200
                 else:
                     mp_heal = 30
                 
@@ -2729,12 +2727,10 @@ class BattleView(View):
 
                 if 'HP+30' in effect:
                     heal = 30
-                elif 'HP+50' in effect:
-                    heal = 50
-                elif 'HP+100' in effect:
-                    heal = 100
-                elif 'HP全回復' in effect:
-                    heal = max_hp
+                elif 'HP+80' in effect:
+                    heal = 80
+                elif 'HP200' in effect:
+                    heal = 200
                 else:
                     heal = 30
 
@@ -2746,7 +2742,7 @@ class BattleView(View):
                 await db.update_player(self.ctx.author.id, hp=new_hp)
 
                 text = f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！"
-
+                
             # 敵の反撃
             enemy_dmg = max(0, self.enemy["atk"] + random.randint(-3, 3) - self.player["defense"])
             self.player["hp"] -= enemy_dmg
