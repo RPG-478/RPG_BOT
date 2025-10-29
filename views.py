@@ -1958,8 +1958,8 @@ class BattleView(View):
         """Async initialization logic"""
         if "user_id" in self.player:
             equipment_bonus = await game.calculate_equipment_bonus(self.player["user_id"])
-            self.player["attack"] = self.player.get("attack", 10) + equipment_bonus["attack_bonus"]
-            self.player["defense"] = self.player.get("defense", 5) + equipment_bonus["defense_bonus"]
+            self.player["attack"] = self.player.get("attack", 5) + equipment_bonus["attack_bonus"]
+            self.player["defense"] = self.player.get("defense", 2) + equipment_bonus["defense_bonus"]
 
             unlocked_skills = await db.get_unlocked_skills(self.player["user_id"])
             if unlocked_skills:
