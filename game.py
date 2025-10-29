@@ -675,6 +675,8 @@ ENEMY_ZONES = {
                 "weight": 40,
                 "exp": 8,
                 "drops": [
+                    {"item": "炎の鎧", "weight": 999},
+                    {"item": "死の鎧", "weight": 999},
                     {"item": "none", "weight": 60},
                     {"item": "革の盾", "weight": 15},
                     {"item": "木の盾", "weight": 5},
