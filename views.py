@@ -2178,226 +2178,234 @@ class BattleView(View):
     # =====================================
     # 🗡️ 戦う
     # =====================================
-@button(label="戦う", style=discord.ButtonStyle.danger, emoji="⚔️")
-async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
-    if interaction.user.id != self.ctx.author.id:
-        return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+    @button(label="戦う", style=discord.ButtonStyle.danger, emoji="🗡️")
+    async def fight(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # 権限チェック
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
-    if db.is_mp_stunned(interaction.user.id):
-        db.set_mp_stunned(interaction.user.id, False)
-        text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
-        await self.update_embed(text)
+        # アトミックなロックチェック（ロック取得できなければ処理中）
+        if self._battle_lock.locked():
+            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
+        
+        # 先にdeferしてタイムアウトを回避
         await interaction.response.defer()
-        return
-
-        # プレイヤー攻撃
-        base_damage = max(0, self.player["attack"] + random.randint(-5, 5) - self.boss["def"])
-
-        # ability効果を適用
-        enemy_type = "boss"
-        equipment_bonus = game.calculate_equipment_bonus(self.player["user_id"]) if "user_id" in self.player else {}
-        weapon_ability = equipment_bonus.get("weapon_ability", "")
-
-        ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
-
-        player_dmg = ability_result["damage"]
-        self.boss["hp"] -= player_dmg
-
-        # HP吸収
-        if ability_result["lifesteal"] > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
-
-        # 召喚回復
-        if ability_result.get("summon_heal", 0) > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
-
-        # 自傷ダメージ
-        if ability_result.get("self_damage", 0) > 0:
-            self.player["hp"] -= ability_result["self_damage"]
-            self.player["hp"] = max(0, self.player["hp"])
-
-        text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
-        if ability_result["effect_text"]:
-            text += f"\n{ability_result['effect_text']}"
-
-        # 即死判定
-        if ability_result["instant_kill"]:
-            self.boss["hp"] = 0
-
-        if self.boss["hp"] <= 0:
-            # HPを保存
-            db.update_player(interaction.user.id, hp=self.player["hp"])
-            db.set_boss_defeated(interaction.user.id, self.boss_stage)
-
-            reward_gold = random.randint(100, 300)
-            db.add_gold(interaction.user.id, reward_gold)
-
-            # ボス撃破通知を送信
+        
+        async with self._battle_lock:
             try:
-                notify_channel = interaction.client.get_channel(1424712515396305007)
-                if notify_channel:
-                    await notify_channel.send(
-                        f"⚔️ {interaction.user.mention} がステージ{self.boss_stage}のボス「{self.boss['name']}」を撃破した！"
-                    )
-            except Exception as e:
-                print(f"通知送信エラー: {e}")
-
-            await self.update_embed(text + f"\n\n🏆 ボスを倒した！\n💰 {reward_gold}ゴールドを手に入れた！")
-            self.disable_all_items()
-            await self.message.edit(view=self)
-
-            story_id = f"boss_post_{self.boss_stage}"
-            if not db.get_story_flag(interaction.user.id, story_id):
-                await asyncio.sleep(2)
-                from story import StoryView
-                view = StoryView(interaction.user.id, story_id, self.user_processing)
-                await view.send_story(self.ctx)
-                return
-
-            if self.ctx.author.id in self.user_processing:
-                self.user_processing[self.ctx.author.id] = False
-            return
-
-        # 怯み効果で敵がスキップ
-        if ability_result.get("enemy_flinch", False):
-            text += "\nボスは怯んで動けない！"
-            # HPを保存
-            db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-            await interaction.response.defer()
-            return
-
-        # 凍結効果で敵がスキップ
-        if ability_result.get("freeze", False):
-            text += "\nボスは凍結して動けない！"
-            # HPを保存
-            db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-            await interaction.response.defer()
-            return
-
-        # ボス反撃
-        enemy_base_dmg = max(0, self.boss["atk"] + random.randint(-3, 3) - self.player["defense"])
-
-        # 防具効果を適用
-        armor_ability = equipment_bonus.get("armor_ability", "")
-        armor_result = game.apply_armor_effects(
-            enemy_base_dmg, 
-            armor_ability, 
-            self.player["hp"], 
-            self.player.get("max_hp", 50),
-            enemy_base_dmg,
-            self.boss.get("attribute", "none")
-        )
-
-        if armor_result["evaded"]:
-            text += f"\nボスの攻撃！ {armor_result['effect_text']}"
-        else:
-            enemy_dmg = armor_result["damage"]
-            self.player["hp"] -= enemy_dmg
-            self.player["hp"] = max(0, self.player["hp"])
-            text += f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
-            if armor_result["effect_text"]:
-                text += f"\n{armor_result['effect_text']}"
-
-            # 反撃ダメージ
-            if armor_result["counter_damage"] > 0:
-                self.boss["hp"] -= armor_result["counter_damage"]
-                if self.boss["hp"] <= 0:
-                    # HPを保存
-                    db.update_player(interaction.user.id, hp=self.player["hp"])
-                    text += "\n反撃でボスを倒した！"
-                    db.set_boss_defeated(interaction.user.id, self.boss_stage)
-                    reward_gold = random.randint(100, 300)
-                    db.add_gold(interaction.user.id, reward_gold)
-                    await self.update_embed(text + f"\n💰 {reward_gold}ゴールドを手に入れた！")
-                    self.disable_all_items()
-                    await self.message.edit(view=self)
-
-                    story_id = f"boss_post_{self.boss_stage}"
-                    if not db.get_story_flag(interaction.user.id, story_id):
-                        await asyncio.sleep(2)
-                        from story import StoryView
-                        view = StoryView(interaction.user.id, story_id, self.user_processing)
-                        await view.send_story(self.ctx)
-                        return
-
-                    if self.ctx.author.id in self.user_processing:
-                        self.user_processing[self.ctx.author.id] = False
-                    return
-
-            # 反射ダメージ
-            if armor_result["reflect_damage"] > 0:
-                self.boss["hp"] -= armor_result["reflect_damage"]
-                if self.boss["hp"] <= 0:
-                    # HPを保存
-                    db.update_player(interaction.user.id, hp=self.player["hp"])
-                    text += "\n反射ダメージでボスを倒した！"
-                    db.set_boss_defeated(interaction.user.id, self.boss_stage)
-                    reward_gold = random.randint(100, 300)
-                    db.add_gold(interaction.user.id, reward_gold)
-                    await self.update_embed(text + f"\n💰 {reward_gold}ゴールドを手に入れた！")
-                    self.disable_all_items()
-                    await self.message.edit(view=self)
-
-                    story_id = f"boss_post_{self.boss_stage}"
-                    if not db.get_story_flag(interaction.user.id, story_id):
-                        await asyncio.sleep(2)
-                        from story import StoryView
-                        view = StoryView(interaction.user.id, story_id, self.user_processing)
-                        await view.send_story(self.ctx)
-                        return
-
-                    if self.ctx.author.id in self.user_processing:
-                        self.user_processing[self.ctx.author.id] = False
-                    return
-
-            # HP回復
-            if armor_result["hp_regen"] > 0:
-                self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + armor_result["hp_regen"])
-
-        if self.player["hp"] <= 0:
-            if armor_result.get("revived", False):
-                self.player["hp"] = 1
-                text += "\n蘇生効果で生き残った！"
-            else:
-                death_result = await handle_death_with_triggers(
-                    self.ctx if hasattr(self, 'ctx') else interaction.channel,
-                    interaction.user.id, 
-                    self.user_processing if hasattr(self, 'user_processing') else {},
-                    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
-                    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
-                )
-
-                # 死亡通知を送信
-                try:
-                    notify_channel = interaction.client.get_channel(1424712515396305007)
-                    if notify_channel:
-                        player = db.get_player(interaction.user.id)
-                        distance = player.get("distance", 0) if player else 0
-                        await notify_channel.send(
-                            f"💀 {interaction.user.mention} がボス戦で倒れた…\n"
-                            f"到達距離: {distance}m"
-                        )
-                except Exception as e:
-                    print(f"通知送信エラー: {e}")
-
-                if death_result:
-                    await self.update_embed(
-                        text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！\n（死亡回数: {death_result['death_count']}回）"
-                    )
-                else:
-                    await self.update_embed(text + "\n💀 あなたは倒れた…")
-
-                self.disable_all_items()
+                # ボタンを即座に無効化
+                for child in self.children:
+                    child.disabled = True
                 await self.message.edit(view=self)
 
-                if self.ctx.author.id in self.user_processing:
-                    self.user_processing[self.ctx.author.id] = False
-                return
+                # ✅ プレイヤーデータを最新化
+                fresh_player_data = await db.get_player(interaction.user.id)
+                if fresh_player_data:
+                    self.player["hp"] = fresh_player_data.get("hp", self.player["hp"])
+                    self.player["max_hp"] = fresh_player_data.get("max_hp", self.player.get("max_hp", 50))
+                    
+                    # ✅ 装備ボーナスを再計算してattackとdefenseを更新
+                    base_atk = fresh_player_data.get("atk", 5)
+                    base_def = fresh_player_data.get("def", 2)
+                    equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
+                    self.player["attack"] = base_atk + equipment_bonus["attack_bonus"]
+                    self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
+                    print(f"[DEBUG] fight - プレイヤーデータ最新化: HP={self.player['hp']}, ATK={base_atk}+{equipment_bonus['attack_bonus']}={self.player['attack']}, DEF={base_def}+{equipment_bonus['defense_bonus']}={self.player['defense']}")
 
-        await self.update_embed(text)
-        await interaction.response.defer()
+                # MP枯渇チェック
+                if await db.is_mp_stunned(interaction.user.id):
+                    await db.set_mp_stunned(interaction.user.id, False)
+                    text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
+                    await self.update_embed(text)
+                    # ボタンを再有効化
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+                    return
+
+                # プレイヤー攻撃
+                base_damage = max(0, self.player["atk"] + random.randint(-3, 3) - self.enemy["def"])
+
+                # ability効果を適用
+                enemy_type = game.get_enemy_type(self.enemy["name"])
+                equipment_bonus = await game.calculate_equipment_bonus(self.player["user_id"]) if "user_id" in self.player else {}
+                weapon_ability = equipment_bonus.get("weapon_ability", "")
+
+                ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
+                
+                player_dmg = ability_result["damage"]
+                self.enemy["hp"] -= player_dmg
+
+                # HP吸収
+                if ability_result["lifesteal"] > 0:
+                    self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
+
+                # 召喚回復
+                if ability_result.get("summon_heal", 0) > 0:
+                    self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
+
+                # 自傷ダメージ
+                if ability_result.get("self_damage", 0) > 0:
+                    self.player["hp"] -= ability_result["self_damage"]
+                    self.player["hp"] = max(0, self.player["hp"])
+
+                text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
+                if ability_result["effect_text"]:
+                    text += f"\n{ability_result['effect_text']}"
+
+                # 即死判定
+                if ability_result["instant_kill"]:
+                    self.enemy["hp"] = 0
+
+                # 勝利チェック
+                if self.enemy["hp"] <= 0:
+                    # HPを保存
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+
+                    # ドロップアイテムを取得
+                    distance = self.player.get("distance", 0)
+                    drop_result = game.get_enemy_drop(self.enemy["name"], distance)
+
+                    drop_text = ""
+                    if drop_result:
+                        if drop_result["type"] == "coins":
+                            await db.add_gold(interaction.user.id, drop_result["amount"])
+                            drop_text = f"\n💰 **{drop_result['amount']}コイン** を手に入れた！"
+                        elif drop_result["name"] == "none":
+                            drop_text = f"\n **敵は何も落とさなかった...**"
+                        elif drop_result["type"] == "item":
+                            await db.add_item_to_inventory(interaction.user.id, drop_result["name"])
+                            drop_text = f"\n🎁 **{drop_result['name']}** を手に入れた！"
+
+                    await self.update_embed(text + "\n🏆 敵を倒した！" + drop_text)
+                    self.disable_all_items()
+                    await self.message.edit(view=self)
+                    if self.ctx.author.id in self.user_processing:
+                        self.user_processing[self.ctx.author.id] = False
+                        # ロックはasync withで自動解放される
+                    return
+
+                # 怯み効果で敵がスキップ
+                if ability_result.get("enemy_flinch", False):
+                    text += "\n敵は怯んで動けない！\n『よしっ！』"
+                    # HPを保存
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self.update_embed(text)
+                    # ロックはasync withで自動解放される
+                    return
+
+                # 凍結効果で敵がスキップ
+                if ability_result.get("freeze", False):
+                    text += "\n敵は凍結して動けない！"
+                    # HPを保存
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self.update_embed(text)
+                    # ロックはasync withで自動解放される
+                    return
+
+                # 敵反撃
+                enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
+
+                # 防具効果を適用
+                armor_ability = equipment_bonus.get("armor_ability", "")
+                armor_result = game.apply_armor_effects(
+                    enemy_base_dmg, 
+                    armor_ability, 
+                    self.player["hp"], 
+                    self.player.get("max_hp", 50),
+                    enemy_base_dmg,
+                    self.enemy.get("attribute", "none")
+                )
+
+                if armor_result["evaded"]:
+                    text += f"\n敵の攻撃！ {armor_result['effect_text']}"
+                else:
+                    enemy_dmg = armor_result["damage"]
+                    self.player["hp"] -= enemy_dmg
+                    self.player["hp"] = max(0, self.player["hp"])
+                    text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
+                    if armor_result["effect_text"]:
+                        text += f"\n{armor_result['effect_text']}"
+
+                    # 反撃ダメージ
+                    if armor_result["counter_damage"] > 0:
+                        self.enemy["hp"] -= armor_result["counter_damage"]
+                        if self.enemy["hp"] <= 0:
+                            # HPを保存
+                            await db.update_player(interaction.user.id, hp=self.player["hp"])
+                            text += "\n反撃で敵を倒した！"
+                            await self.update_embed(text)
+                            self.disable_all_items()
+                            await self.message.edit(view=self)
+                            if self.ctx.author.id in self.user_processing:
+                                self.user_processing[self.ctx.author.id] = False
+                            # ロックはasync with‌で自動解放される
+                            return
+
+                    # 反射ダメージ
+                    if armor_result["reflect_damage"] > 0:
+                        self.enemy["hp"] -= armor_result["reflect_damage"]
+                        if self.enemy["hp"] <= 0:
+                            # HPを保存
+                            await db.update_player(interaction.user.id, hp=self.player["hp"])
+                            text += "\n反射ダメージで敵を倒した！"
+                            await self.update_embed(text)
+                            self.disable_all_items()
+                            await self.message.edit(view=self)
+                            if self.ctx.author.id in self.user_processing:
+                                self.user_processing[self.ctx.author.id] = False
+                            # ロックはasync withで自動解放される
+                            return
+
+                    # HP回復
+                    if armor_result["hp_regen"] > 0:
+                        self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + armor_result["hp_regen"])
+
+                # 敗北チェック
+                if self.player["hp"] <= 0:
+                    if armor_result.get("revived", False):
+                        self.player["hp"] = 1
+                        text += "\n蘇生効果で生き残った！\n『死んだかと思った……どんなシステムなんだろう』"
+                    else:
+                        # 死亡処理（HPリセット、距離リセット、アップグレードポイント付与）
+                        death_result = await handle_death_with_triggers(
+                            self.ctx if hasattr(self, 'ctx') else interaction.channel,
+                            interaction.user.id, 
+                            self.user_processing if hasattr(self, 'user_processing') else {},
+                            enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+                            enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+                        )
+                        if death_result:
+                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
+                        else:
+                            await self.update_embed(text + "\n💀 あなたは倒れた…")
+                        self.disable_all_items()
+                        await self.message.edit(view=self)
+                        if self.ctx.author.id in self.user_processing:
+                            self.user_processing[self.ctx.author.id] = False
+                        # ロックはasync withで自動解放される
+                        return
+
+                # HPを保存（戦闘継続時）
+                await db.update_player(interaction.user.id, hp=self.player["hp"])
+                await self.update_embed(text)
+                # ボタンを再有効化
+                for child in self.children:
+                    child.disabled = False
+                await self.message.edit(view=self)
+            
+            except Exception as e:
+                print(f"[BattleView] fight error: {e}")
+                import traceback
+                traceback.print_exc()
+                # エラー時もボタンを再有効化
+                for child in self.children:
+                    child.disabled = False
+                try:
+                    await self.message.edit(view=self)
+                except:
+                    pass
+                raise
 
     # =====================================
     # 🛡️ 防御
