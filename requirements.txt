@@ -1,13 +1,5 @@
-discord.py==2.3.2
+discord.py>=2.6.4
 supabase>=2.22.0
-python-dotenv==1.0.0
-aiohttp
-aiohttp
-discord.py==2.3.2
-python-dotenv==1.0.0
-supabase>=2.22.0
-aiohttp
-discord.py
-httpx
-python-dotenv
-supabase
+python-dotenv>=1.1.1
+httpx>=0.27.0
+aiohttp>=3.13.1
