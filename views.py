@@ -2184,16 +2184,16 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
     if interaction.user.id != self.ctx.author.id:
         return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
-    # アトミックなロックチェック（ロック取得できなければ処理中）
+    # アトミックなロックチェック
     if self._battle_lock.locked():
         return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
     
-    # 先に応答（3秒ルール対策）
+    # 先に応答
     await interaction.response.defer()
     
     async with self._battle_lock:
         try:
-            # ✅ プレイヤーデータを最新化
+            # プレイヤーデータを最新化
             fresh_player_data = await db.get_player(interaction.user.id)
             if not fresh_player_data:
                 await interaction.followup.send("❌ プレイヤーデータが見つかりません", ephemeral=True)
@@ -2202,19 +2202,19 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
             self.player["hp"] = fresh_player_data.get("hp", self.player["hp"])
             self.player["max_hp"] = fresh_player_data.get("max_hp", self.player.get("max_hp", 50))
             
-            # ✅ HPチェックを追加
+            # HPチェック
             if self.player["hp"] <= 0:
                 await interaction.followup.send("❌ HPが0のため戦闘を続行できません", ephemeral=True)
                 return
             
-            # ✅ 装備ボーナスを再計算してattackとdefenseを更新
+            # 装備ボーナスを再計算
             base_atk = fresh_player_data.get("atk", 5)
             base_def = fresh_player_data.get("def", 2)
             equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
             self.player["attack"] = base_atk + equipment_bonus["attack_bonus"]
             self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
             
-            print(f"[DEBUG] fight - プレイヤーデータ最新化: HP={self.player['hp']}, ATK={base_atk}+{equipment_bonus['attack_bonus']}={self.player['attack']}, DEF={base_def}+{equipment_bonus['defense_bonus']}={self.player['defense']}")
+            print(f"[DEBUG] fight - HP={self.player['hp']}, ATK={self.player['attack']}, DEF={self.player['defense']}")
 
             # MP枯渇チェック
             if await db.is_mp_stunned(interaction.user.id):
@@ -2223,10 +2223,10 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                 await self.update_embed(text)
                 return
 
-            # ✅ プレイヤー攻撃（修正: self.player["attack"]を使用）
+            # プレイヤー攻撃
             base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.enemy["def"])
             
-            print(f"[DEBUG] fight - ダメージ計算: base_damage={base_damage}, player_attack={self.player['attack']}, enemy_def={self.enemy['def']}")
+            print(f"[DEBUG] fight - base_damage={base_damage}")
 
             # ability効果を適用
             enemy_type = game.get_enemy_type(self.enemy["name"])
@@ -2237,7 +2237,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
             player_dmg = ability_result["damage"]
             self.enemy["hp"] -= player_dmg
             
-            print(f"[DEBUG] fight - 最終ダメージ: player_dmg={player_dmg}, enemy残りHP={self.enemy['hp']}")
+            print(f"[DEBUG] fight - player_dmg={player_dmg}, enemy残りHP={self.enemy['hp']}")
 
             # HP吸収
             if ability_result["lifesteal"] > 0:
@@ -2262,10 +2262,8 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
 
             # 勝利チェック
             if self.enemy["hp"] <= 0:
-                # HPを保存
                 await db.update_player(interaction.user.id, hp=self.player["hp"])
 
-                # ドロップアイテムを取得
                 distance = self.player.get("distance", 0)
                 drop_result = game.get_enemy_drop(self.enemy["name"], distance)
 
@@ -2287,24 +2285,24 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                     self.user_processing[self.ctx.author.id] = False
                 return
 
-            # 怯み効果で敵がスキップ
+            # 怯み効果
             if ability_result.get("enemy_flinch", False):
                 text += "\n敵は怯んで動けない！\n『よしっ！』"
                 await db.update_player(interaction.user.id, hp=self.player["hp"])
                 await self.update_embed(text)
                 return
 
-            # 凍結効果で敵がスキップ
+            # 凍結効果
             if ability_result.get("freeze", False):
                 text += "\n敵は凍結して動けない！"
                 await db.update_player(interaction.user.id, hp=self.player["hp"])
                 await self.update_embed(text)
                 return
 
-            # ✅ 敵反撃（修正: self.player["defense"]を使用）
+            # 敵反撃
             enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
             
-            print(f"[DEBUG] fight - 敵ダメージ計算: enemy_base_dmg={enemy_base_dmg}, enemy_atk={self.enemy['atk']}, player_def={self.player['defense']}")
+            print(f"[DEBUG] fight - enemy_base_dmg={enemy_base_dmg}")
 
             # 防具効果を適用
             armor_ability = equipment_bonus.get("armor_ability", "")
@@ -2327,7 +2325,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                 if armor_result["effect_text"]:
                     text += f"\n{armor_result['effect_text']}"
                 
-                print(f"[DEBUG] fight - プレイヤー被ダメージ: enemy_dmg={enemy_dmg}, 残りHP={self.player['hp']}")
+                print(f"[DEBUG] fight - enemy_dmg={enemy_dmg}, 残りHP={self.player['hp']}")
 
                 # 反撃ダメージ
                 if armor_result["counter_damage"] > 0:
@@ -2336,7 +2334,6 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                         await db.update_player(interaction.user.id, hp=self.player["hp"])
                         text += "\n反撃で敵を倒した！"
                         
-                        # ドロップ処理
                         distance = self.player.get("distance", 0)
                         drop_result = game.get_enemy_drop(self.enemy["name"], distance)
                         drop_text = ""
@@ -2362,7 +2359,6 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                         await db.update_player(interaction.user.id, hp=self.player["hp"])
                         text += "\n反射ダメージで敵を倒した！"
                         
-                        # ドロップ処理
                         distance = self.player.get("distance", 0)
                         drop_result = game.get_enemy_drop(self.enemy["name"], distance)
                         drop_text = ""
@@ -2391,7 +2387,6 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                     self.player["hp"] = 1
                     text += "\n蘇生効果で生き残った！\n『死んだかと思った……どんなシステムなんだろう』"
                 else:
-                    # 死亡処理
                     from views import handle_death_with_triggers
                     death_result = await handle_death_with_triggers(
                         self.ctx if hasattr(self, 'ctx') else interaction.channel,
@@ -2410,7 +2405,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                         self.user_processing[self.ctx.author.id] = False
                     return
 
-            # HPを保存（戦闘継続時）
+            # ✅ 戦闘継続時: HPを保存してembedを更新
             await db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
         
@@ -2422,7 +2417,6 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                 await interaction.followup.send(f"❌ エラーが発生しました: {e}", ephemeral=True)
             except:
                 pass
-            raise
 
     # =====================================
     # 🛡️ 防御
