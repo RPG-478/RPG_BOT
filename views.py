@@ -2742,32 +2742,7 @@ class BattleView(View):
                 await db.update_player(self.ctx.author.id, hp=new_hp)
 
                 text = f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！"
-
-            # エリクサーの処理
-            else:
-                current_hp = self.player.get('hp', 50)
-                max_hp = self.player.get('max_hp', 50)
-                current_mp = self.player.get('mp', 20)
-                max_mp = self.player.get('max_mp', 20)
-                effect = item_info.get('effect', '')
-
-                if 'HPMPMAX' in effect:
-                    new_hp = max_hp
-                    new_mp = max_mp
-                else:
-                    heal = 30
-
                 
-                actual_heal = new_hp - current_hp
-                actual_mp_heal = new_mp - current_mp
-                self.player['hp'] = new_hp
-                self.player['mp'] = new_mp
-
-                await db.remove_item_from_inventory(self.ctx.author.id, item_name)
-                await db.update_player(self.ctx.author.id, hp=new_hp)
-                await db.update_player(self.ctx.author.id, mp=new_mp)
-
-                text = f"✨ **{item_name}** を使用した！\nHP +{actual_heal} 回復！\nMP +{actual_mp_heal} 回復！"
             # 敵の反撃
             enemy_dmg = max(0, self.enemy["atk"] + random.randint(-3, 3) - self.player["defense"])
             self.player["hp"] -= enemy_dmg
@@ -2990,10 +2965,10 @@ class InventorySelectView(discord.ui.View):
                 
                 if 'MP+30' in effect:
                     mp_heal = 30
-                elif 'MP+60' in effect:
-                    mp_heal = 60
-                elif 'MP+100' in effect:
-                    mp_heal = 100
+                elif 'MP+80' in effect:
+                    mp_heal = 80
+                elif 'MP+200' in effect:
+                    mp_heal = 200
                 elif 'MP全回復' in effect:
                     mp_heal = max_mp
                 else:
@@ -3020,10 +2995,10 @@ class InventorySelectView(discord.ui.View):
 
                 if 'HP+30' in effect:
                     heal = 30
-                elif 'HP+50' in effect:
-                    heal = 50
-                elif 'HP+100' in effect:
-                    heal = 100
+                elif 'HP+80' in effect:
+                    heal = 80
+                elif 'HP+200' in effect:
+                    heal = 200
                 elif 'HP全回復' in effect:
                     heal = max_hp
                 else:
