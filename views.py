@@ -2038,6 +2038,15 @@ class BattleView(View):
                     child.disabled = True
                 await self.message.edit(view=self)
 
+                # ✅ プレイヤーデータを最新化
+                fresh_player_data = await db.get_player(interaction.user.id)
+                if fresh_player_data:
+                    self.player["hp"] = fresh_player_data.get("hp", self.player["hp"])
+                    self.player["mp"] = fresh_player_data.get("mp", self.player.get("mp", 20))
+                    self.player["max_hp"] = fresh_player_data.get("max_hp", self.player.get("max_hp", 50))
+                    self.player["max_mp"] = fresh_player_data.get("max_mp", self.player.get("max_mp", 20))
+                    print(f"[DEBUG] use_skill - プレイヤーデータ最新化: HP={self.player['hp']}, MP={self.player['mp']}")
+
                 if await db.is_mp_stunned(interaction.user.id):
                     await db.set_mp_stunned(interaction.user.id, False)
                     await interaction.response.send_message("⚠️ MP枯渇で行動不能！\n『嘘だろ!?』\n次のターンから行動可能になります。", ephemeral=True)
@@ -2181,6 +2190,15 @@ class BattleView(View):
                 for child in self.children:
                     child.disabled = True
                 await self.message.edit(view=self)
+
+                # ✅ プレイヤーデータを最新化
+                fresh_player_data = await db.get_player(interaction.user.id)
+                if fresh_player_data:
+                    self.player["hp"] = fresh_player_data.get("hp", self.player["hp"])
+                    self.player["atk"] = fresh_player_data.get("atk", self.player.get("atk", 5))
+                    self.player["defense"] = fresh_player_data.get("def", self.player.get("defense", 2))
+                    self.player["max_hp"] = fresh_player_data.get("max_hp", self.player.get("max_hp", 50))
+                    print(f"[DEBUG] fight - プレイヤーデータ最新化: HP={self.player['hp']}, ATK={self.player['atk']}, DEF={self.player['defense']}")
 
                 # MP枯渇チェック
                 if await db.is_mp_stunned(interaction.user.id):
@@ -2399,6 +2417,13 @@ class BattleView(View):
                     child.disabled = True
                 await self.message.edit(view=self)
 
+                # ✅ プレイヤーデータを最新化
+                fresh_player_data = await db.get_player(interaction.user.id)
+                if fresh_player_data:
+                    self.player["hp"] = fresh_player_data.get("hp", self.player["hp"])
+                    self.player["defense"] = fresh_player_data.get("def", self.player.get("defense", 2))
+                    print(f"[DEBUG] defend - プレイヤーデータ最新化: HP={self.player['hp']}, DEF={self.player['defense']}")
+
                 reduction = random.randint(10, 50)
                 enemy_dmg = max(0, int((self.enemy["atk"] + random.randint(-2, 2)) * (1 - reduction / 100)) - self.player["defense"])
                 self.player["hp"] -= enemy_dmg
@@ -2467,6 +2492,13 @@ class BattleView(View):
                 for child in self.children:
                     child.disabled = True
                 await self.message.edit(view=self)
+
+                # ✅ プレイヤーデータを最新化
+                fresh_player_data = await db.get_player(interaction.user.id)
+                if fresh_player_data:
+                    self.player["hp"] = fresh_player_data.get("hp", self.player["hp"])
+                    self.player["defense"] = fresh_player_data.get("def", self.player.get("defense", 2))
+                    print(f"[DEBUG] run - プレイヤーデータ最新化: HP={self.player['hp']}")
 
                 # 逃走確率（仮に進んだ距離がplayer["distance"]）
                 distance = self.player.get("distance", 0)
@@ -2614,11 +2646,28 @@ class BattleView(View):
             if select_interaction.user.id != self.ctx.author.id:
                 return await select_interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
+            # ✅ プレイヤーデータを再取得（アイテム所持確認のため）
+            fresh_player_data = await db.get_player(select_interaction.user.id)
+            if not fresh_player_data:
+                return await select_interaction.response.send_message("プレイヤーデータが見つかりません。", ephemeral=True)
+            
+            self.player["hp"] = fresh_player_data.get("hp", self.player["hp"])
+            self.player["mp"] = fresh_player_data.get("mp", self.player.get("mp", 20))
+            self.player["max_hp"] = fresh_player_data.get("max_hp", self.player.get("max_hp", 50))
+            self.player["max_mp"] = fresh_player_data.get("max_mp", self.player.get("max_mp", 20))
+            self.player["inventory"] = fresh_player_data.get("inventory", [])
+            print(f"[DEBUG] item_select_callback - プレイヤーデータ再取得: HP={self.player['hp']}, インベントリ={len(self.player['inventory'])}個")
+
             selected_value = select_interaction.data['values'][0]
             parts = selected_value.split("_", 2)  # 例: "hp_0_小さい回復薬"
             potion_type = parts[0]
             idx = int(parts[1])
             item_name = parts[2]
+
+            # ✅ アイテム所持確認
+            if item_name not in self.player["inventory"]:
+                print(f"[DEBUG] item_select_callback - アイテム未所持: {item_name}")
+                return await select_interaction.response.send_message(f"⚠️ {item_name} を所持していません。", ephemeral=True)
 
             item_info = game.get_item_info(item_name)
             if not item_info:
