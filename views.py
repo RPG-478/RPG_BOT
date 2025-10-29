@@ -2205,11 +2205,11 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
 
         # HP吸収
         if ability_result["lifesteal"] > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 100), self.player["hp"] + ability_result["lifesteal"])
+            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
 
         # 召喚回復
         if ability_result.get("summon_heal", 0) > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 100), self.player["hp"] + ability_result["summon_heal"])
+            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
 
         # 自傷ダメージ
         if ability_result.get("self_damage", 0) > 0:
@@ -2229,7 +2229,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
             db.update_player(interaction.user.id, hp=self.player["hp"])
             db.set_boss_defeated(interaction.user.id, self.boss_stage)
 
-            reward_gold = random.randint(500, 1000)
+            reward_gold = random.randint(100, 300)
             db.add_gold(interaction.user.id, reward_gold)
 
             # ボス撃破通知を送信
@@ -2285,7 +2285,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
             enemy_base_dmg, 
             armor_ability, 
             self.player["hp"], 
-            self.player.get("max_hp", 100),
+            self.player.get("max_hp", 50),
             enemy_base_dmg,
             self.boss.get("attribute", "none")
         )
@@ -2308,7 +2308,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                     db.update_player(interaction.user.id, hp=self.player["hp"])
                     text += "\n反撃でボスを倒した！"
                     db.set_boss_defeated(interaction.user.id, self.boss_stage)
-                    reward_gold = random.randint(500, 1000)
+                    reward_gold = random.randint(100, 300)
                     db.add_gold(interaction.user.id, reward_gold)
                     await self.update_embed(text + f"\n💰 {reward_gold}ゴールドを手に入れた！")
                     self.disable_all_items()
@@ -2334,7 +2334,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
                     db.update_player(interaction.user.id, hp=self.player["hp"])
                     text += "\n反射ダメージでボスを倒した！"
                     db.set_boss_defeated(interaction.user.id, self.boss_stage)
-                    reward_gold = random.randint(500, 1000)
+                    reward_gold = random.randint(100, 300)
                     db.add_gold(interaction.user.id, reward_gold)
                     await self.update_embed(text + f"\n💰 {reward_gold}ゴールドを手に入れた！")
                     self.disable_all_items()
@@ -2354,7 +2354,7 @@ async def fight(self, interaction: discord.Interaction, button: discord.ui.Butto
 
             # HP回復
             if armor_result["hp_regen"] > 0:
-                self.player["hp"] = min(self.player.get("max_hp", 100), self.player["hp"] + armor_result["hp_regen"])
+                self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + armor_result["hp_regen"])
 
         if self.player["hp"] <= 0:
             if armor_result.get("revived", False):
