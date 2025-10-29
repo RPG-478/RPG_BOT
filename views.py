@@ -2535,6 +2535,11 @@ class BattleView(View):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
+        # ✅ 最新のプレイヤーデータを取得
+        self.player = await db.get_player(self.ctx.author.id)
+        if not self.player:
+            return await interaction.response.send_message("プレイヤーデータが見つかりません", ephemeral=True)
+
         items = self.player.get("inventory", [])
         if not items:
             return await interaction.response.send_message("使えるアイテムがありません！", ephemeral=True)
@@ -2554,6 +2559,8 @@ class BattleView(View):
 
         if not hp_potions and not mp_potions:
             return await interaction.response.send_message("戦闘で使えるアイテムがありません！", ephemeral=True)
+
+        # （以下は元のコードと同じ）
 
         # Viewを作成
         item_view = discord.ui.View(timeout=60)
