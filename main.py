@@ -624,12 +624,12 @@ async def upgrade(ctx):
     embed = discord.Embed(title="⬆️ アップグレード", description=f"所持ポイント: **{points}**", color=0xFFD700)
     embed.add_field(
         name=f"1️⃣ HP最大値アップ ({cost_hp}ポイント)",
-        value=f"現在Lv.{upgrades['max_hp']} → 最大HP +5",
+        value=f"現在Lv.{upgrades['initial_hp']} → 最大HP +5",
         inline=False
     )
     embed.add_field(
         name=f"2️⃣ MP最大値アップ ({cost_mp}ポイント)",
-        value=f"現在Lv.{upgrades['max_mp']} → 最大MP +5",
+        value=f"現在Lv.{upgrades['initial_mp']} → 最大MP +5",
         inline=False
     )
     embed.add_field(
@@ -687,11 +687,11 @@ async def buy_upgrade(ctx, upgrade_type: int):
         return
 
     if upgrade_type == 1:
-        await db.upgrade_max_hp(ctx.author.id)
+        await db.upgrade_initial_hp(ctx.author.id)
         await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ HP最大値をアップグレードしました！ 最大HP +5")
     elif upgrade_type == 2:
-        await db.upgrade_max_mp(ctx.author.id)
+        await db.upgrade_initial_mp(ctx.author.id)
         await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ MP最大値をアップグレードしました！ 最大MP +5")
     elif upgrade_type == 3:
