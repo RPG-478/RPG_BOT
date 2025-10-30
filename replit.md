@@ -110,12 +110,25 @@ Replitでの24/7稼働はDiscord Bot ToSに抵触する可能性があるため�
   - use_skillボタン内でプレイヤーデータ最新化
   - item_select_callback内でプレイヤーデータ再取得＆所持確認
   - 全ボタンにデバッグログ追加（HP/MP/インベントリ状態の可視化）
+- ✅ **2025-10-30**: 4つの重大バグ修正
+  - **バグ1**: ボス戦開始時HP-1問題
+    - BossBattleView/FinalBossBattleViewの`_async_init()`でプレイヤーデータ最新化
+    - 非同期処理中のデータ同期問題を解決
+  - **バグ2**: 戦闘中Embed固まり問題
+    - BattleViewの全ボタンコールバック（fight, defend, run, use_skill）にfinally句を追加
+    - エラー発生時も確実にuser_processingをクリア
+    - on_timeout()でもuser_processingをクリア
+  - **バグ3**: 宝箱インタラクションエラー
+    - 確認の結果、TreasureViewは既にdefer()を適切に使用しており修正不要
+  - **バグ4**: 500mイベントインタラクションエラー
+    - SpecialEventViewの全ボタン（鍛冶屋、素材商人、ストーリー）にdefer()を追加
+    - edit_original_response()を使用してDiscordの3秒インタラクション制限に対応
 
 ## 最終更新
-- **日付**: 2025-10-29
-- **状態**: ✅ 動作確認済み、Bot正常起動
+- **日付**: 2025-10-30
+- **状態**: ✅ バグ修正完了、Koyeb本番環境で運用中
 - **Bot名**: RPG BOT#3992
-- **最新修正**: BattleView戦闘システムのプレイヤーデータ同期強化
+- **最新修正**: ボス戦HP問題、インタラクションタイムアウト、user_processing競合制御の強化
 
 ## 注意事項
 - 本環境はテスト・開発用です

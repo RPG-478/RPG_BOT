@@ -672,9 +672,16 @@ class SpecialEventView(View):
             await interaction.response.send_message("これはあなたのイベントではありません！", ephemeral=True)
             return
 
+        await interaction.response.defer()
+
         player = await get_player(interaction.user.id)
         if not player:
-            await interaction.response.send_message("⚠️ プレイヤーデータが見つかりません。", ephemeral=True)
+            embed = discord.Embed(
+                title="⚠️ エラー",
+                description="プレイヤーデータが見つかりません。",
+                color=discord.Color.red()
+            )
+            await interaction.edit_original_response(embed=embed, view=None)
             return
 
         inventory = player.get("inventory", [])
@@ -692,12 +699,12 @@ class SpecialEventView(View):
             for child in self.children:
                 if child.label == "🔨 鍛冶屋":
                     child.disabled = True
-            await interaction.response.edit_message(embed=embed, view=self)
+            await interaction.edit_original_response(embed=embed, view=self)
             return
 
         from views import BlacksmithView
         view = BlacksmithView(self.user_id, self.user_processing, materials)
-        await interaction.response.edit_message(content=None, embed=view.get_embed(), view=view)
+        await interaction.edit_original_response(content=None, embed=view.get_embed(), view=view)
 
     @button(label="💰 素材商人", style=discord.ButtonStyle.success)
     async def material_merchant_event(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -705,9 +712,16 @@ class SpecialEventView(View):
             await interaction.response.send_message("これはあなたのイベントではありません！", ephemeral=True)
             return
 
+        await interaction.response.defer()
+
         player = await get_player(interaction.user.id)
         if not player:
-            await interaction.response.send_message("⚠️ プレイヤーデータが見つかりません。", ephemeral=True)
+            embed = discord.Embed(
+                title="⚠️ エラー",
+                description="プレイヤーデータが見つかりません。",
+                color=discord.Color.red()
+            )
+            await interaction.edit_original_response(embed=embed, view=None)
             return
 
         inventory = player.get("inventory", [])
@@ -725,12 +739,12 @@ class SpecialEventView(View):
             for child in self.children:
                 if child.label == "💰 素材商人":
                     child.disabled = True
-            await interaction.response.edit_message(embed=embed, view=self)
+            await interaction.edit_original_response(embed=embed, view=self)
             return
 
         from views import MaterialMerchantView
         view = MaterialMerchantView(self.user_id, self.user_processing, materials)
-        await interaction.response.edit_message(content=None, embed=view.get_embed(), view=view)
+        await interaction.edit_original_response(content=None, embed=view.get_embed(), view=view)
 
     @button(label="👹 特殊な敵", style=discord.ButtonStyle.danger)
     async def special_enemy(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -787,6 +801,8 @@ class SpecialEventView(View):
             await interaction.response.send_message("これはあなたのイベントではありません！", ephemeral=True)
             return
 
+        await interaction.response.defer()
+
         stories = [
             {
                 "title": "古の碑文",
@@ -820,7 +836,7 @@ class SpecialEventView(View):
                 await update_player(interaction.user.id, hp=max_hp)
                 embed.add_field(name="✨ 効果", value="HPが全回復した！", inline=False)
 
-        await interaction.response.edit_message(embed=embed, view=None)
+        await interaction.edit_original_response(embed=embed, view=None)
 
         if self.user_id in self.user_processing:
             self.user_processing[self.user_id] = False
@@ -993,6 +1009,17 @@ class FinalBossBattleView(View):
     async def _async_init(self):
         """Async initialization logic"""
         if "user_id" in self.player:
+            fresh_player = await db.get_player(self.player["user_id"])
+            if fresh_player:
+                self.player.update({
+                    "hp": fresh_player.get("hp", self.player.get("hp", 50)),
+                    "max_hp": fresh_player.get("max_hp", self.player.get("max_hp", 50)),
+                    "mp": fresh_player.get("mp", self.player.get("mp", 20)),
+                    "max_mp": fresh_player.get("max_mp", self.player.get("max_mp", 20)),
+                    "attack": fresh_player.get("atk", self.player.get("attack", 5)),
+                    "defense": fresh_player.get("def", self.player.get("defense", 2))
+                })
+            
             equipment_bonus = await game.calculate_equipment_bonus(self.player["user_id"])
             self.player["attack"] = self.player.get("attack", 5) + equipment_bonus["attack_bonus"]
             self.player["defense"] = self.player.get("defense", 2) + equipment_bonus["defense_bonus"]
@@ -1480,6 +1507,17 @@ class BossBattleView(View):
     async def _async_init(self):
         """Async initialization logic"""
         if "user_id" in self.player:
+            fresh_player = await db.get_player(self.player["user_id"])
+            if fresh_player:
+                self.player.update({
+                    "hp": fresh_player.get("hp", self.player.get("hp", 50)),
+                    "max_hp": fresh_player.get("max_hp", self.player.get("max_hp", 50)),
+                    "mp": fresh_player.get("mp", self.player.get("mp", 20)),
+                    "max_mp": fresh_player.get("max_mp", self.player.get("max_mp", 20)),
+                    "attack": fresh_player.get("atk", self.player.get("attack", 5)),
+                    "defense": fresh_player.get("def", self.player.get("defense", 2))
+                })
+            
             equipment_bonus = await game.calculate_equipment_bonus(self.player["user_id"])
             self.player["attack"] = self.player.get("attack", 5) + equipment_bonus["attack_bonus"]
             self.player["defense"] = self.player.get("defense", 2) + equipment_bonus["defense_bonus"]
@@ -2171,9 +2209,10 @@ class BattleView(View):
                     child.disabled = False
                 try:
                     await self.message.edit(view=self)
+                    if not interaction.response.is_done():
+                        await interaction.response.send_message("⚠️ エラーが発生しました。もう一度お試しください。", ephemeral=True)
                 except:
                     pass
-                raise
 
     # =====================================
     # 🗡️ 戦う
@@ -2405,7 +2444,6 @@ class BattleView(View):
                     await self.message.edit(view=self)
                 except:
                     pass
-                raise
 
     # =====================================
     # 🛡️ 防御
@@ -2485,7 +2523,6 @@ class BattleView(View):
                     await self.message.edit(view=self)
                 except:
                     pass
-                raise
 
     # =====================================
     # 🏃‍♂️ 逃げる
@@ -2575,7 +2612,6 @@ class BattleView(View):
                     await self.message.edit(view=self)
                 except:
                     pass
-                raise
 
     # =====================================
     # 💊 アイテム使用
