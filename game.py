@@ -372,7 +372,7 @@ ITEMS_DATABASE = {
     "炎の鎧": {
         "type": "armor",
         "defense": 13,
-        "ability": "炎耐性+50%、被攻撃時10%で反射ダメージ10",
+        "ability": "炎耐性+50%、被攻撃時10%で反射ダメージ5",
         "description": "炎を纏う鎧。攻撃を焼き返す。"
     },
     "夜の外套": {
@@ -390,7 +390,7 @@ ITEMS_DATABASE = {
     "祝福の盾": {
         "type": "armor",
         "defense": 16,
-        "ability": "全状態異常無効、HP自動回復+10/ターン",
+        "ability": "全状態異常無効、HP自動回復+5/ターン",
         "description": "神の加護を受けた盾。あらゆる異常を防ぐ。"
     },
     "巨人の鎧": {
@@ -468,7 +468,7 @@ ITEMS_DATABASE = {
     "地獄門の鎧": {
         "type": "armor",
         "defense": 28,
-        "ability": "HP+50、被攻撃時30%で反撃ダメージ20",
+        "ability": "HP+50、被攻撃時30%で反撃ダメージ15",
         "description": "地獄の門を守る鎧。"
     },
     "竜帝の鎧": {
@@ -498,7 +498,7 @@ ITEMS_DATABASE = {
     "魔王の鎧": {
         "type": "armor",
         "defense": 35,
-        "ability": "HP+100、全ステータス+30%",
+        "ability": "HP+100、全ステータス+30%、全ダメージ-30%",
         "description": "ダンジョンの最奥地に眠る魔王が持っていると語り継がれていた双剣。"
     },
     "呪いの首輪": {
