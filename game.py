@@ -239,8 +239,8 @@ ITEMS_DATABASE = {
     },
     "獄炎の剣": {
         "type": "weapon",
-        "attack": 26,
-        "ability": "3回攻撃、各攻撃40%で燃焼（累積ダメージ）",
+        "attack": 24,
+        "ability": "2回攻撃、各攻撃30%で燃焼（累積ダメージ）",
         "description": "地獄の炎を3連撃で放つ剣。"
     },
     "竜帝の剣": {
