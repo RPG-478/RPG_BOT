@@ -703,7 +703,7 @@ ENEMY_ZONES = {
             {
                 "name": "蜘蛛",
                 "hp": 25,
-                "atk": 6,
+                "atk": 5,
                 "def": 2,
                 "attribute": "none",
                 "weight": 20,
@@ -723,7 +723,7 @@ ENEMY_ZONES = {
             {
                 "name": "スケルトン",
                 "hp": 35,
-                "atk": 6,
+                "atk": 5,
                 "def": 4,
                 "attribute": "dark",
                 "weight": 50,
@@ -740,7 +740,7 @@ ENEMY_ZONES = {
             {
                 "name": "ゾンビ",
                 "hp": 45,
-                "atk": 7,
+                "atk": 6,
                 "def": 3,
                 "attribute": "dark",
                 "weight": 35,
@@ -757,8 +757,8 @@ ENEMY_ZONES = {
             {
                 "name": "ゴースト",
                 "hp": 40,
-                "atk": 8,
-                "def": 5,
+                "atk": 7,
+                "def": 4,
                 "attribute": "dark",
                 "weight": 15,
                 "exp": 40,
@@ -777,8 +777,8 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "デーモン",
-                "hp": 70,
-                "atk": 9,
+                "hp": 60,
+                "atk": 8,
                 "def": 6,
                 "attribute": "fire",
                 "weight": 50,
@@ -798,7 +798,7 @@ ENEMY_ZONES = {
             {
                 "name": "ダークナイト",
                 "hp": 50,
-                "atk": 10,
+                "atk": 9,
                 "def": 7,
                 "attribute": "dark",
                 "weight": 40,
@@ -818,8 +818,8 @@ ENEMY_ZONES = {
             {
                 "name": "ドラゴン",
                 "hp": 80,
-                "atk": 14,
-                "def": 6,
+                "atk": 11,
+                "def": 5,
                 "attribute": "fire",
                 "weight": 10,
                 "exp": 60,
@@ -838,9 +838,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "デスナイト",
-                "hp": 100,
-                "atk": 13,
-                "def": 8,
+                "hp": 80,
+                "atk": 11,
+                "def": 7,
                 "attribute": "dark",
                 "weight": 50,
                 "exp": 48,
@@ -858,9 +858,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "アークデーモン",
-                "hp": 80,
-                "atk": 15,
-                "def": 9,
+                "hp": 70,
+                "atk": 12,
+                "def": 7,
                 "attribute": "fire",
                 "weight": 40,
                 "exp": 50,
@@ -878,9 +878,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "エンシェントドラゴン",
-                "hp": 120,
-                "atk": 17,
-                "def": 7,
+                "hp": 100,
+                "atk": 14,
+                "def": 5,
                 "attribute": "fire",
                 "weight": 10,
                 "exp": 80,
@@ -899,9 +899,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "ヘルハウンド",
-                "hp": 130,
-                "atk": 20,
-                "def": 10,
+                "hp": 100,
+                "atk": 14,
+                "def": 8,
                 "attribute": "fire",
                 "weight": 40,
                 "exp": 60,
@@ -919,9 +919,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "ヴァンパイアロード",
-                "hp": 110,
-                "atk": 19,
-                "def": 11,
+                "hp": 90,
+                "atk": 15,
+                "def": 8,
                 "attribute": "dark",
                 "weight": 30,
                 "exp": 65,
@@ -939,9 +939,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "リッチ",
-                "hp": 140,
-                "atk": 22,
-                "def": 10,
+                "hp": 100,
+                "atk": 16,
+                "def": 7,
                 "attribute": "dark",
                 "weight": 30,
                 "exp": 68,
@@ -963,9 +963,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "ダークエルフ",
-                "hp": 150,
-                "atk": 24,
-                "def": 12,
+                "hp": 120,
+                "atk": 18,
+                "def": 9,
                 "attribute": "dark",
                 "weight": 35,
                 "exp": 75,
@@ -983,9 +983,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "ベヒーモス",
-                "hp": 190,
-                "atk": 26,
-                "def": 14,
+                "hp": 135,
+                "atk": 20,
+                "def": 8,
                 "attribute": "none",
                 "weight": 35,
                 "exp": 85,
@@ -1003,9 +1003,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "シャドウロード",
-                "hp": 170,
-                "atk": 25,
-                "def": 13,
+                "hp": 110,
+                "atk": 19,
+                "def": 10,
                 "attribute": "dark",
                 "weight": 30,
                 "exp": 80,
@@ -1027,9 +1027,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "カオスナイト",
-                "hp": 190,
-                "atk": 28,
-                "def": 16,
+                "hp": 145,
+                "atk": 21,
+                "def": 10,
                 "attribute": "chaos",
                 "weight": 35,
                 "exp": 90,
@@ -1047,9 +1047,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "フェニックス",
-                "hp": 225,
-                "atk": 30,
-                "def": 15,
+                "hp": 160,
+                "atk": 20,
+                "def": 9,
                 "attribute": "fire",
                 "weight": 35,
                 "drops": [
@@ -1064,9 +1064,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "デストロイヤー",
-                "hp": 185,
-                "atk": 32,
-                "def": 14,
+                "hp": 150,
+                "atk": 24,
+                "def": 8,
                 "attribute": "none",
                 "weight": 30,
                 "drops": [
@@ -1085,9 +1085,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "アビスウォーカー",
-                "hp": 220,
-                "atk": 34,
-                "def": 19,
+                "hp": 180,
+                "atk": 24,
+                "def": 10,
                 "attribute": "dark",
                 "weight": 35,
                 "drops": [
@@ -1104,9 +1104,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "エレメンタルロード",
-                "hp": 240,
-                "atk": 33,
-                "def": 21,
+                "hp": 150,
+                "atk": 23,
+                "def": 12,
                 "attribute": "holy",
                 "weight": 35,
                 "drops": [
@@ -1121,9 +1121,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "タイタン",
-                "hp": 300,
-                "atk": 36,
-                "def": 16,
+                "hp": 200,
+                "atk": 22,
+                "def": 10,
                 "attribute": "holy",
                 "weight": 30,
                 "drops": [
@@ -1144,9 +1144,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "ダークアーク",
-                "hp": 260,
-                "atk": 38,
-                "def": 25,
+                "hp": 210,
+                "atk": 27,
+                "def": 10,
                 "attribute": "dark",
                 "weight": 35,
                 "drops": [
@@ -1161,9 +1161,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "リヴァイアサン",
-                "hp": 300,
-                "atk": 37,
-                "def": 23,
+                "hp": 230,
+                "atk": 26,
+                "def": 10,
                 "attribute": "water",
                 "weight": 35,
                 "drops": [
@@ -1178,9 +1178,9 @@ ENEMY_ZONES = {
             },
             {
                 "name": "ケルベロス",
-                "hp": 350,
-                "atk": 40,
-                "def": 20,
+                "hp": 260,
+                "atk": 25,
+                "def": 9,
                 "attribute": "fire",
                 "weight": 30,
                 "drops": [
@@ -1199,15 +1199,15 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "ファントムキング",
-                "hp": 400,
-                "atk": 42,
-                "def": 28,
+                "hp": 300,
+                "atk": 30,
+                "def": 10,
                 "attribute": "dark",
-                "weight": 25,
+                "weight": 30,
                 "drops": [
                     {"item": "none", "weight": 50},
                     {"item": "幻王の魂", "weight": 20},
-                    {"item": "幻影剣", "weight": 5},
+                    {"item": "幻影の剣", "weight": 5},
                     {"item": "幻王の鎧", "weight": 5},
                     {"item": "HP回復薬（大）", "weight": 5},
                     {"item": "MP回復薬（大）", "weight": 5},
@@ -1216,11 +1216,11 @@ ENEMY_ZONES = {
             },
             {
                 "name": "ドラゴンロード",
-                "hp": 340,
-                "atk": 44,
-                "def": 30,
+                "hp": 250,
+                "atk": 32,
+                "def": 11,
                 "attribute": "fire",
-                "weight": 25,
+                "weight": 30,
                 "drops": [
                     {"item": "none", "weight": 50},
                     {"item": "竜帝の心臓", "weight": 20},
@@ -1233,11 +1233,11 @@ ENEMY_ZONES = {
             },
             {
                 "name": "カオスゴッド",
-                "hp": 360,
-                "atk": 43,
-                "def": 31,
+                "hp": 280,
+                "atk": 32,
+                "def": 10,
                 "attribute": "chaos",
-                "weight": 25,
+                "weight": 20,
                 "drops": [
                     {"item": "none", "weight": 50},
                     {"item": "神殺しの結晶", "weight": 20},
@@ -1250,11 +1250,11 @@ ENEMY_ZONES = {
             },
             {
                 "name": "デスエンペラー",
-                "hp": 380,
-                "atk": 45,
-                "def": 30,
+                "hp": 350,
+                "atk": 34,
+                "def": 10,
                 "attribute": "dark",
-                "weight": 25,
+                "weight": 20,
                 "drops": [
                     {"item": "none", "weight": 50},
                     {"item": "死皇の冠", "weight": 20},
@@ -1407,8 +1407,8 @@ BOSS_DATA = {
     1: {
         "name": "スライムキング",
         "hp": 100,
-        "atk": 10,
-        "def": 5,
+        "atk": 8,
+        "def": 3,
         "attribute": "none",
                 "attribute": "none",
         "drops": [
@@ -1424,8 +1424,8 @@ BOSS_DATA = {
     2: {
         "name": "デスロード",
         "hp": 150,
-        "atk": 12,
-        "def": 8,
+        "atk": 10,
+        "def": 4,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
@@ -1439,8 +1439,8 @@ BOSS_DATA = {
     3: {
         "name": "炎獄の魔竜", 
         "hp": 250,
-        "atk": 16,
-        "def": 10,
+        "atk": 12,
+        "def": 5,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
@@ -1453,9 +1453,9 @@ BOSS_DATA = {
     },
     4: {
         "name": "影の王",
-        "hp": 400,
-        "atk": 20,
-        "def": 12,
+        "hp": 350,
+        "atk": 15,
+        "def": 6,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
@@ -1468,9 +1468,9 @@ BOSS_DATA = {
     },
     5: {
         "name": "雷神",
-        "hp": 600,
-        "atk": 25,
-        "def": 15,
+        "hp": 450,
+        "atk": 20,
+        "def": 7,
         "attribute": "thunder",
                 "attribute": "thunder",
         "drops": [
@@ -1483,9 +1483,9 @@ BOSS_DATA = {
     },
     6: {
         "name": "氷の女王",
-        "hp": 800,
-        "atk": 30,
-        "def": 18,
+        "hp": 600,
+        "atk": 25,
+        "def": 8,
         "attribute": "ice",
                 "attribute": "ice",
         "drops": [
@@ -1500,9 +1500,9 @@ BOSS_DATA = {
     },
     7: {
         "name": "獄炎の巨人",
-        "hp": 1000,
-        "atk": 35,
-        "def": 20,
+        "hp": 700,
+        "atk": 28,
+        "def": 10,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
@@ -1517,9 +1517,9 @@ BOSS_DATA = {
     },
     8: {
         "name": "深淵の守護者",
-        "hp": 1250,
-        "atk": 40,
-        "def": 24,
+        "hp": 800,
+        "atk": 30,
+        "def": 11,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
@@ -1534,9 +1534,9 @@ BOSS_DATA = {
     },
     9: {
         "name": "混沌の龍帝",
-        "hp": 1500,
-        "atk": 45,
-        "def": 30,
+        "hp": 1000,
+        "atk": 34,
+        "def": 12,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
@@ -1549,9 +1549,9 @@ BOSS_DATA = {
     },
     10: {
         "name": "終焉の魔王",
-        "hp": 2000,
-        "atk": 50,
-        "def": 40,
+        "hp": 1500,
+        "atk": 40,
+        "def": 12,
         "attribute": "none",
                 "attribute": "none",
         "drops": [
@@ -1564,16 +1564,16 @@ BOSS_DATA = {
 }
 
 SECRET_WEAPONS = [
-    {"id": 1, "name": "シークレットソード#1", "attack": 100, "ability": "全能力+50%", "rarity": "伝説"},
-    {"id": 2, "name": "シークレットソード#2", "attack": 95, "ability": "即死攻撃10%", "rarity": "伝説"},
-    {"id": 3, "name": "シークレットソード#3", "attack": 90, "ability": "HP自動回復+30/ターン", "rarity": "伝説"},
-    {"id": 4, "name": "シークレットソード#4", "attack": 105, "ability": "攻撃力+100%", "rarity": "神話"},
-    {"id": 5, "name": "シークレットソード#5", "attack": 85, "ability": "防御無視攻撃", "rarity": "伝説"},
-    {"id": 6, "name": "シークレットソード#6", "attack": 110, "ability": "全ステータス+80%", "rarity": "神話"},
-    {"id": 7, "name": "シークレットソード#7", "attack": 88, "ability": "敵防御力無視", "rarity": "伝説"},
-    {"id": 8, "name": "シークレットソード#8", "attack": 115, "ability": "クリティカル率100%", "rarity": "神話"},
-    {"id": 9, "name": "シークレットソード#9", "attack": 92, "ability": "吸血50%", "rarity": "伝説"},
-    {"id": 10, "name": "シークレットソード#10", "attack": 120, "ability": "真・無敵", "rarity": "超越"},
+    {"id": 1, "name": "シークレットソード#1", "attack": 50, "ability": "全能力+50%", "rarity": "伝説"},
+    {"id": 2, "name": "シークレットソード#2", "attack": 60, "ability": "即死攻撃10%", "rarity": "伝説"},
+    {"id": 3, "name": "シークレットソード#3", "attack": 55, "ability": "HP自動回復+10/ターン", "rarity": "伝説"},
+    {"id": 4, "name": "シークレットソード#4", "attack": 50, "ability": "攻撃力+100%", "rarity": "神話"},
+    {"id": 5, "name": "シークレットソード#5", "attack": 70, "ability": "防御無視攻撃", "rarity": "伝説"},
+    {"id": 6, "name": "シークレットソード#6", "attack": 65, "ability": "全ステータス+80%", "rarity": "神話"},
+    {"id": 7, "name": "シークレットソード#7", "attack": 75, "ability": "敵防御力無視", "rarity": "伝説"},
+    {"id": 8, "name": "シークレットソード#8", "attack": 55, "ability": "クリティカル率100%", "rarity": "神話"},
+    {"id": 9, "name": "シークレットソード#9", "attack": 50, "ability": "HP吸収50%", "rarity": "伝説"},
+    {"id": 10, "name": "シークレットソード#10", "attack": 80, "ability": "真・無敵", "rarity": "超越"},
 ]
 
 SPECIAL_EVENT_SHOP = [
