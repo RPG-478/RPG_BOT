@@ -275,15 +275,13 @@ async def get_upgrade_levels(user_id):
     player = await get_player(user_id)
     if player:
         return {
-            "initial_hp": player.get("initial_hp_upgrade", 0),
-            "initial_mp": player.get("initial_mp_upgrade", 0),
-            "coin_gain": player.get("coin_gain_upgrade", 0),
             "max_hp": player.get("max_hp_upgrade", 0),
             "max_mp": player.get("max_mp_upgrade", 0),
+            "coin_gain": player.get("coin_gain_upgrade", 0),
             "atk": player.get("atk_upgrade", 0),
             "def_upgrade": player.get("def_upgrade", 0)
         }
-    return {"initial_hp": 0, "initial_mp": 0, "coin_gain": 0, "max_hp": 0, "max_mp": 0, "atk": 0, "def_upgrade": 0}
+    return {"max_hp": 0, "max_mp": 0, "coin_gain": 0, "atk": 0, "def_upgrade": 0}
 
 async def get_upgrade_cost(upgrade_type, user_id):
     """アップグレードタイプと現在のレベルに応じたコストを計算
@@ -311,23 +309,25 @@ async def get_upgrade_cost(upgrade_type, user_id):
     
     return 1  # デフォルト
 
-async def upgrade_initial_hp(user_id):
+async def upgrade_max_hp(user_id):
     """初期HP最大量をアップグレード"""
     player = await get_player(user_id)
     if player:
-        current_level = player.get("initial_hp_upgrade", 0)
+        current_level = player.get("max_hp_upgrade", 0)
         new_max_hp = player.get("max_hp", 50) + 5
-        await update_player(user_id, initial_hp_upgrade=current_level + 1, max_hp=new_max_hp)
+        new_hp = player.get("hp", 50) + 5
+        await update_player(user_id, max_hp_upgrade=current_level + 1, max_hp=new_max_hp)
         return True
     return False
 
-async def upgrade_initial_mp(user_id):
+async def upgrade_max_mp(user_id):
     """初期MP最大量をアップグレード"""
     player = await get_player(user_id)
     if player:
-        current_level = player.get("initial_mp_upgrade", 0)
+        current_level = player.get("max_mp_upgrade", 0)
         new_max_mp = player.get("max_mp", 20) + 5
-        await update_player(user_id, initial_mp_upgrade=current_level + 1, max_mp=new_max_mp)
+        new_mp = player.get("mp", 20) + 5
+        await update_player(user_id, max_mp_upgrade=current_level + 1, max_mp=new_max_mp)
         return True
     return False
 
@@ -338,28 +338,6 @@ async def upgrade_coin_gain(user_id):
         current_level = player.get("coin_gain_upgrade", 0)
         new_multiplier = player.get("coin_multiplier", 1.0) + 0.1
         await update_player(user_id, coin_gain_upgrade=current_level + 1, coin_multiplier=new_multiplier)
-        return True
-    return False
-
-async def upgrade_max_hp(user_id):
-    """最大HP初期値をアップグレード（5PT で +5HP）"""
-    player = await get_player(user_id)
-    if player:
-        current_level = player.get("max_hp_upgrade", 0)
-        new_max_hp = player.get("max_hp", 50) + 5
-        new_hp = player.get("hp", 50) + 5
-        await update_player(user_id, max_hp_upgrade=current_level + 1, max_hp=new_max_hp, hp=new_hp)
-        return True
-    return False
-
-async def upgrade_max_mp(user_id):
-    """最大MP初期値をアップグレード（3PT で +5MP）"""
-    player = await get_player(user_id)
-    if player:
-        current_level = player.get("max_mp_upgrade", 0)
-        new_max_mp = player.get("max_mp", 20) + 5
-        new_mp = player.get("mp", 20) + 5
-        await update_player(user_id, max_mp_upgrade=current_level + 1, max_mp=new_max_mp, mp=new_mp)
         return True
     return False
 
