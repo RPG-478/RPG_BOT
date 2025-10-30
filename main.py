@@ -687,11 +687,11 @@ async def buy_upgrade(ctx, upgrade_type: int):
         return
 
     if upgrade_type == 1:
-        await db.upgrade_initial_hp(ctx.author.id)
+        await db.upgrade_max_hp(ctx.author.id)
         await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ HP最大値をアップグレードしました！ 最大HP +5")
     elif upgrade_type == 2:
-        await db.upgrade_initial_mp(ctx.author.id)
+        await db.upgrade_max_mp(ctx.author.id)
         await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ MP最大値をアップグレードしました！ 最大MP +5")
     elif upgrade_type == 3:
