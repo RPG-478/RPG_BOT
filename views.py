@@ -2735,12 +2735,12 @@ class BattleView(View):
                 max_mp = self.player.get('max_mp', 20)
                 effect = item_info.get('effect', '')
                 
-                if 'MP+30' in effect:
-                    mp_heal = 30
-                elif 'MP+80' in effect:
-                    mp_heal = 80
-                elif 'MP+200' in effect:
-                    mp_heal = 200
+                if 'MP+15' in effect:
+                    mp_heal = 15
+                elif 'MP+40' in effect:
+                    mp_heal = 40
+                elif 'MP+100' in effect:
+                    mp_heal = 100
                 else:
                     mp_heal = 30
                 
