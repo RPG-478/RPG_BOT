@@ -23,21 +23,21 @@ ITEMS_DATABASE = {
     },
     "MP回復薬（小）": {
         "type": "potion",
-        "effect": "MP+30",
+        "effect": "MP+15",
         "ability": "MP回復",
-        "description": "MPを30回復する薬。"
+        "description": "MPを15回復する薬。"
     },
     "MP回復薬（中）": {
         "type": "potion",
-        "effect": "MP+80",
+        "effect": "MP+40",
         "ability": "MP中回復",
-        "description": "MPを80回復する高級な薬。"
+        "description": "MPを40回復する高級な薬。"
     },
     "MP回復薬（大）": {
         "type": "potion",
-        "effect": "MP+200",
+        "effect": "MP+100",
         "ability": "MP大回復",
-        "description": "MPを200回復する貴重な薬。"
+        "description": "MPを100回復する貴重な薬。"
     },
     "エリクサー": {
         "type": "potion",
@@ -84,7 +84,7 @@ ITEMS_DATABASE = {
     "呪いの剣": {
         "type": "weapon",
         "attack": 6,
-        "ability": "呪い（攻撃時にHP-5、ダメージ+50%）",
+        "ability": "呪い（攻撃時にHP-1、ダメージ+50%）",
         "description": "呪われた剣。強力だが使用者にも害を及ぼす。"
     },
     "魔法の杖": {
@@ -114,7 +114,7 @@ ITEMS_DATABASE = {
     "黒騎士の剣": {
         "type": "weapon",
         "attack": 12,
-        "ability": "闇属性（闇の敵に+50%ダメージ）",
+        "ability": "闇属性（闇の敵に+25%ダメージ）",
         "description": "黒騎士が使っていた漆黒の剣。"
     },
     "炎獄の剣": {
@@ -723,24 +723,24 @@ ENEMY_ZONES = {
             {
                 "name": "スケルトン",
                 "hp": 35,
-                "atk": 5,
+                "atk": 7,
                 "def": 4,
                 "attribute": "dark",
                 "weight": 50,
                 "exp": 22,
                 "drops": [
                     {"item": "none", "weight": 60},
-                    {"item": "骨の剣", "weight": 6},
-                    {"item": "骨の盾", "weight": 6},
-                    {"item": "HP回復薬（小）", "weight": 9},
-                    {"item": "MP回復薬（小）", "weight": 9},
+                    {"item": "骨の剣", "weight": 5},
+                    {"item": "骨の盾", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 10},
+                    {"item": "MP回復薬（小）", "weight": 10},
                     {"item": "coins", "amount": [20, 40], "weight": 10}
                 ]
             },
             {
                 "name": "ゾンビ",
                 "hp": 45,
-                "atk": 6,
+                "atk": 8,
                 "def": 3,
                 "attribute": "dark",
                 "weight": 35,
@@ -757,7 +757,7 @@ ENEMY_ZONES = {
             {
                 "name": "ゴースト",
                 "hp": 40,
-                "atk": 7,
+                "atk": 9,
                 "def": 4,
                 "attribute": "dark",
                 "weight": 15,
@@ -777,8 +777,8 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "デーモン",
-                "hp": 60,
-                "atk": 8,
+                "hp": 65,
+                "atk": 10,
                 "def": 6,
                 "attribute": "fire",
                 "weight": 50,
@@ -788,17 +788,15 @@ ENEMY_ZONES = {
                     {"item": "悪魔の角", "weight": 15},
                     {"item": "炎の大剣", "weight": 5},
                     {"item": "地獄の鎧", "weight": 5},
-                    {"item": "HP回復薬（小）", "weight": 8},
-                    {"item": "MP回復薬（小）", "weight": 8},
-                    {"item": "HP回復薬（中）", "weight": 2},
-                    {"item": "MP回復薬（中）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 10},
+                    {"item": "MP回復薬（小）", "weight": 10},
                     {"item": "coins", "amount": [30, 50], "weight": 10}
                 ]
             },
             {
                 "name": "ダークナイト",
-                "hp": 50,
-                "atk": 9,
+                "hp": 55,
+                "atk": 11,
                 "def": 7,
                 "attribute": "dark",
                 "weight": 40,
@@ -808,17 +806,15 @@ ENEMY_ZONES = {
                     {"item": "黒騎士の剣", "weight": 10},
                     {"item": "黒騎士の盾", "weight": 5},
                     {"item": "黒騎士の鎧", "weight": 5},
-                    {"item": "HP回復薬（小）", "weight": 8},
-                    {"item": "MP回復薬（小）", "weight": 8},
-                    {"item": "HP回復薬（中）", "weight": 2},
-                    {"item": "MP回復薬（中）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 10},
+                    {"item": "MP回復薬（小）", "weight": 10},
                     {"item": "coins", "amount": [35, 50], "weight": 10}
                 ]
             },
             {
                 "name": "ドラゴン",
                 "hp": 80,
-                "atk": 11,
+                "atk": 13,
                 "def": 5,
                 "attribute": "fire",
                 "weight": 10,
@@ -827,8 +823,10 @@ ENEMY_ZONES = {
                     {"item": "竜の牙", "weight": 40},
                     {"item": "ドラゴンソード", "weight": 20},
                     {"item": "竜の鱗", "weight": 5},
-                    {"item": "HP回復薬（中）", "weight": 10},
-                    {"item": "MP回復薬（中）", "weight": 10},
+                    {"item": "HP回復薬（小）", "weight": 8},
+                    {"item": "MP回復薬（小）", "weight": 8},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [60, 90], "weight": 15}
                 ]
             }
@@ -839,8 +837,8 @@ ENEMY_ZONES = {
             {
                 "name": "デスナイト",
                 "hp": 80,
-                "atk": 11,
-                "def": 7,
+                "atk": 14,
+                "def": 8,
                 "attribute": "dark",
                 "weight": 50,
                 "exp": 48,
@@ -849,18 +847,16 @@ ENEMY_ZONES = {
                     {"item": "死神の鎌", "weight": 10},
                     {"item": "冥界の盾", "weight": 9},
                     {"item": "死の鎧", "weight": 1},
-                    {"item": "HP回復薬（小）", "weight": 8},
-                    {"item": "MP回復薬（小）", "weight": 8},
-                    {"item": "HP回復薬（中）", "weight": 2},
-                    {"item": "MP回復薬（中）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 10},
+                    {"item": "MP回復薬（小）", "weight": 10},
                     {"item": "coins", "amount": [50, 65], "weight": 10}
                 ]
             },
             {
                 "name": "アークデーモン",
                 "hp": 70,
-                "atk": 12,
-                "def": 7,
+                "atk": 15,
+                "def": 8,
                 "attribute": "fire",
                 "weight": 40,
                 "exp": 50,
@@ -869,18 +865,16 @@ ENEMY_ZONES = {
                     {"item": "魔界の結晶", "weight": 15},
                     {"item": "炎獄の剣", "weight": 5},
                     {"item": "悪魔の盾", "weight": 5},
-                    {"item": "HP回復薬（小）", "weight": 8},
-                    {"item": "MP回復薬（小）", "weight": 8},
-                    {"item": "HP回復薬（中）", "weight": 2},
-                    {"item": "MP回復薬（中）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 10},
+                    {"item": "MP回復薬（小）", "weight": 10},
                     {"item": "coins", "amount": [40, 60], "weight": 10}
                 ]
             },
             {
                 "name": "エンシェントドラゴン",
                 "hp": 100,
-                "atk": 14,
-                "def": 5,
+                "atk": 17,
+                "def": 6,
                 "attribute": "fire",
                 "weight": 10,
                 "exp": 80,
@@ -888,8 +882,10 @@ ENEMY_ZONES = {
                     {"item": "竜王の牙", "weight": 40},
                     {"item": "古竜の心臓", "weight": 10},
                     {"item": "竜の鱗", "weight": 15},
-                    {"item": "HP回復薬（中）", "weight": 10},
-                    {"item": "MP回復薬（中）", "weight": 10},
+                    {"item": "HP回復薬（小）", "weight": 8},
+                    {"item": "MP回復薬（小）", "weight": 8},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [80, 100], "weight": 15}
                 ]
             },
@@ -900,8 +896,8 @@ ENEMY_ZONES = {
             {
                 "name": "ヘルハウンド",
                 "hp": 100,
-                "atk": 14,
-                "def": 8,
+                "atk": 17,
+                "def": 9,
                 "attribute": "fire",
                 "weight": 40,
                 "exp": 60,
@@ -910,18 +906,18 @@ ENEMY_ZONES = {
                     {"item": "地獄犬の牙", "weight": 20},
                     {"item": "業火の剣", "weight": 5},
                     {"item": "炎の鎧", "weight": 5},
-                    {"item": "HP回復薬（小）", "weight": 3},
-                    {"item": "MP回復薬（小）", "weight": 3},
-                    {"item": "HP回復薬（中）", "weight": 2},
-                    {"item": "MP回復薬（中）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 4},
+                    {"item": "MP回復薬（小）", "weight": 4},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
                     {"item": "coins", "amount": [60, 90], "weight": 10}
                 ]
             },
             {
                 "name": "ヴァンパイアロード",
                 "hp": 90,
-                "atk": 15,
-                "def": 8,
+                "atk": 18,
+                "def": 9,
                 "attribute": "dark",
                 "weight": 30,
                 "exp": 65,
@@ -930,18 +926,18 @@ ENEMY_ZONES = {
                     {"item": "吸血鬼の牙", "weight": 20},
                     {"item": "血の剣", "weight": 2},
                     {"item": "夜の外套", "weight": 10},
-                    {"item": "HP回復薬（小）", "weight": 2},
-                    {"item": "MP回復薬（小）", "weight": 2},
-                    {"item": "HP回復薬（中）", "weight": 2},
-                    {"item": "MP回復薬（中）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 3},
+                    {"item": "MP回復薬（小）", "weight": 3},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
                     {"item": "coins", "amount": [70, 90], "weight": 10}
                 ]
             },
             {
                 "name": "リッチ",
                 "hp": 100,
-                "atk": 16,
-                "def": 7,
+                "atk": 19,
+                "def": 8,
                 "attribute": "dark",
                 "weight": 30,
                 "exp": 68,
@@ -950,10 +946,10 @@ ENEMY_ZONES = {
                     {"item": "魔導書の欠片", "weight": 20},
                     {"item": "死霊の杖", "weight": 5},
                     {"item": "不死王の冠", "weight": 5},
-                    {"item": "HP回復薬（小）", "weight": 3},
-                    {"item": "MP回復薬（小）", "weight": 3},
-                    {"item": "HP回復薬（中）", "weight": 2},
-                    {"item": "MP回復薬（中）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 4},
+                    {"item": "MP回復薬（小）", "weight": 4},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
                     {"item": "coins", "amount": [70, 100], "weight": 10}
                 ]
             }
@@ -964,8 +960,8 @@ ENEMY_ZONES = {
             {
                 "name": "ダークエルフ",
                 "hp": 120,
-                "atk": 18,
-                "def": 9,
+                "atk": 22,
+                "def": 10,
                 "attribute": "dark",
                 "weight": 35,
                 "exp": 75,
@@ -984,8 +980,8 @@ ENEMY_ZONES = {
             {
                 "name": "ベヒーモス",
                 "hp": 135,
-                "atk": 20,
-                "def": 8,
+                "atk": 24,
+                "def": 9,
                 "attribute": "none",
                 "weight": 35,
                 "exp": 85,
@@ -1004,8 +1000,8 @@ ENEMY_ZONES = {
             {
                 "name": "シャドウロード",
                 "hp": 110,
-                "atk": 19,
-                "def": 10,
+                "atk": 23,
+                "def": 11,
                 "attribute": "dark",
                 "weight": 30,
                 "exp": 80,
@@ -1028,8 +1024,8 @@ ENEMY_ZONES = {
             {
                 "name": "カオスナイト",
                 "hp": 145,
-                "atk": 21,
-                "def": 10,
+                "atk": 27,
+                "def": 12,
                 "attribute": "chaos",
                 "weight": 35,
                 "exp": 90,
@@ -1038,18 +1034,18 @@ ENEMY_ZONES = {
                     {"item": "混沌の欠片", "weight": 20},
                     {"item": "カオスブレード", "weight": 1},
                     {"item": "混沌の鎧", "weight": 5},
-                    {"item": "HP回復薬（中）", "weight": 5},
-                    {"item": "MP回復薬（中）", "weight": 5},
-                    {"item": "HP回復薬（大）", "weight": 2},
-                    {"item": "MP回復薬（大）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 5},
+                    {"item": "MP回復薬（小）", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [90, 120], "weight": 10}
                 ]
             },
             {
                 "name": "フェニックス",
                 "hp": 160,
-                "atk": 20,
-                "def": 9,
+                "atk": 26,
+                "def": 11,
                 "attribute": "fire",
                 "weight": 35,
                 "drops": [
@@ -1057,16 +1053,18 @@ ENEMY_ZONES = {
                     {"item": "不死鳥の羽", "weight": 20},
                     {"item": "炎の剣", "weight": 5},
                     {"item": "再生の鎧", "weight": 5},
-                    {"item": "HP回復薬（中）", "weight": 5},
-                    {"item": "MP回復薬（中）", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 4},
+                    {"item": "MP回復薬（小）", "weight": 4},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
                     {"item": "coins", "amount": [100, 130], "weight": 10}
                 ]
             },
             {
                 "name": "デストロイヤー",
                 "hp": 150,
-                "atk": 24,
-                "def": 8,
+                "atk": 29,
+                "def": 10,
                 "attribute": "none",
                 "weight": 30,
                 "drops": [
@@ -1074,8 +1072,10 @@ ENEMY_ZONES = {
                     {"item": "破壊の核", "weight": 20},
                     {"item": "滅びの剣", "weight": 5},
                     {"item": "終焉の盾", "weight": 5},
-                    {"item": "HP回復薬（中）", "weight": 5},
-                    {"item": "MP回復薬（中）", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 4},
+                    {"item": "MP回復薬（小）", "weight": 4},
+                    {"item": "HP回復薬（中）", "weight": 1},
+                    {"item": "MP回復薬（中）", "weight": 1},
                     {"item": "coins", "amount": [100, 140], "weight": 10}
                 ]
             }
@@ -1085,9 +1085,9 @@ ENEMY_ZONES = {
         "enemies": [
             {
                 "name": "アビスウォーカー",
-                "hp": 180,
-                "atk": 24,
-                "def": 10,
+                "hp": 160,
+                "atk": 32,
+                "def": 12,
                 "attribute": "dark",
                 "weight": 35,
                 "drops": [
@@ -1095,18 +1095,18 @@ ENEMY_ZONES = {
                     {"item": "深淵の結晶", "weight": 20},
                     {"item": "深淵の剣", "weight": 1},
                     {"item": "虚空の鎧", "weight": 5},
-                    {"item": "HP回復薬（中）", "weight": 5},
-                    {"item": "MP回復薬（中）", "weight": 5},
-                    {"item": "HP回復薬（大）", "weight": 2},
-                    {"item": "MP回復薬（大）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 5},
+                    {"item": "MP回復薬（小）", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [110, 140], "weight": 10}
                 ]
             },
             {
                 "name": "エレメンタルロード",
                 "hp": 150,
-                "atk": 23,
-                "def": 12,
+                "atk": 30,
+                "def": 14,
                 "attribute": "holy",
                 "weight": 35,
                 "drops": [
@@ -1114,16 +1114,18 @@ ENEMY_ZONES = {
                     {"item": "元素の核", "weight": 20},
                     {"item": "四元の剣", "weight": 5},
                     {"item": "精霊の盾", "weight": 5},
-                    {"item": "HP回復薬（中）", "weight": 5},
-                    {"item": "MP回復薬（中）", "weight": 5},
+                    {"item": "HP回復薬（小）", "weight": 3},
+                    {"item": "MP回復薬（小）", "weight": 3},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [110, 150], "weight": 10}
                 ]
             },
             {
                 "name": "タイタン",
                 "hp": 200,
-                "atk": 22,
-                "def": 10,
+                "atk": 29,
+                "def": 12,
                 "attribute": "holy",
                 "weight": 30,
                 "drops": [
@@ -1131,10 +1133,10 @@ ENEMY_ZONES = {
                     {"item": "神の鉱石", "weight": 20},
                     {"item": "天の槌", "weight": 5},
                     {"item": "神の盾", "weight": 1},
-                    {"item": "HP回復薬（中）", "weight": 5},
-                    {"item": "MP回復薬（中）", "weight": 5},
-                    {"item": "HP回復薬（大）", "weight": 2},
-                    {"item": "MP回復薬（大）", "weight": 2},
+                    {"item": "HP回復薬（小）", "weight": 3},
+                    {"item": "MP回復薬（小）", "weight": 3},
+                    {"item": "HP回復薬（中）", "weight": 2},
+                    {"item": "MP回復薬（中）", "weight": 2},
                     {"item": "coins", "amount": [100, 160], "weight": 10}
                 ]
             }
@@ -1145,8 +1147,8 @@ ENEMY_ZONES = {
             {
                 "name": "ダークアーク",
                 "hp": 210,
-                "atk": 27,
-                "def": 10,
+                "atk": 36,
+                "def": 13,
                 "attribute": "dark",
                 "weight": 35,
                 "drops": [
@@ -1154,16 +1156,18 @@ ENEMY_ZONES = {
                     {"item": "闇の聖典", "weight": 20},
                     {"item": "暗黒聖剣", "weight": 5},
                     {"item": "堕天の鎧", "weight": 5},
-                    {"item": "HP回復薬（大）", "weight": 5},
-                    {"item": "MP回復薬（大）", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 4},
+                    {"item": "MP回復薬（中）", "weight": 4},
+                    {"item": "HP回復薬（大）", "weight": 1},
+                    {"item": "MP回復薬（大）", "weight": 1},
                     {"item": "coins", "amount": [120, 160], "weight": 10}
                 ]
             },
             {
                 "name": "リヴァイアサン",
                 "hp": 230,
-                "atk": 26,
-                "def": 10,
+                "atk": 33,
+                "def": 13,
                 "attribute": "water",
                 "weight": 35,
                 "drops": [
@@ -1171,16 +1175,18 @@ ENEMY_ZONES = {
                     {"item": "海皇の鱗", "weight": 20},
                     {"item": "水神の槍", "weight": 5},
                     {"item": "深海の鎧", "weight": 5},
-                    {"item": "HP回復薬（大）", "weight": 5},
-                    {"item": "MP回復薬（大）", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 4},
+                    {"item": "MP回復薬（中）", "weight": 4},
+                    {"item": "HP回復薬（大）", "weight": 1},
+                    {"item": "MP回復薬（大）", "weight": 1},
                     {"item": "coins", "amount": [110, 150], "weight": 10}
                 ]
             },
             {
                 "name": "ケルベロス",
                 "hp": 260,
-                "atk": 25,
-                "def": 9,
+                "atk": 32,
+                "def": 12,
                 "attribute": "fire",
                 "weight": 30,
                 "drops": [
@@ -1188,8 +1194,10 @@ ENEMY_ZONES = {
                     {"item": "三首の牙", "weight": 20},
                     {"item": "獄炎の剣", "weight": 5},
                     {"item": "地獄門の鎧", "weight": 5},
-                    {"item": "HP回復薬（大）", "weight": 5},
-                    {"item": "MP回復薬（大）", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 4},
+                    {"item": "MP回復薬（中）", "weight": 4},
+                    {"item": "HP回復薬（大）", "weight": 1},
+                    {"item": "MP回復薬（大）", "weight": 1},
                     {"item": "coins", "amount": [120, 170], "weight": 10}
                 ]
             }
@@ -1200,8 +1208,8 @@ ENEMY_ZONES = {
             {
                 "name": "ファントムキング",
                 "hp": 300,
-                "atk": 30,
-                "def": 10,
+                "atk": 38,
+                "def": 13,
                 "attribute": "dark",
                 "weight": 30,
                 "drops": [
@@ -1209,16 +1217,18 @@ ENEMY_ZONES = {
                     {"item": "幻王の魂", "weight": 20},
                     {"item": "幻影の剣", "weight": 5},
                     {"item": "幻王の鎧", "weight": 5},
-                    {"item": "HP回復薬（大）", "weight": 5},
-                    {"item": "MP回復薬（大）", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 3},
+                    {"item": "MP回復薬（中）", "weight": 3},
+                    {"item": "HP回復薬（大）", "weight": 2},
+                    {"item": "MP回復薬（大）", "weight": 2},
                     {"item": "coins", "amount": [130, 180], "weight": 10}
                 ]
             },
             {
                 "name": "ドラゴンロード",
                 "hp": 250,
-                "atk": 32,
-                "def": 11,
+                "atk": 39,
+                "def": 14,
                 "attribute": "fire",
                 "weight": 30,
                 "drops": [
@@ -1226,16 +1236,18 @@ ENEMY_ZONES = {
                     {"item": "竜帝の心臓", "weight": 20},
                     {"item": "竜帝の剣", "weight": 2},
                     {"item": "竜帝の鎧", "weight": 2},
-                    {"item": "HP回復薬（大）", "weight": 5},
-                    {"item": "MP回復薬（大）", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 3},
+                    {"item": "MP回復薬（中）", "weight": 3},
+                    {"item": "HP回復薬（大）", "weight": 2},
+                    {"item": "MP回復薬（大）", "weight": 2},
                     {"item": "coins", "amount": [120, 190], "weight": 10}
                 ]
             },
             {
                 "name": "カオスゴッド",
                 "hp": 280,
-                "atk": 32,
-                "def": 10,
+                "atk": 40,
+                "def": 13,
                 "attribute": "chaos",
                 "weight": 20,
                 "drops": [
@@ -1243,16 +1255,18 @@ ENEMY_ZONES = {
                     {"item": "神殺しの結晶", "weight": 20},
                     {"item": "混沌神剣", "weight": 5},
                     {"item": "創世の盾", "weight": 5},
-                    {"item": "HP回復薬（大）", "weight": 5},
-                    {"item": "MP回復薬（大）", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 3},
+                    {"item": "MP回復薬（中）", "weight": 3},
+                    {"item": "HP回復薬（大）", "weight": 2},
+                    {"item": "MP回復薬（大）", "weight": 2},
                     {"item": "coins", "amount": [140, 180], "weight": 10}
                 ]
             },
             {
                 "name": "デスエンペラー",
                 "hp": 350,
-                "atk": 34,
-                "def": 10,
+                "atk": 41,
+                "def": 13,
                 "attribute": "dark",
                 "weight": 20,
                 "drops": [
@@ -1260,8 +1274,10 @@ ENEMY_ZONES = {
                     {"item": "死皇の冠", "weight": 20},
                     {"item": "死神の剣", "weight": 5},
                     {"item": "死帝の鎧", "weight": 5},
-                    {"item": "HP回復薬（大）", "weight": 5},
-                    {"item": "MP回復薬（大）", "weight": 5},
+                    {"item": "HP回復薬（中）", "weight": 3},
+                    {"item": "MP回復薬（中）", "weight": 3},
+                    {"item": "HP回復薬（大）", "weight": 2},
+                    {"item": "MP回復薬（大）", "weight": 2},
                     {"item": "coins", "amount": [150, 200], "weight": 10}
                 ]
             }
@@ -1407,7 +1423,7 @@ BOSS_DATA = {
     1: {
         "name": "スライムキング",
         "hp": 100,
-        "atk": 8,
+        "atk": 10,
         "def": 3,
         "attribute": "none",
                 "attribute": "none",
@@ -1424,8 +1440,8 @@ BOSS_DATA = {
     2: {
         "name": "デスロード",
         "hp": 150,
-        "atk": 10,
-        "def": 4,
+        "atk": 12,
+        "def": 5,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
@@ -1439,8 +1455,8 @@ BOSS_DATA = {
     3: {
         "name": "炎獄の魔竜", 
         "hp": 250,
-        "atk": 12,
-        "def": 5,
+        "atk": 15,
+        "def": 6,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
@@ -1454,8 +1470,8 @@ BOSS_DATA = {
     4: {
         "name": "影の王",
         "hp": 350,
-        "atk": 15,
-        "def": 6,
+        "atk": 20,
+        "def": 8,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
@@ -1469,8 +1485,8 @@ BOSS_DATA = {
     5: {
         "name": "雷神",
         "hp": 450,
-        "atk": 20,
-        "def": 7,
+        "atk": 24,
+        "def": 9,
         "attribute": "thunder",
                 "attribute": "thunder",
         "drops": [
@@ -1484,8 +1500,8 @@ BOSS_DATA = {
     6: {
         "name": "氷の女王",
         "hp": 600,
-        "atk": 25,
-        "def": 8,
+        "atk": 28,
+        "def": 10,
         "attribute": "ice",
                 "attribute": "ice",
         "drops": [
@@ -1501,8 +1517,8 @@ BOSS_DATA = {
     7: {
         "name": "獄炎の巨人",
         "hp": 700,
-        "atk": 28,
-        "def": 10,
+        "atk": 32,
+        "def": 11,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
@@ -1518,8 +1534,8 @@ BOSS_DATA = {
     8: {
         "name": "深淵の守護者",
         "hp": 800,
-        "atk": 30,
-        "def": 11,
+        "atk": 35,
+        "def": 12,
         "attribute": "dark",
                 "attribute": "dark",
         "drops": [
@@ -1535,8 +1551,8 @@ BOSS_DATA = {
     9: {
         "name": "混沌の龍帝",
         "hp": 1000,
-        "atk": 34,
-        "def": 12,
+        "atk": 40,
+        "def": 14,
         "attribute": "fire",
                 "attribute": "fire",
         "drops": [
@@ -1550,8 +1566,8 @@ BOSS_DATA = {
     10: {
         "name": "終焉の魔王",
         "hp": 1500,
-        "atk": 40,
-        "def": 12,
+        "atk": 45,
+        "def": 16,
         "attribute": "none",
                 "attribute": "none",
         "drops": [
