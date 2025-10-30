@@ -1580,16 +1580,16 @@ BOSS_DATA = {
 }
 
 SECRET_WEAPONS = [
-    {"id": 1, "name": "シークレットソード#1", "attack": 50, "ability": "全能力+50%", "rarity": "伝説"},
-    {"id": 2, "name": "シークレットソード#2", "attack": 60, "ability": "即死攻撃10%", "rarity": "伝説"},
-    {"id": 3, "name": "シークレットソード#3", "attack": 55, "ability": "HP自動回復+10/ターン", "rarity": "伝説"},
-    {"id": 4, "name": "シークレットソード#4", "attack": 50, "ability": "攻撃力+100%", "rarity": "神話"},
-    {"id": 5, "name": "シークレットソード#5", "attack": 70, "ability": "防御無視攻撃", "rarity": "伝説"},
-    {"id": 6, "name": "シークレットソード#6", "attack": 65, "ability": "全ステータス+80%", "rarity": "神話"},
-    {"id": 7, "name": "シークレットソード#7", "attack": 75, "ability": "敵防御力無視", "rarity": "伝説"},
-    {"id": 8, "name": "シークレットソード#8", "attack": 55, "ability": "クリティカル率100%", "rarity": "神話"},
-    {"id": 9, "name": "シークレットソード#9", "attack": 50, "ability": "HP吸収50%", "rarity": "伝説"},
-    {"id": 10, "name": "シークレットソード#10", "attack": 80, "ability": "真・無敵", "rarity": "超越"},
+    {"id": 1, "name": "シークレットソード#1", "attack": 40, "ability": "全能力+50%", "rarity": "伝説"},
+    {"id": 2, "name": "シークレットソード#2", "attack": 50, "ability": "即死攻撃10%", "rarity": "伝説"},
+    {"id": 3, "name": "シークレットソード#3", "attack": 45, "ability": "HP自動回復+10/ターン", "rarity": "伝説"},
+    {"id": 4, "name": "シークレットソード#4", "attack": 40, "ability": "攻撃力+100%", "rarity": "神話"},
+    {"id": 5, "name": "シークレットソード#5", "attack": 60, "ability": "防御無視攻撃", "rarity": "伝説"},
+    {"id": 6, "name": "シークレットソード#6", "attack": 55, "ability": "全ステータス+80%", "rarity": "神話"},
+    {"id": 7, "name": "シークレットソード#7", "attack": 65, "ability": "敵防御力無視", "rarity": "伝説"},
+    {"id": 8, "name": "シークレットソード#8", "attack": 45, "ability": "クリティカル率100%", "rarity": "神話"},
+    {"id": 9, "name": "シークレットソード#9", "attack": 40, "ability": "HP吸収50%", "rarity": "伝説"},
+    {"id": 10, "name": "シークレットソード#10", "attack": 70, "ability": "真・無敵", "rarity": "超越"},
 ]
 
 SPECIAL_EVENT_SHOP = [
@@ -2394,7 +2394,7 @@ SKILLS_DATABASE = {
         "name": "軽傷治癒",
         "type": "heal",
         "mp_cost": 10,
-        "heal_amount": 40,
+        "heal_amount": 20,
         "description": "軽い傷を癒す。HP40回復。",
         "unlock_distance": 2000
     },
@@ -2411,7 +2411,7 @@ SKILLS_DATABASE = {
         "id": "ファイアボール",
         "name": "ファイアボール",
         "type": "attack",
-        "mp_cost": 15,
+        "mp_cost": 14,
         "power": 2.2,
         "description": "炎の球を放つ。威力2.2倍。",
         "unlock_distance": 4000
@@ -2420,7 +2420,7 @@ SKILLS_DATABASE = {
         "id": "猛攻撃",
         "name": "猛攻撃",
         "type": "attack",
-        "mp_cost": 20,
+        "mp_cost": 18,
         "power": 2.5,
         "description": "猛烈な攻撃。威力2.5倍。",
         "unlock_distance": 5000
@@ -2430,7 +2430,7 @@ SKILLS_DATABASE = {
         "name": "中治癒",
         "type": "heal",
         "mp_cost": 20,
-        "heal_amount": 80,
+        "heal_amount": 50,
         "description": "傷を治す。HP80回復。",
         "unlock_distance": 6000
     },
@@ -2438,7 +2438,7 @@ SKILLS_DATABASE = {
         "id": "爆炎",
         "name": "爆炎",
         "type": "attack",
-        "mp_cost": 25,
+        "mp_cost": 24,
         "power": 3.0,
         "description": "爆発する炎。威力3.0倍。",
         "unlock_distance": 7000
@@ -2448,7 +2448,7 @@ SKILLS_DATABASE = {
         "name": "完全治癒",
         "type": "heal",
         "mp_cost": 30,
-        "heal_amount": 150,
+        "heal_amount": 100,
         "description": "完全に傷を癒す。HP150回復。",
         "unlock_distance": 8000
     },
@@ -2456,7 +2456,7 @@ SKILLS_DATABASE = {
         "id": "神速の一閃",
         "name": "神速の一閃",
         "type": "attack",
-        "mp_cost": 35,
+        "mp_cost": 30,
         "power": 3.5,
         "description": "神速の斬撃。威力3.5倍。",
         "unlock_distance": 9000
@@ -2465,7 +2465,7 @@ SKILLS_DATABASE = {
         "id": "究極魔法",
         "name": "究極魔法",
         "type": "attack",
-        "mp_cost": 40,
+        "mp_cost": 35,
         "power": 4.0,
         "description": "究極の魔法攻撃。威力4.0倍。",
         "unlock_distance": 10000
