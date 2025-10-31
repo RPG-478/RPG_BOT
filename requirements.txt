@@ -7,3 +7,8 @@ aiohttp
 discord.py
 httpx
 python-dotenv
+aiohttp
+discord.py
+httpx
+python-dotenv
+supabase

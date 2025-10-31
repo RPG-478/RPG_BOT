@@ -1233,9 +1233,9 @@ class FinalBossBattleView(View):
         if ability_result["effect_text"]:
             text += f"\n{ability_result['effect_text']}"
 
-        # 即死判定
+        # 即死判定（ボス戦では無効）
         if ability_result["instant_kill"]:
-            self.boss["hp"] = 0
+            text += "\n💀即死効果発動！...しかしボスには効かなかった！"
 
         if self.boss["hp"] <= 0:
             # HPを保存
@@ -1743,9 +1743,9 @@ class BossBattleView(View):
         if ability_result["effect_text"]:
             text += f"\n{ability_result['effect_text']}"
 
-        # 即死判定
+        # 即死判定（ボス戦では無効）
         if ability_result["instant_kill"]:
-            self.boss["hp"] = 0
+            text += "\n💀即死効果発動！...しかしボスには効かなかった！"
 
         if self.boss["hp"] <= 0:
             # HPを保存

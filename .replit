@@ -15,10 +15,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Discord Bot"
+args = "discord-bot"
 
 [[workflows.workflow]]
-name = "Discord Bot"
+name = "discord-bot"
 author = "agent"
 
 [[workflows.workflow.tasks]]
