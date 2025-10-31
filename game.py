@@ -193,7 +193,7 @@ ITEMS_DATABASE = {
         "type": "weapon",
         "attack": 24,
         "ability": "攻撃力+30%、攻撃時10%で敵の最大HP-10%",
-        "description": "炎を司る神剣。"
+        "description": "呪われた剣。敵の体を朽ちさせる。"
     },
     "獄炎の大剣": {
         "type": "weapon",
