@@ -299,7 +299,7 @@ async def admin_force_reset(ctx: commands.Context, user_id: str):
 
 @commands.command(name="rollback")
 async def rollback(ctx: commands.Context):
-    """最後のアクションを取り消す（1回のみ）"""
+    """最後のアクションを取り消す"""
     user_id = ctx.author.id
     
     try:
@@ -309,7 +309,7 @@ async def rollback(ctx: commands.Context):
         if not snapshot:
             embed = discord.Embed(
                 title="⚠️ ロールバックできません",
-                description="最近のアクション記録が見つかりませんでした。\n\n※ロールバックは直前の1アクションのみ対応しています。",
+                description="最近のアクション記録が見つかりませんでした。\n\n**!move**、戦闘、装備変更などのアクション後に使用できます。",
                 color=discord.Color.orange()
             )
             await ctx.send(embed=embed)

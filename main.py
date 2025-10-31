@@ -240,6 +240,9 @@ async def move(ctx: commands.Context):
             )
             await ctx.send(embed=embed)
             return
+        
+        # 🔖 スナップショット作成（!rollback用）
+        await snapshot_manager.create_snapshot(user.id, "!move", player)
 
         # intro_2: 1回目の死亡後、最初のmove時に表示
         loop_count = await db.get_loop_count(user.id)
