@@ -363,7 +363,7 @@ class RollbackConfirmView(discord.ui.View):
 # ユーザー向けコマンド
 # ==============================
 
-@commands.command(name="rollback")
+@commands.command(name="rollback", aliases=["rb"])
 async def rollback(ctx: commands.Context, force: str = None):
     """最後のアクションを取り消す
     
