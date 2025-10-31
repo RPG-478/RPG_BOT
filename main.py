@@ -44,19 +44,6 @@ import game
 from story import StoryView
 import death_system
 from titles import get_title_rarity_emoji, RARITY_COLORS
-import debug_commands
-from debug_commands import (
-    admin_stats,
-    admin_logs,
-    admin_clear_logs,
-    admin_ban,
-    admin_unban,
-    admin_player,
-    admin_clear_processing,
-    admin_force_reset,
-    rollback,
-    debug_status
-)
 
 load_dotenv()
 
@@ -64,18 +51,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-bot.add_command(admin_stats)
-bot.add_command(admin_logs)
-bot.add_command(admin_clear_logs)
-bot.add_command(admin_ban)
-bot.add_command(admin_unban)
-bot.add_command(admin_player)
-bot.add_command(admin_clear_processing)
-bot.add_command(admin_force_reset)
-bot.add_command(rollback)
-bot.add_command(debug_status)
-bot.user_processing = user_processing
 
 user_processing = {}
 user_locks = {}
