@@ -1554,6 +1554,11 @@ class BossBattleView(View):
 
     async def _async_init(self):
         """Async initialization logic"""
+        fresh_boss = game.get_boss(self.boss_stage)
+    if fresh_boss:
+        self.boss = fresh_boss
+        print(f"[DEBUG] ボス初期化 - {self.boss['name']}: HP={self.boss['hp']}, ATK={self.boss['atk']}, DEF={self.boss['def']}")
+        
         if "user_id" in self.player:
             fresh_player = await db.get_player(self.player["user_id"])
             if fresh_player:
