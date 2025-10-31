@@ -1011,3 +1011,64 @@ if _original_update_player and not getattr(_original_update_player, "_is_wrapped
 
 else:
     logger.debug("db.update_player wrapper: original_update_player not found or already wrapped.")
+
+# ==============================
+# デバッグコマンド用関数
+# ==============================
+
+async def get_all_players():
+    """全プレイヤーのリストを取得（管理者用）"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/players"
+    params = {"select": "*"}
+    
+    try:
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error(f"Error getting all players: {e}")
+        return []
+
+async def ban_player(user_id):
+    """プレイヤーをBAN"""
+    await update_player(user_id, is_banned=True)
+    logger.warning(f"Player {user_id} has been banned")
+
+async def unban_player(user_id):
+    """プレイヤーのBANを解除"""
+    await update_player(user_id, is_banned=False)
+    logger.info(f"Player {user_id} has been unbanned")
+
+async def is_player_banned(user_id):
+    """プレイヤーがBANされているかチェック"""
+    player = await get_player(user_id)
+    if player:
+        return player.get("is_banned", False)
+    return False
+
+async def restore_player_snapshot(user_id, snapshot_data: dict):
+    """スナップショットからプレイヤーデータを復元"""
+    # スナップショットデータから復元する主要フィールド
+    restore_fields = {
+        "hp": snapshot_data.get("hp"),
+        "mp": snapshot_data.get("mp"),
+        "distance": snapshot_data.get("distance"),
+        "current_floor": snapshot_data.get("current_floor"),
+        "current_stage": snapshot_data.get("current_stage"),
+        "gold": snapshot_data.get("gold"),
+        "exp": snapshot_data.get("exp"),
+        "level": snapshot_data.get("level"),
+        "inventory": snapshot_data.get("inventory"),
+        "equipped_weapon": snapshot_data.get("equipped_weapon"),
+        "equipped_armor": snapshot_data.get("equipped_armor"),
+    }
+    
+    # Noneでないフィールドのみを更新
+    update_data = {k: v for k, v in restore_fields.items() if v is not None}
+    
+    if update_data:
+        await update_player(user_id, **update_data)
+        logger.info(f"Restored snapshot for user {user_id}")
+    else:
+        logger.warning(f"No valid data to restore for user {user_id}")

@@ -708,9 +708,16 @@ async def buy_upgrade(ctx, upgrade_type: int):
         await ctx.send("✅ 防御力初期値をアップグレードしました！ DEF +1")
 
 # デバッグコマンドの読み込み（削除可能）
+# デバッグコマンドのインポートと設定
 try:
-    import debug_commands
-    debug_commands.setup(bot, user_processing)
+    from debug_commands import setup_debug_commands, error_log_manager, snapshot_manager
+    
+    # Botにuser_processingを属性として追加（デバッグコマンドからアクセス可能にする）
+    bot.user_processing = user_processing
+    bot.error_log_manager = error_log_manager
+    bot.snapshot_manager = snapshot_manager
+    
+    setup_debug_commands(bot)
     print("✅ デバッグコマンドを読み込みました")
 except ImportError:
     print("ℹ️ デバッグコマンドは利用できません（debug_commands.py が見つかりません）")
