@@ -195,7 +195,7 @@ ITEMS_DATABASE = {
         "ability": "攻撃力+30%、攻撃時10%で敵の最大HP-10%",
         "description": "炎を司る神剣。"
     },
-    "炎の大剣": {
+    "獄炎の大剣": {
         "type": "weapon",
         "attack": 26,
         "ability": "炎属性（追加で炎ダメージ+10）、攻撃時30%で燃焼（2ターン、ダメージ15）",
@@ -1523,7 +1523,7 @@ BOSS_DATA = {
                 "attribute": "fire",
         "drops": [
             {"item": "巨人の鎧", "weight": 15},
-            {"item": "炎の大剣", "weight": 15},
+            {"item": "獄炎の大剣", "weight": 15},
             {"item": "HP回復薬（中）", "weight": 10},
             {"item": "HP回復薬（大）", "weight": 10},
             {"item": "MP回復薬（中）", "weight": 10},
