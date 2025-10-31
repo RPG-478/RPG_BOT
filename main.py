@@ -89,7 +89,7 @@ async def on_ready():
 
 
 #スタート×チュートリアル開始
-@bot.command(name="start", aliases=["s"])
+@bot.command(name="start")
 @check_ban()
 async def start(ctx: commands.Context):
     user = ctx.author
@@ -531,7 +531,7 @@ async def inventory(ctx):
     await ctx.send("🎒 インベントリ", view=view)
 
 # ステータス&装備
-@bot.command()
+@bot.command(aliases=["s"])
 @check_ban()
 async def status(ctx):
     try:
