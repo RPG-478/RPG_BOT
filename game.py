@@ -2401,7 +2401,7 @@ SKILLS_DATABASE = {
         "type": "heal",
         "mp_cost": 10,
         "heal_amount": 20,
-        "description": "軽い傷を癒す。HP40回復。",
+        "description": "軽い傷を癒す。HP20回復。",
         "unlock_distance": 2000
     },
     "強攻撃": {
@@ -2437,7 +2437,7 @@ SKILLS_DATABASE = {
         "type": "heal",
         "mp_cost": 20,
         "heal_amount": 50,
-        "description": "傷を治す。HP80回復。",
+        "description": "傷を治す。HP50回復。",
         "unlock_distance": 6000
     },
     "爆炎": {
@@ -2455,7 +2455,7 @@ SKILLS_DATABASE = {
         "type": "heal",
         "mp_cost": 30,
         "heal_amount": 100,
-        "description": "完全に傷を癒す。HP150回復。",
+        "description": "完全に傷を癒す。HP100回復。",
         "unlock_distance": 8000
     },
     "神速の一閃": {
