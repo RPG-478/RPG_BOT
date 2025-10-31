@@ -44,6 +44,19 @@ import game
 from story import StoryView
 import death_system
 from titles import get_title_rarity_emoji, RARITY_COLORS
+import debug_commands
+from debug_commands import (
+    admin_stats,
+    admin_logs,
+    admin_clear_logs,
+    admin_ban,
+    admin_unban,
+    admin_player,
+    admin_clear_processing,
+    admin_force_reset,
+    rollback,
+    debug_status
+)
 
 load_dotenv()
 
