@@ -294,6 +294,72 @@ async def admin_force_reset(ctx: commands.Context, user_id: str):
         await ctx.send(f"⚠️ リセットに失敗しました: {e}")
 
 # ==============================
+# ロールバック確認View
+# ==============================
+class RollbackConfirmView(discord.ui.View):
+    def __init__(self, user_id: int, snapshot_data: dict, bot):
+        super().__init__(timeout=60)
+        self.user_id = user_id
+        self.snapshot_data = snapshot_data
+        self.bot = bot
+    
+    @discord.ui.button(label="ロールバックする", style=discord.ButtonStyle.danger)
+    async def confirm_rollback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("これはあなたのロールバックではありません。", ephemeral=True)
+        
+        try:
+            # 🔴 処理中フラグを強制クリア
+            if hasattr(self.bot, 'user_processing'):
+                self.bot.user_processing[self.user_id] = False
+                logger.info(f"🔄 Rollback: user_processing cleared for user {self.user_id}")
+            
+            # プレイヤーデータを復元
+            await db.update_player(
+                self.user_id,
+                hp=self.snapshot_data.get("hp"),
+                mp=self.snapshot_data.get("mp"),
+                distance=self.snapshot_data.get("distance"),
+                gold=self.snapshot_data.get("gold"),
+                inventory=self.snapshot_data.get("inventory"),
+                equipped_weapon=self.snapshot_data.get("equipped_weapon"),
+                equipped_armor=self.snapshot_data.get("equipped_armor"),
+                current_floor=self.snapshot_data.get("current_floor"),
+                current_stage=self.snapshot_data.get("current_stage"),
+                milestone_flags=self.snapshot_data.get("milestone_flags", {}),
+                story_flags=self.snapshot_data.get("story_flags", {})
+            )
+            
+            # スナップショットを削除
+            snapshot_manager.remove_last_snapshot(self.user_id)
+            
+            embed = discord.Embed(
+                title="✅ ロールバック完了",
+                description=f"アクションを取り消し、前の状態に戻しました。\n\n復元されたステータス:\n**HP**: {self.snapshot_data.get('hp')}/{self.snapshot_data.get('max_hp')}\n**MP**: {self.snapshot_data.get('mp')}/{self.snapshot_data.get('max_mp')}\n**距離**: {self.snapshot_data.get('distance')}m\n**ゴールド**: {self.snapshot_data.get('gold')}G\n\n再度 `!move` で冒険を続けられます。",
+                color=discord.Color.green()
+            )
+            await interaction.response.edit_message(embed=embed, view=None)
+            
+            logger.info(f"✅ Rollback completed for user {self.user_id}")
+            
+        except Exception as e:
+            error_log_manager.add_error("ROLLBACK_CONFIRM", str(e), self.user_id, "rollback confirmation")
+            await interaction.response.send_message(f"⚠️ ロールバックに失敗しました: {e}", ephemeral=True)
+    
+    @discord.ui.button(label="キャンセル", style=discord.ButtonStyle.secondary)
+    async def cancel_rollback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("これはあなたのロールバックではありません。", ephemeral=True)
+        
+        embed = discord.Embed(
+            title="❌ キャンセル",
+            description="ロールバックをキャンセルしました。",
+            color=discord.Color.grey()
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
+# ==============================
 # ユーザー向けコマンド
 # ==============================
 
@@ -352,8 +418,8 @@ async def rollback(ctx: commands.Context, force: str = None):
                 equipped_armor=snapshot_data.get("equipped_armor"),
                 current_floor=snapshot_data.get("current_floor"),
                 current_stage=snapshot_data.get("current_stage"),
-                milestone_flags=snapshot_data.get("milestone_flags"),
-                story_flags=snapshot_data.get("story_flags")
+                milestone_flags=snapshot_data.get("milestone_flags", {}),
+                story_flags=snapshot_data.get("story_flags", {})
             )
             
             # スナップショットを削除
@@ -381,6 +447,8 @@ async def rollback(ctx: commands.Context, force: str = None):
     except Exception as e:
         error_log_manager.add_error("ROLLBACK", str(e), user_id, "rollback command")
         await ctx.send(f"⚠️ ロールバックに失敗しました: {e}")
+        
+        
 # ==============================
 # コマンド登録ヘルパー
 # ==============================
