@@ -655,7 +655,7 @@ async def upgrade(ctx):
     await ctx.send(embed=embed)
 
 # アップグレード購入
-@bot.command(aliases=["b_up"])
+@bot.command(aliases=["bup"])
 @check_ban()
 async def buy_upgrade(ctx, upgrade_type: int):
     if user_processing.get(ctx.author.id):
