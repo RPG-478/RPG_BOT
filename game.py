@@ -1,4 +1,5 @@
 import random
+import copy
 
 ITEMS_DATABASE = {
     "none": {
@@ -1685,7 +1686,12 @@ CRAFTING_RECIPES = {
 }
 
 def get_boss(stage):
-    return BOSS_DATA.get(stage)
+    boss_template = BOSS_DATA.get(stage)
+    if boss_template:
+        # ディープコピーで新しいボスデータを返す
+        return copy.deepcopy(boss_template)
+    return None
+    
 
 def should_spawn_boss(distance):
     if distance < 980:
