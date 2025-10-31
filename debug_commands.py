@@ -298,8 +298,13 @@ async def admin_force_reset(ctx: commands.Context, user_id: str):
 # ==============================
 
 @commands.command(name="rollback")
-async def rollback(ctx: commands.Context):
-    """最後のアクションを取り消す"""
+async def rollback(ctx: commands.Context, force: str = None):
+    """最後のアクションを取り消す
+    
+    使い方:
+    !rollback - 確認後にロールバック
+    !rollback force - 確認なしで即座にロールバック（戦闘中断用）
+    """
     user_id = ctx.author.id
     
     try:
@@ -315,86 +320,67 @@ async def rollback(ctx: commands.Context):
             await ctx.send(embed=embed)
             return
         
-        # スナップショットデータを復元
         snapshot_data = snapshot.get("data")
+        action_type = snapshot.get("action_type", "不明なアクション")
+        timestamp = snapshot.get("timestamp", "不明な時刻")
+        
         if not snapshot_data:
-            await ctx.send("⚠️ スナップショットデータが無効です。")
+            embed = discord.Embed(
+                title="⚠️ データが見つかりません",
+                description="スナップショットデータが破損しています。",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
             return
         
-        # DBに復元
-        await db.restore_player_snapshot(user_id, snapshot_data)
+        # 🔴 forceオプションが指定された場合は即座にロールバック
+        if force and force.lower() == "force":
+            # 処理中フラグを強制クリア
+            if hasattr(ctx.bot, 'user_processing'):
+                ctx.bot.user_processing[user_id] = False
+                logger.info(f"🔄 Force Rollback: user_processing cleared for user {user_id}")
+            
+            # プレイヤーデータを復元
+            await db.update_player(
+                user_id,
+                hp=snapshot_data.get("hp"),
+                mp=snapshot_data.get("mp"),
+                distance=snapshot_data.get("distance"),
+                gold=snapshot_data.get("gold"),
+                inventory=snapshot_data.get("inventory"),
+                equipped_weapon=snapshot_data.get("equipped_weapon"),
+                equipped_armor=snapshot_data.get("equipped_armor"),
+                current_floor=snapshot_data.get("current_floor"),
+                current_stage=snapshot_data.get("current_stage"),
+                milestone_flags=snapshot_data.get("milestone_flags"),
+                story_flags=snapshot_data.get("story_flags")
+            )
+            
+            # スナップショットを削除
+            snapshot_manager.remove_last_snapshot(user_id)
+            
+            embed = discord.Embed(
+                title="⚡ 強制ロールバック完了",
+                description=f"**{action_type}** を強制的に取り消しました。\n\n復元されたステータス:\n**HP**: {snapshot_data.get('hp')}/{snapshot_data.get('max_hp')}\n**MP**: {snapshot_data.get('mp')}/{snapshot_data.get('max_mp')}\n**距離**: {snapshot_data.get('distance')}m\n**ゴールド**: {snapshot_data.get('gold')}G\n\n再度 `!move` で冒険を続けられます。",
+                color=discord.Color.gold()
+            )
+            await ctx.send(embed=embed)
+            logger.info(f"✅ Force rollback completed for user {user_id}")
+            return
         
-        # スナップショットを削除
-        snapshot_manager.remove_last_snapshot(user_id)
-        
-        action_type = snapshot.get("action_type", "不明なアクション")
-        timestamp = snapshot.get("timestamp", "")[:19]
-        
-        embed = discord.Embed(
-            title="⏪ ロールバック成功",
-            description=f"**{action_type}** を取り消しました。\n\n時刻: {timestamp}\n\nプレイヤーデータが復元されました。",
-            color=discord.Color.green()
+        # 通常の確認付きロールバック
+        confirm_embed = discord.Embed(
+            title="🔄 ロールバック確認",
+            description=f"以下のアクションを取り消しますか？\n\n**アクション**: {action_type}\n**時刻**: {timestamp[:19]}\n\n⚠️ **進行中の戦闘・イベントは強制的に中断されます**\n\nヒント: `!rollback force` で即座にロールバックできます",
+            color=discord.Color.blue()
         )
-        await ctx.send(embed=embed)
         
-        logger.info(f"User {user_id} rolled back action: {action_type}")
+        view = RollbackConfirmView(user_id, snapshot_data, ctx.bot)
+        await ctx.send(embed=confirm_embed, view=view)
         
     except Exception as e:
         error_log_manager.add_error("ROLLBACK", str(e), user_id, "rollback command")
         await ctx.send(f"⚠️ ロールバックに失敗しました: {e}")
-
-@commands.command(name="debug_status")
-async def debug_status(ctx: commands.Context):
-    """自分のデバッグ情報を表示"""
-    user_id = ctx.author.id
-    
-    try:
-        player = await db.get_player(user_id)
-        
-        if not player:
-            await ctx.send("⚠️ プレイヤーデータが見つかりません。`!start` でゲームを開始してください。")
-            return
-        
-        # processingフラグの状態
-        processing_status = "処理中" if ctx.bot.user_processing.get(user_id, False) else "待機中"
-        
-        # 最後のスナップショット
-        snapshot = snapshot_manager.get_last_snapshot(user_id)
-        snapshot_info = "なし"
-        if snapshot:
-            action = snapshot.get("action_type", "不明")
-            timestamp = snapshot.get("timestamp", "")[:19]
-            snapshot_info = f"{action} ({timestamp})"
-        
-        # エラーログ
-        user_errors = error_log_manager.get_user_logs(user_id, 3)
-        error_count = len(user_errors)
-        
-        embed = discord.Embed(
-            title="🔧 デバッグ情報",
-            description=f"{ctx.author.mention} の状態",
-            color=discord.Color.blue()
-        )
-        
-        embed.add_field(name="処理状態", value=processing_status, inline=True)
-        embed.add_field(name="距離", value=f"{player.get('distance', 0)}m", inline=True)
-        embed.add_field(name="HP", value=f"{player.get('hp', 0)}/{player.get('max_hp', 0)}", inline=True)
-        embed.add_field(name="最後のスナップショット", value=snapshot_info, inline=False)
-        embed.add_field(name="最近のエラー数", value=f"{error_count}件", inline=True)
-        
-        if error_count > 0:
-            last_error = user_errors[-1]
-            embed.add_field(
-                name="最新エラー",
-                value=f"{last_error.get('type', 'Unknown')}: {last_error.get('message', 'No message')[:100]}",
-                inline=False
-            )
-        
-        await ctx.send(embed=embed)
-        
-    except Exception as e:
-        await ctx.send(f"⚠️ デバッグ情報の取得に失敗しました: {e}")
-
 # ==============================
 # コマンド登録ヘルパー
 # ==============================
