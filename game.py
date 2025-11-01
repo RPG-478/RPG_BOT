@@ -439,7 +439,7 @@ ITEMS_DATABASE = {
     "精霊の盾": {
         "type": "armor",
         "defense": 24,
-        "ability": "全属性耐性+20%、精霊加護（致死ダメージ時1回生存）",
+        "ability": "全属性耐性+20%、精霊加護（致死ダメージ50%で生存）",
         "description": "精霊の加護を受けた盾。"
     },
     "神の盾": {
@@ -475,7 +475,7 @@ ITEMS_DATABASE = {
     "竜帝の鎧": {
         "type": "armor",
         "defense": 30,
-        "ability": "HP+80、全属性耐性+20%、竜鱗の守護（致死ダメージ無効1回）",
+        "ability": "HP+80、全属性耐性+20%、竜鱗の守護（致死ダメージ50%で無効）",
         "description": "竜帝の力を宿す究極の鎧。"
     },
     "幻王の鎧": {
@@ -487,13 +487,13 @@ ITEMS_DATABASE = {
     "創世の盾": {
         "type": "armor",
         "defense": 28,
-        "ability": "全ダメージ-30%、HP+50、完全蘇生（戦闘中1回のみ）",
+        "ability": "全ダメージ-30%、HP+50",
         "description": "世界を創りし神の盾。"
     },
     "死帝の鎧": {
         "type": "armor",
         "defense": 30,
-        "ability": "HP+50、全状態異常耐性+50%、不死の力（HP0で復活3回まで）",
+        "ability": "HP+50、全状態異常耐性+50%",
         "description": "死の皇帝が纏う不滅の鎧。"
     },
     "魔王の鎧": {
@@ -2033,14 +2033,6 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
         result["mp_absorb_percent"] = mp_percent
         result["effect_text"] += f"🔵MP吸収{mp_percent}% "
 
-    # 敵の最大HP-X%
-    max_hp_dmg_match = re.search(r'敵の最大HP-(\d+)%', ability_text)
-    if max_hp_dmg_match:
-        max_hp_percent = int(max_hp_dmg_match.group(1))
-        if random.randint(1, 100) <= 20:
-            result["max_hp_damage"] = max_hp_percent
-            result["effect_text"] += f"💀最大HP-{max_hp_percent}%! "
-
     # アンデッド召喚
     if "アンデッド召喚" in ability_text:
         summon_match = re.search(r'攻撃時(\d+)%でアンデッド召喚.*?HP(\d+)回復', ability_text)
@@ -2057,7 +2049,7 @@ def apply_ability_effects(damage, ability_text, attacker_hp, target_type="normal
             result["enemy_flinch"] = True
             result["effect_text"] += "🐉咆哮(怯み)! "
 
-    # 呪い（攻撃時にHP-5、ダメージ+50%）
+    # 呪い（攻撃時にHP-1、ダメージ+50%）
     if "呪い" in ability_text and "攻撃時にHP-" in ability_text:
         curse_match = re.search(r'HP-(\d+).*?ダメージ\+(\d+)%', ability_text)
         if curse_match:
@@ -2310,17 +2302,19 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
 
     # 精霊加護（致死ダメージ時1回生存）
     if "精霊加護" in armor_ability and result["damage"] >= defender_hp:
-        if "致死ダメージ時1回生存" in armor_ability:
-            result["damage"] = defender_hp - 1
-            result["revived"] = True
-            result["effect_text"] += "🌟精霊加護(生存)! "
+        if "致死ダメージ時50%で生存" in armor_ability:
+            if random.randint(1, 100) < 50
+                result["damage"] = defender_hp - 1
+                result["revived"] = True
+                result["effect_text"] += "🌟精霊加護(生存)! "
 
     # 竜鱗の守護（致死ダメージ無効1回）
     if "竜鱗の守護" in armor_ability and result["damage"] >= defender_hp:
-        if "致死ダメージ無効" in armor_ability:
-            result["damage"] = 0
-            result["evaded"] = True
-            result["effect_text"] += "🐉竜鱗の守護! "
+        if "致死ダメージ50%で無効" in armor_ability:
+            if random.randint(1, 100) < 50
+                result["damage"] = 0
+                result["evaded"] = True
+                result["effect_text"] += "🐉竜鱗の守護! "
 
     return result
 
