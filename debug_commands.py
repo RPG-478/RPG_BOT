@@ -447,120 +447,190 @@ async def rollback(ctx: commands.Context, force: str = None):
     except Exception as e:
         error_log_manager.add_error("ROLLBACK", str(e), user_id, "rollback command")
         await ctx.send(f"⚠️ ロールバックに失敗しました: {e}")
-        
-        
-# ==============================
-# 全体通知コマンド
-# ==============================
 
-@commands.command(name="notice")
-@admin_only()
-async def notice(ctx: commands.Context, *, message: str = None):
-    """全プレイヤーの個人用チャンネルに通知を送信"""
-    if not message:
-        await ctx.send("⚠️ 使用方法: `!notice メッセージ内容`")
-        return
+@commands.command(name="debug_status")
+async def debug_status(ctx: commands.Context):
+    """自分のデバッグ情報を表示"""
+    user_id = ctx.author.id
     
-    # 確認メッセージ
-    confirm_embed = discord.Embed(
-        title="📢 全体通知の確認",
-        description=f"以下のメッセージを全プレイヤーに送信しますか？\n\n**メッセージ:**\n{message}",
-        color=discord.Color.orange()
-    )
-    confirm_view = NoticeConfirmView(ctx.author.id, message, ctx.bot)
-    await ctx.send(embed=confirm_embed, view=confirm_view)
+    try:
+        # 処理状態を確認
+        processing_status = "処理中" if ctx.bot.user_processing.get(user_id) else "待機中"
+        
+        # 最後のスナップショット情報
+        snapshot = snapshot_manager.get_last_snapshot(user_id)
+        snapshot_info = "なし"
+        if snapshot:
+            action_type = snapshot.get("action_type", "不明")
+            timestamp = snapshot.get("timestamp", "不明")[:19]
+            snapshot_info = f"{action_type} ({timestamp})"
+        
+        # ユーザーのエラーログを取得
+        user_errors = error_log_manager.get_user_logs(user_id, limit=3)
+        error_info = f"{len(user_errors)}件" if user_errors else "なし"
+        
+        embed = discord.Embed(
+            title="🔍 デバッグ情報",
+            color=discord.Color.blue(),
+            timestamp=datetime.now()
+        )
+        
+        embed.add_field(name="処理状態", value=processing_status, inline=True)
+        embed.add_field(name="最後のスナップショット", value=snapshot_info, inline=False)
+        embed.add_field(name="最近のエラー", value=error_info, inline=True)
+        
+        if user_errors:
+            error_details = "\n".join([
+                f"• {err.get('type', 'Unknown')}: {err.get('message', 'No message')[:50]}"
+                for err in user_errors
+            ])
+            embed.add_field(name="エラー詳細", value=error_details, inline=False)
+        
+        embed.set_footer(text=f"User ID: {user_id}")
+        
+        await ctx.send(embed=embed)
+        
+    except Exception as e:
+        error_log_manager.add_error("DEBUG_STATUS", str(e), user_id, "debug_status command")
+        await ctx.send(f"⚠️ デバッグ情報の取得に失敗しました: {e}")
 
-
+# ==============================
+# お知らせ確認View
+# ==============================
 class NoticeConfirmView(discord.ui.View):
-    """通知送信の確認View"""
-    def __init__(self, admin_id: int, message: str, bot):
-        super().__init__(timeout=60)
+    def __init__(self, admin_id: int, message: str, bot: commands.Bot):
+        super().__init__(timeout=300)
         self.admin_id = admin_id
         self.message = message
         self.bot = bot
     
-    @discord.ui.button(label="送信する", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="📢 送信する", style=discord.ButtonStyle.primary)
     async def confirm_send(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.admin_id:
-            return await interaction.response.send_message("これは管理者専用です。", ephemeral=True)
+            return await interaction.response.send_message("これは管理者専用の操作です。", ephemeral=True)
         
         await interaction.response.defer()
         
-        # 送信処理開始
-        await interaction.followup.send("📤 通知を送信中...")
-        
-        success_count = 0
-        fail_count = 0
-        total_channels = 0
-        
         try:
-            # 全ギルドを検索
-            for guild in self.bot.guilds:
-                # RPGカテゴリを検索
-                rpg_category = discord.utils.get(guild.categories, name="RPG")
-                
-                if not rpg_category:
-                    continue
-                
-                # カテゴリ内の全チャンネルをチェック
-                for channel in rpg_category.channels:
-                    # トピックにUserID:が含まれるチャンネルのみ
-                    if isinstance(channel, discord.TextChannel) and channel.topic and "UserID:" in channel.topic:
-                        total_channels += 1
-                        try:
-                            # 通知Embedを作成
-                            notice_embed = discord.Embed(
-                                title="📢 運営からのお知らせ",
-                                description=self.message,
-                                color=discord.Color.gold(),
-                                timestamp=discord.utils.utcnow()
-                            )
-                            notice_embed.set_footer(text="イニシエダンジョン運営チーム")
-                            
-                            await channel.send(embed=notice_embed)
-                            success_count += 1
-                            
-                            # レート制限対策（少し待機）
-                            await asyncio.sleep(0.5)
-                            
-                        except discord.Forbidden:
-                            fail_count += 1
-                            logger.warning(f"通知送信失敗（権限不足）: チャンネルID {channel.id}")
-                        except Exception as e:
-                            fail_count += 1
-                            logger.error(f"通知送信エラー: チャンネルID {channel.id}, エラー: {e}")
+            # RPGカテゴリを取得
+            guild = interaction.guild
+            category = discord.utils.get(guild.categories, name="RPG")
             
-            # 結果報告
+            if not category:
+                await interaction.followup.send("⚠️ RPGカテゴリが見つかりません。")
+                return
+            
+            # 成功/失敗カウンター
+            success_count = 0
+            failure_count = 0
+            failed_channels = []
+            
+            # RPGカテゴリ内の全チャンネルを検索
+            for channel in category.channels:
+                # チャンネルのトピックに "UserID:" が含まれているかチェック
+                if isinstance(channel, discord.TextChannel) and channel.topic and "UserID:" in channel.topic:
+                    try:
+                        # お知らせをEmbedで送信
+                        embed = discord.Embed(
+                            title="📢 運営からのお知らせ",
+                            description=self.message,
+                            color=discord.Color.blue(),
+                            timestamp=datetime.now()
+                        )
+                        embed.set_footer(text="イニシエダンジョン運営チーム")
+                        
+                        await channel.send(embed=embed)
+                        success_count += 1
+                        
+                        # レート制限（0.5秒待機）
+                        await asyncio.sleep(0.5)
+                        
+                    except Exception as e:
+                        failure_count += 1
+                        failed_channels.append(f"{channel.name}: {str(e)[:50]}")
+                        error_log_manager.add_error("NOTICE_SEND", str(e), None, f"channel: {channel.name}")
+            
+            # 結果を報告
             result_embed = discord.Embed(
-                title="✅ 通知送信完了",
-                color=discord.Color.green()
+                title="✅ お知らせ送信完了",
+                color=discord.Color.green(),
+                timestamp=datetime.now()
             )
-            result_embed.add_field(name="対象チャンネル数", value=f"{total_channels}個", inline=True)
-            result_embed.add_field(name="送信成功", value=f"{success_count}個", inline=True)
-            result_embed.add_field(name="送信失敗", value=f"{fail_count}個", inline=True)
-            result_embed.add_field(name="送信メッセージ", value=self.message, inline=False)
             
-            await interaction.followup.send(embed=result_embed)
+            result_embed.add_field(name="送信成功", value=f"{success_count}チャンネル", inline=True)
+            result_embed.add_field(name="送信失敗", value=f"{failure_count}チャンネル", inline=True)
+            result_embed.add_field(name="送信メッセージ", value=self.message[:200], inline=False)
             
-            logger.info(f"Admin {self.admin_id} sent notice to {success_count}/{total_channels} channels")
+            if failed_channels and len(failed_channels) <= 10:
+                failure_text = "\n".join(failed_channels)
+                result_embed.add_field(name="失敗詳細", value=failure_text, inline=False)
+            
+            await interaction.edit_original_response(embed=result_embed, view=None)
+            
+            logger.info(f"Admin {self.admin_id} sent notice to {success_count} channels")
             
         except Exception as e:
-            error_log_manager.add_error("NOTICE_SEND", str(e), self.admin_id, "notice command")
-            await interaction.followup.send(f"⚠️ 通知送信中にエラーが発生しました: {e}")
+            error_log_manager.add_error("NOTICE_CONFIRM", str(e), self.admin_id, "notice confirmation")
+            await interaction.followup.send(f"⚠️ お知らせ送信に失敗しました: {e}")
     
-    @discord.ui.button(label="キャンセル", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="❌ キャンセル", style=discord.ButtonStyle.secondary)
     async def cancel_send(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.admin_id:
-            return await interaction.response.send_message("これは管理者専用です。", ephemeral=True)
+            return await interaction.response.send_message("これは管理者専用の操作です。", ephemeral=True)
         
-        await interaction.response.edit_message(
-            embed=discord.Embed(
-                title="❌ 通知送信をキャンセルしました",
-                color=discord.Color.red()
-            ),
-            view=None
+        embed = discord.Embed(
+            title="❌ キャンセル",
+            description="お知らせ送信をキャンセルしました。",
+            color=discord.Color.grey()
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
+
+# ==============================
+# 管理者専用: お知らせ送信コマンド
+# ==============================
+@commands.command(name="notice")
+@admin_only()
+async def notice(ctx: commands.Context, *, message: str = None):
+    """全プレイヤーチャンネルにお知らせを送信
+    
+    使い方:
+    !notice <メッセージ>
+    
+    例:
+    !notice メンテナンスのお知らせ：本日23時よりメンテナンスを実施します。
+    """
+    if not message:
+        await ctx.send("⚠️ 使い方: `!notice <メッセージ>`")
+        return
+    
+    try:
+        # 確認Embedを表示
+        confirm_embed = discord.Embed(
+            title="📢 お知らせ送信確認",
+            description="以下のメッセージを全プレイヤーチャンネルに送信しますか？",
+            color=discord.Color.orange(),
+            timestamp=datetime.now()
         )
         
+        confirm_embed.add_field(
+            name="送信メッセージ",
+            value=message,
+            inline=False
+        )
+        
+        confirm_embed.add_field(
+            name="⚠️ 注意",
+            value="RPGカテゴリ内の全プレイヤーチャンネルに送信されます。\n送信後の取り消しはできません。",
+            inline=False
+        )
+        
+        view = NoticeConfirmView(ctx.author.id, message, ctx.bot)
+        await ctx.send(embed=confirm_embed, view=view)
+        
+    except Exception as e:
+        error_log_manager.add_error("NOTICE", str(e), ctx.author.id, "notice command")
+        await ctx.send(f"⚠️ エラーが発生しました: {e}")
+
         
 # ==============================
 # コマンド登録ヘルパー
@@ -576,9 +646,13 @@ def setup_debug_commands(bot: commands.Bot):
     bot.add_command(admin_player)
     bot.add_command(admin_clear_processing)
     bot.add_command(admin_force_reset)
+    bot.add_command(notice)
     bot.add_command(rollback)
     bot.add_command(debug_status)
-    bot.add_command(notice)
+    
+    # user_processingをbotに追加（存在しない場合）
+    if not hasattr(bot, 'user_processing'):
+        bot.user_processing = {}
     
     logger.info("✅ デバッグコマンドを登録しました")
 
