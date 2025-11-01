@@ -2303,7 +2303,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
     # 精霊加護（致死ダメージ時1回生存）
     if "精霊加護" in armor_ability and result["damage"] >= defender_hp:
         if "致死ダメージ時50%で生存" in armor_ability:
-            if random.randint(1, 100) < 50
+            if random.randint(1, 100) < 50:
                 result["damage"] = defender_hp - 1
                 result["revived"] = True
                 result["effect_text"] += "🌟精霊加護(生存)! "
@@ -2311,7 +2311,7 @@ def apply_armor_effects(incoming_damage, armor_ability, defender_hp, max_hp, att
     # 竜鱗の守護（致死ダメージ無効1回）
     if "竜鱗の守護" in armor_ability and result["damage"] >= defender_hp:
         if "致死ダメージ50%で無効" in armor_ability:
-            if random.randint(1, 100) < 50
+            if random.randint(1, 100) < 50:
                 result["damage"] = 0
                 result["evaded"] = True
                 result["effect_text"] += "🐉竜鱗の守護! "
