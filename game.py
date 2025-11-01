@@ -3,658 +3,772 @@ import copy
 
 ITEMS_DATABASE = {
     "none": {
+        "price": 10
     },
     "HP回復薬（小）": {
         "type": "potion",
         "effect": "HP+30",
         "ability": "HP回復",
-        "description": "HPを30回復する薬。"
+        "description": "HPを30回復する薬。",
+        "price": 30
     },
     "HP回復薬（中）": {
         "type": "potion",
         "effect": "HP+80",
         "ability": "HP中回復",
-        "description": "HPを80回復する高級な薬。"
+        "description": "HPを80回復する高級な薬。",
+        "price": 80
     },
     "HP回復薬（大）": {
         "type": "potion",
         "effect": "HP+200",
         "ability": "HP大回復",
-        "description": "HPを200回復する貴重な薬。"
+        "description": "HPを200回復する貴重な薬。",
+        "price": 200
     },
     "MP回復薬（小）": {
         "type": "potion",
         "effect": "MP+15",
         "ability": "MP回復",
-        "description": "MPを15回復する薬。"
+        "description": "MPを15回復する薬。",
+        "price": 30
     },
     "MP回復薬（中）": {
         "type": "potion",
         "effect": "MP+40",
         "ability": "MP中回復",
-        "description": "MPを40回復する高級な薬。"
+        "description": "MPを40回復する高級な薬。",
+        "price": 80
     },
     "MP回復薬（大）": {
         "type": "potion",
         "effect": "MP+100",
         "ability": "MP大回復",
-        "description": "MPを100回復する貴重な薬。"
+        "description": "MPを100回復する貴重な薬。",
+        "price": 200
     },
     "エリクサー": {
         "type": "potion",
         "effect": "HPMPMAX",
         "ability": "HP・MP完全回復",
-        "description": "HPとMPを完全回復させる幻の薬"
+        "description": "HPとMPを完全回復させる幻の薬",
+        "price": 500
     },
     "木の剣": {
         "type": "weapon",
         "attack": 2,
         "ability": "なし",
-        "description": "初心者向けの木製の剣。軽くて扱いやすい。"
+        "description": "初心者向けの木製の剣。軽くて扱いやすい。",
+        "price": 50
     },
     "石の剣": {
         "type": "weapon",
         "attack": 4,
         "ability": "なし",
-        "description": "石で作られた剣。木の剣より頑丈。"
+        "description": "石で作られた剣。木の剣より頑丈。",
+        "price": 80
     },
     "鉄の剣": {
         "type": "weapon",
         "attack": 6,
         "ability": "なし",
-        "description": "鉄製の剣。切れ味が良い。"
+        "description": "鉄製の剣。切れ味が良い。",
+        "price": 140
     },
     "毒の短剣": {
         "type": "weapon",
         "attack": 10,
         "ability": "毒付与（5%の確率で追加ダメージ）",
-        "description": "毒が塗られた短剣。相手を弱らせる。"
+        "description": "毒が塗られた短剣。相手を弱らせる。",
+        "price": 200
     },
     "王者の剣": {
         "type": "weapon",
         "attack": 8,
         "ability": "全ステータス+20%、全状態異常耐性+50%",
-        "description": "遥か昔に造られた剣。刀身の輝きは未だ失われていない。"
+        "description": "遥か昔に造られた剣。刀身の輝きは未だ失われていない。",
+        "price": 170
     },
     "骨の剣": {
         "type": "weapon",
         "attack": 5,
         "ability": "アンデッド特効（アンデッド系に+30%ダメージ）",
-        "description": "骨で作られた不気味な剣。"
+        "description": "骨で作られた不気味な剣。",
+        "price": 95
     },
     "呪いの剣": {
         "type": "weapon",
         "attack": 6,
         "ability": "呪い（攻撃時にHP-1、ダメージ+50%）",
-        "description": "呪われた剣。強力だが使用者にも害を及ぼす。"
+        "description": "呪われた剣。強力だが使用者にも害を及ぼす。",
+        "price": 140
     },
     "魔法の杖": {
         "type": "weapon",
         "attack": 10,
         "ability": "魔力増幅（魔法攻撃+50%）",
-        "description": "魔力が込められた杖。魔法使いに最適。"
+        "description": "魔力が込められた杖。魔法使いに最適。",
+        "price": 200
     },
     "死神の鎌": {
         "type": "weapon",
         "attack": 16,
         "ability": "攻撃時10%で即死効果（ボス無効）",
-        "description": "死神が持つ恐るべき鎌。"
+        "description": "死神が持つ恐るべき鎌。",
+        "price": 360
     },
     "炎の大剣": {
         "type": "weapon",
         "attack": 10,
         "ability": "炎属性（追加で炎ダメージ+5）",
-        "description": "炎を纏った大剣。燃え盛る力を持つ。"
+        "description": "炎を纏った大剣。燃え盛る力を持つ。",
+        "price": 200
     },
     "ドラゴンソード": {
         "type": "weapon",
         "attack": 12,
         "ability": "竜の力（全ステータス+15%）",
-        "description": "伝説の竜の牙から作られた剣。"
+        "description": "伝説の竜の牙から作られた剣。",
+        "price": 260
     },
     "黒騎士の剣": {
         "type": "weapon",
         "attack": 12,
         "ability": "闇属性（闇の敵に+25%ダメージ）",
-        "description": "黒騎士が使っていた漆黒の剣。"
+        "description": "黒騎士が使っていた漆黒の剣。",
+        "price": 260
     },
     "炎獄の剣": {
         "type": "weapon",
         "attack": 12,
         "ability": "攻撃時30%で敵を燃焼（2ターン、ダメージ10）",
-        "description": "業火を纏う剣。敵を焼き尽くす。"
+        "description": "業火を纏う剣。敵を焼き尽くす。",
+        "price": 260
     },
     "業火の剣": {
         "type": "weapon",
         "attack": 12,
         "ability": "攻撃時20%で敵を燃焼状態にする（2ターン、ダメージ10）",
-        "description": "地獄の炎を纏った大剣。"
+        "description": "地獄の炎を纏った大剣。",
+        "price": 260
     },
     "影の短剣": {
         "type": "weapon",
         "attack": 14,
         "ability": "クリティカル率+25%、背後攻撃時ダメージ2倍",
-        "description": "影より生まれし短剣。"
+        "description": "影より生まれし短剣。",
+        "price": 290
     },
     "血の剣": {
         "type": "weapon",
         "attack": 16,
         "ability": "攻撃時HP吸収（ダメージの10%）",
-        "description": "血を吸う魔剣。生命力を奪う。"
+        "description": "血を吸う魔剣。生命力を奪う。",
+        "price": 360
     },
     "死霊の杖": {
         "type": "weapon",
         "attack": 18,
         "ability": "攻撃時25%でアンデッド召喚（次ターンHP10回復）",
-        "description": "死霊を操る杖。"
+        "description": "死霊を操る杖。",
+        "price": 390
     },
     "雷神の槍": {
         "type": "weapon",
         "defense": 20,
         "ability": "攻撃時20%で敵を麻痺状態にする、クリティカル率+15%",
-        "description": "雷の力を宿した槍。敵を麻痺させる。"
+        "description": "雷の力を宿した槍。敵を麻痺させる。",
+        "price": 420
     },
     "暗黒の弓": {
         "type": "weapon",
         "attack": 18,
         "ability": "遠距離攻撃、命中率+20%、貫通ダメージ",
-        "description": "闇の力を矢に込める弓。"
+        "description": "闇の力を矢に込める弓。",
+        "price": 420
     },
     "破壊の斧": {
         "type": "weapon",
         "attack": 18,
         "ability": "攻撃力+20%、防御力-10%、装甲貫通+30%",
-        "description": "全てを破壊する巨斧。"
+        "description": "全てを破壊する巨斧。",
+        "price": 420
     },
     "虚無の剣": {
         "type": "weapon",
         "attack": 22,
         "ability": "攻撃時15%で敵の防御力無視、MP吸収10",
-        "description": "虚無の力を宿す剣。"
+        "description": "虚無の力を宿す剣。",
+        "price": 480
     },
     "氷結の杖": {
         "type": "weapon",
         "defense": 20,
         "ability": "攻撃時20%で敵を凍結状態にする、装甲貫通+20%",
-        "description": "氷の力を宿した杖。敵を凍結させる。"
+        "description": "氷の力を宿した杖。敵を凍結させる。",
+        "price": 480
     },
     "カオスブレード": {
         "type": "weapon",
         "attack": 20,
         "ability": "攻撃時ランダム効果（燃焼・毒・防御無視・分身攻撃のいずれか）",
-        "description": "混沌の力を宿す剣。予測不能な力。"
+        "description": "混沌の力を宿す剣。予測不能な力。",
+        "price": 420
     },
     "炎の剣": {
         "type": "weapon",
         "attack": 24,
         "ability": "炎属性（追加で炎ダメージ+5）、攻撃時20%で燃焼（2ターン、ダメージ15）",
-        "description": "炎を司る神剣。"
+        "description": "炎を司る神剣。",
+        "price": 510
     },
     "滅びの剣": {
         "type": "weapon",
         "attack": 24,
         "ability": "攻撃力+30%、攻撃時10%で敵の最大HP-10%",
-        "description": "呪われた剣。敵の体を朽ちさせる。"
+        "description": "呪われた剣。敵の体を朽ちさせる。",
+        "price": 510
     },
     "獄炎の大剣": {
         "type": "weapon",
         "attack": 26,
         "ability": "炎属性（追加で炎ダメージ+10）、攻撃時30%で燃焼（2ターン、ダメージ15）",
-        "description": "炎を司る神剣。"
+        "description": "炎を司る神剣。",
+        "price": 590
     },
     "深淵の剣": {
         "type": "weapon",
         "attack": 30,
         "ability": "攻撃時敵のMP-20、MP吸収30%、闇属性",
-        "description": "深淵の力を解放する剣。"
+        "description": "深淵の力を解放する剣。",
+        "price": 650
     },
     "四元の剣": {
         "type": "weapon",
         "attack": 25,
         "ability": "全属性攻撃、敵の弱点属性自動判定+50%ダメージ",
-        "description": "四大元素を操る神剣。"
+        "description": "四大元素を操る神剣。",
+        "price": 525
     },
     "天の槌": {
         "type": "weapon",
         "attack": 22,
         "ability": "攻撃力+20%、クリティカル時ダメージ3倍、神聖属性",
-        "description": "天界の鍛冶神が造りし槌。"
+        "description": "天界の鍛冶神が造りし槌。",
+        "price": 480
     },
     "深淵の剣": {
         "type": "weapon",
         "attack": 25,
         "ability": "攻撃力+20%、攻撃時15%で敵の防御力無視",
-        "description": "深淵の底に眠る剣。"
+        "description": "深淵の底に眠る剣。",
+        "price": 525
     },
     "暗黒聖剣": {
         "type": "weapon",
         "attack": 28,
         "ability": "攻撃時HP吸収20%、闇属性、聖属性の敵に特効+50%",
-        "description": "堕ちた聖剣。闇に染まりし力。"
+        "description": "堕ちた聖剣。闇に染まりし力。",
+        "price": 620
     },
     "水神の槍": {
         "type": "weapon",
         "attack": 32,
         "ability": "水属性、攻撃時20%で敵を凍結（2ターン行動不能）",
-        "description": "水神が持つ聖槍。"
+        "description": "水神が持つ聖槍。",
+        "price": 780
     },
     "獄炎の剣": {
         "type": "weapon",
         "attack": 24,
         "ability": "2回攻撃、各攻撃30%で燃焼（累積ダメージ）",
-        "description": "地獄の炎を3連撃で放つ剣。"
+        "description": "地獄の炎を3連撃で放つ剣。",
+        "price": 510
     },
     "竜帝の剣": {
         "type": "weapon",
         "attack": 30,
         "ability": "全ステータス+20%、竜の咆哮（敵怯み）",
-        "description": "竜帝が振るう至高の剣。"
+        "description": "竜帝が振るう至高の剣。",
+        "price": 650
     },
     "幻影の剣": {
         "type": "weapon",
         "attack": 32,
         "ability": "回避率+30%、攻撃時分身攻撃（2回攻撃）",
-        "description": "幻影を生み出す神秘の剣。"
+        "description": "幻影を生み出す神秘の剣。",
+        "price": 780
     },
     "混沌神剣": {
         "type": "weapon",
         "attack": 28,
         "ability": "攻撃力+50%、ボスに特効+50%",
-        "description": "混沌の神が振るう剣。"
+        "description": "混沌の神が振るう剣。",
+        "price": 620
     },
     "死神の剣": {
         "type": "weapon",
         "attack": 30,
         "ability": "攻撃時HP吸収（ダメージの10%）, アンデッド特効+50%",
-        "description": "死神が持つ究極の大鎌。"
+        "description": "死神が持つ究極の大鎌。",
+        "price": 650
     },
     "魔王の双剣": {
         "type": "weapon",
         "attack": 35,
         "ability": "2回攻撃, クリティカル率+20%, クリティカル時ダメージ3倍",
-        "description": "ダンジョンの最奥地に眠る魔王が持っていると語り継がれていた双剣。"
+        "description": "ダンジョンの最奥地に眠る魔王が持っていると語り継がれていた双剣。",
+        "price": 825
     },
     "革の盾": {
         "type": "armor",
         "defense": 1,
         "ability": "なし",
-        "description": "革製の盾。何も装備しないよりはいい。"
+        "description": "革製の盾。何も装備しないよりはいい。",
+        "price": 32
     },
     "木の盾": {
         "type": "armor",
         "defense": 2,
         "ability": "なし",
-        "description": "木製の盾。簡素だが軽い。"
+        "description": "木製の盾。簡素だが軽い。",
+        "price": 44
     },
     "石の盾": {
         "type": "armor",
         "defense": 4,
         "ability": "なし",
-        "description": "石で作られた盾。頑丈。"
+        "description": "石で作られた盾。頑丈。",
+        "price": 68
     },
     "鉄の盾": {
         "type": "armor",
         "defense": 7,
         "ability": "なし",
-        "description": "鉄製の盾。高い防御力を持つ。"
+        "description": "鉄製の盾。高い防御力を持つ。",
+        "price": 124
     },
     "スライムの王冠": {
         "type": "armor",
         "defense": 5,
         "ability": "HP+30",
-        "description": "スライムキングが落とした王冠。生命力が強くなる。"
+        "description": "スライムキングが落とした王冠。生命力が強くなる。",
+        "price": 80
     }, 
     "骨の盾": {
         "type": "armor",
         "defense": 5,
         "ability": "物理ダメージ軽減-15%",
-        "description": "骨で作られた盾。意外と丈夫。"
+        "description": "骨で作られた盾。意外と丈夫。",
+        "price": 80
     },
     "死者の兜": {
         "type": "armor",
         "defense": 6,
         "ability": "即死耐性（即死攻撃無効）",
-        "description": "死者が被っていた兜。死を恐れない。"
+        "description": "死者が被っていた兜。死を恐れない。",
+        "price": 112
     },
     "不死の鎧": {
         "type": "armor",
         "defense": 8,
         "ability": "HP自動回復（ターン毎+5HP）",
-        "description": "不死者の鎧。生命力が湧き出る。"
+        "description": "不死者の鎧。生命力が湧き出る。",
+        "price": 136
     },
     "幽霊の布": {
         "type": "armor",
         "defense": 10,
         "ability": "回避率+20%",
-        "description": "幽霊が纏っていた布。攻撃をすり抜ける。"
+        "description": "幽霊が纏っていた布。攻撃をすり抜ける。",
+        "price": 160
     },
     "地獄の鎧": {
         "type": "armor",
         "defense": 8,
         "ability": "炎耐性+50%",
-        "description": "地獄の炎で鍛えられた鎧。"
+        "description": "地獄の炎で鍛えられた鎧。",
+        "price": 136
     },
     "黒騎士の盾": {
         "type": "armor",
         "defense": 9,
         "ability": "反撃（被ダメージの10%を返す）",
-        "description": "黒騎士の盾。攻撃を跳ね返す。"
+        "description": "黒騎士の盾。攻撃を跳ね返す。",
+        "price": 148
     },
     "黒騎士の鎧": {
         "type": "armor",
         "defense": 10,
         "ability": "闇耐性+70%",
-        "description": "黒騎士の漆黒の鎧。闇の力に強い。"
+        "description": "黒騎士の漆黒の鎧。闇の力に強い。",
+        "price": 160
     },
     "竜の鱗": {
         "type": "armor",
         "defense": 13,
         "ability": "全属性耐性+20%",
-        "description": "竜の鱗で作られた鎧。あらゆる攻撃に強い。"
+        "description": "竜の鱗で作られた鎧。あらゆる攻撃に強い。",
+        "price": 226
     },
     "悪魔の盾": {
         "type": "armor",
         "defense": 11,
         "ability": "魔法ダメージ30%軽減",
-        "description": "悪魔の力が込められた盾。"
+        "description": "悪魔の力が込められた盾。",
+        "price": 202
     },
     "冥界の盾": {
         "type": "armor",
         "defense": 12,
         "ability": "アンデッド特効+30%、毒無効",
-        "description": "冥界の力を宿した盾。"
+        "description": "冥界の力を宿した盾。",
+        "price": 214
     },
     "死の鎧": {
         "type": "armor",
         "defense": 15,
         "ability": "被ダメージ時20%でHP吸収（ダメージの30%）、HP+50",
-        "description": "死の力を纏う漆黒の鎧。"
+        "description": "死の力を纏う漆黒の鎧。",
+        "price": 250
     },
     "炎の鎧": {
         "type": "armor",
         "defense": 13,
         "ability": "炎耐性+50%、被攻撃時10%で反射ダメージ5",
-        "description": "炎を纏う鎧。攻撃を焼き返す。"
+        "description": "炎を纏う鎧。攻撃を焼き返す。",
+        "price": 226
     },
     "夜の外套": {
         "type": "armor",
         "defense": 14,
         "ability": "回避率+20%、夜間戦闘時攻撃力+30%",
-        "description": "闇夜に溶け込む外套。"
+        "description": "闇夜に溶け込む外套。",
+        "price": 238
     },
     "不死王の冠": {
         "type": "armor",
         "defense": 16,
         "ability": "HP+30、毒・麻痺・呪い無効",
-        "description": "不死の王が被る冠。"
+        "description": "不死の王が被る冠。",
+        "price": 292
     },
     "祝福の盾": {
         "type": "armor",
         "defense": 16,
         "ability": "全状態異常無効、HP自動回復+5/ターン",
-        "description": "神の加護を受けた盾。あらゆる異常を防ぐ。"
+        "description": "神の加護を受けた盾。あらゆる異常を防ぐ。",
+        "price": 292
     },
     "巨人の鎧": {
         "type": "armor",
         "defense": 18,
         "ability": "HP+50、被ダメージ-20%、移動速度-10%",
-        "description": "巨人族の鎧。圧倒的な防御力。"
+        "description": "巨人族の鎧。圧倒的な防御力。",
+        "price": 316
     },
     "幻影の鎧": {
         "type": "armor",
         "defense": 21,
         "ability": "回避率+20%、幻影分身（被攻撃時20%で回避）",
-        "description": "実体を持たぬ幻の鎧。"
+        "description": "実体を持たぬ幻の鎧。",
+        "price": 382
     },
     "氷の鎧": {
         "type": "armor",
         "defense": 20,
         "ability": "物理ダメージ軽減-30%",
-        "description": "氷で作られた鎧。この氷は永遠に溶けることがない。"
+        "description": "氷で作られた鎧。この氷は永遠に溶けることがない。",
+        "price": 340
     },
     "混沌の鎧": {
         "type": "armor",
         "defense": 22,
         "ability": "全状態異常耐性+50%、ランダム属性耐性+50%",
-        "description": "混沌が守護する鎧。"
+        "description": "混沌が守護する鎧。",
+        "price": 394
     },
     "再生の鎧": {
         "type": "armor",
         "defense": 20,
         "ability": "HP自動回復（ターン毎+5HP）",
-        "description": "再生能力を持つ鎧。"
+        "description": "再生能力を持つ鎧。",
+        "price": 340
     },
     "終焉の盾": {
         "type": "armor",
         "defense": 20,
         "ability": "全ダメージ-25%、必殺技ダメージ-50%",
-        "description": "終焉を防ぐ究極の盾。"
+        "description": "終焉を防ぐ究極の盾。",
+        "price": 340
     },
     "虚空の鎧": {
         "type": "armor",
         "defense": 26,
         "ability": "回避率+30%",
-        "description": "虚空の力で魔法を無効化する鎧。"
+        "description": "虚空の力で魔法を無効化する鎧。",
+        "price": 492
     },
     "精霊の盾": {
         "type": "armor",
         "defense": 24,
         "ability": "全属性耐性+20%、精霊加護（致死ダメージ50%で生存）",
-        "description": "精霊の加護を受けた盾。"
+        "description": "精霊の加護を受けた盾。",
+        "price": 418
     },
     "神の盾": {
         "type": "armor",
         "defense": 20,
         "ability": "全ダメージ-20%、神の加護（HP30%以下で防御力1.5倍）",
-        "description": "神々が守護する盾。"
+        "description": "神々が守護する盾。",
+        "price": 340
     },
     "勇者の鎧": {
         "type": "armor",
         "defense": 24,
         "ability": "全ステータス+30%",
-        "description": "伝説の勇者が身に纏った鎧。"
+        "description": "伝説の勇者が身に纏った鎧。",
+        "price": 418
     },
     "堕天の鎧": {
         "type": "armor",
         "defense": 22,
         "ability": "HP+50、攻撃力+20%、防御力+20%",
-        "description": "堕天使が纏う漆黒の鎧。"
+        "description": "堕天使が纏う漆黒の鎧。",
+        "price": 394
     },
     "深海の鎧": {
         "type": "armor",
         "defense": 25,
         "ability": "水・氷耐性40%、HP自動回復+5/ターン",
-        "description": "深海の圧力に耐える鎧。"
+        "description": "深海の圧力に耐える鎧。",
+        "price": 430
     },
     "地獄門の鎧": {
         "type": "armor",
         "defense": 28,
         "ability": "HP+50、被攻撃時30%で反撃ダメージ15",
-        "description": "地獄の門を守る鎧。"
+        "description": "地獄の門を守る鎧。",
+        "price": 516
     },
     "竜帝の鎧": {
         "type": "armor",
         "defense": 30,
         "ability": "HP+80、全属性耐性+20%、竜鱗の守護（致死ダメージ50%で無効）",
-        "description": "竜帝の力を宿す究極の鎧。"
+        "description": "竜帝の力を宿す究極の鎧。",
+        "price": 540
     },
     "幻王の鎧": {
         "type": "armor",
         "defense": 25,
         "ability": "回避率+25%、被攻撃時25%で完全回避",
-        "description": "幻王が纏う実体なき鎧。"
+        "description": "幻王が纏う実体なき鎧。",
+        "price": 430
     },
     "創世の盾": {
         "type": "armor",
         "defense": 28,
         "ability": "全ダメージ-30%、HP+50",
-        "description": "世界を創りし神の盾。"
+        "description": "世界を創りし神の盾。",
+        "price": 516
     },
     "死帝の鎧": {
         "type": "armor",
         "defense": 30,
         "ability": "HP+50、全状態異常耐性+50%",
-        "description": "死の皇帝が纏う不滅の鎧。"
+        "description": "死の皇帝が纏う不滅の鎧。",
+        "price": 540
     },
     "魔王の鎧": {
         "type": "armor",
         "defense": 35,
         "ability": "HP+100、全ステータス+30%、全ダメージ-30%",
-        "description": "ダンジョンの最奥地に眠る魔王が持っていると語り継がれていた双剣。"
+        "description": "ダンジョンの最奥地に眠る魔王が持っていると語り継がれていた双剣。",
+        "price": 670
     },
     "呪いの首輪": {
         "type": "armor",
         "defense": -10,
         "ability": "攻撃力+50%（デバフ防具）",
-        "description": "装備者の防御を下げるが、攻撃力が大幅に上がる呪われた首輪。"
+        "description": "装備者の防御を下げるが、攻撃力が大幅に上がる呪われた首輪。",
+        "price": 50
     },
     "重い鎖": {
         "type": "armor",
         "defense": -5,
         "ability": "HP+100、移動速度-20%（デバフ防具）",
-        "description": "重い鎖。防御は下がるがHPが増加する。"
+        "description": "重い鎖。防御は下がるがHPが増加する。",
+        "price": 25
     },
     "破滅の兜": {
         "type": "armor",
         "defense": -15,
         "ability": "クリティカル率+30%（デバフ防具）",
-        "description": "防御を犠牲にクリティカル率を大幅に上げる危険な兜。"
+        "description": "防御を犠牲にクリティカル率を大幅に上げる危険な兜。",
+        "price": 75
     },
     "狂戦士の鎧": {
         "type": "armor",
         "defense": -20,
         "ability": "攻撃力+100%、被ダメージ+50%（デバフ防具）",
-        "description": "狂戦士が纏う鎧。攻撃力を劇的に上げるが致命的に脆くなる。"
+        "description": "狂戦士が纏う鎧。攻撃力を劇的に上げるが致命的に脆くなる。",
+        "price": 100
     },
     "蜘蛛の糸": {
         "type": "material",
         "ability": "素材",
-        "description": "蜘蛛から採れる糸。装備の素材になる。"
+        "description": "蜘蛛から採れる糸。装備の素材になる。",
+        "price": 15
     },
     "悪魔の角": {
         "type": "material",
         "ability": "素材",
-        "description": "悪魔の角。強力な装備の素材。"
+        "description": "悪魔の角。強力な装備の素材。",
+        "price": 50
     },
     "竜の牙": {
         "type": "material",
         "ability": "素材",
-        "description": "竜の牙。伝説の武器を作れる。"
+        "description": "竜の牙。伝説の武器を作れる。",
+        "price": 100
     },
     "闇の宝珠": {
         "type": "material",
         "ability": "素材",
-        "description": "闇の力が込められた宝珠。"
+        "description": "闇の力が込められた宝珠。",
+        "price": 80
     },
     "腐った肉": {
         "type": "material",
         "ability": "素材",
-        "description": "ゾンビの肉。錬金術に使える。"
+        "description": "ゾンビの肉。錬金術に使える。",
+        "price": 10
     },
     "魔界の結晶": {
         "type": "material",
         "ability": "素材",
-        "description": "魔界の力が宿る結晶。高位の装備に使える。"
+        "description": "魔界の力が宿る結晶。高位の装備に使える。",
+        "price": 150
     },
     "古竜の心臓": {
         "type": "material",
         "ability": "素材",
-        "description": "古竜の心臓。絶大な力を秘めている。"
+        "description": "古竜の心臓。絶大な力を秘めている。",
+        "price": 300
     },
     "竜王の牙": {
         "type": "material",
         "ability": "素材",
-        "description": "竜王の牙。ドラゴン系特効武器の素材。"
+        "description": "竜王の牙。ドラゴン系特効武器の素材。",
+        "price": 200
     },
     "地獄犬の牙": {
         "type": "material",
         "ability": "素材",
-        "description": "地獄の番犬の牙。炎属性武器の素材。"
+        "description": "地獄の番犬の牙。炎属性武器の素材。",
+        "price": 120
     },
     "吸血鬼の牙": {
         "type": "material",
         "ability": "素材",
-        "description": "吸血鬼の牙。HP吸収武器の素材。"
+        "description": "吸血鬼の牙。HP吸収武器の素材。",
+        "price": 100
     },
     "魔導書の欠片": {
         "type": "material",
         "ability": "素材",
-        "description": "古代魔導書の欠片。魔法系装備の素材。"
+        "description": "古代魔導書の欠片。魔法系装備の素材。",
+        "price": 90
     },
     "闇の宝石": {
         "type": "material",
         "ability": "素材",
-        "description": "漆黒の宝石。闇属性装備の核となる。"
+        "description": "漆黒の宝石。闇属性装備の核となる。",
+        "price": 180
     },
     "巨獣の皮": {
         "type": "material",
         "ability": "素材",
-        "description": "巨大な獣の皮。強固な防具の素材。"
+        "description": "巨大な獣の皮。強固な防具の素材。",
+        "price": 70
     },
     "影の欠片": {
         "type": "material",
         "ability": "素材",
-        "description": "影そのものの欠片。幻影系装備の素材。"
+        "description": "影そのものの欠片。幻影系装備の素材。",
+        "price": 110
     },
     "混沌の欠片": {
         "type": "material",
         "ability": "素材",
-        "description": "混沌の力の欠片。究極装備の素材。"
+        "description": "混沌の力の欠片。究極装備の素材。",
+        "price": 250
     },
     "不死鳥の羽": {
         "type": "material",
         "ability": "素材",
-        "description": "不死鳥の羽。復活系装備の素材。"
+        "description": "不死鳥の羽。復活系装備の素材。",
+        "price": 220
     },
     "破壊の核": {
         "type": "material",
         "ability": "素材",
-        "description": "破壊の化身の核。破壊力を極めた装備の素材。"
+        "description": "破壊の化身の核。破壊力を極めた装備の素材。",
+        "price": 280
     },
     "深淵の結晶": {
         "type": "material",
         "ability": "素材",
-        "description": "深淵の底から取れる結晶。深遠な力を秘める。"
+        "description": "深淵の底から取れる結晶。深遠な力を秘める。",
+        "price": 200
     },
     "元素の核": {
         "type": "material",
         "ability": "素材",
-        "description": "四大元素の核。全属性を操る装備の素材。"
+        "description": "四大元素の核。全属性を操る装備の素材。",
+        "price": 300
     },
     "神の鉱石": {
         "type": "material",
         "ability": "素材",
-        "description": "神々が使う鉱石。神器の素材。"
+        "description": "神々が使う鉱石。神器の素材。",
+        "price": 350
     },
     "闇の聖典": {
         "type": "material",
         "ability": "素材",
-        "description": "禁断の魔導書。禁忌の力を解き放つ。"
+        "description": "禁断の魔導書。禁忌の力を解き放つ。",
+        "price": 320
     },
     "海皇の鱗": {
         "type": "material",
         "ability": "素材",
-        "description": "海の支配者の鱗。水属性最強装備の素材。"
+        "description": "海の支配者の鱗。水属性最強装備の素材。",
+        "price": 280
     },
     "三首の牙": {
         "type": "material",
         "ability": "素材",
-        "description": "三つの首を持つ獣の牙。多重攻撃装備の素材。"
+        "description": "三つの首を持つ獣の牙。多重攻撃装備の素材。",
+        "price": 240
     },
     "幻王の魂": {
         "type": "material",
         "ability": "素材",
-        "description": "幻影の王の魂。究極の幻影装備の素材。"
+        "description": "幻影の王の魂。究極の幻影装備の素材。",
+        "price": 400
     },
     "竜帝の心臓": {
         "type": "material",
         "ability": "素材",
-        "description": "竜の皇帝の心臓。竜系最強装備の素材。"
+        "description": "竜の皇帝の心臓。竜系最強装備の素材。",
+        "price": 500
     },
     "神殺しの結晶": {
         "type": "material",
         "ability": "素材",
-        "description": "神をも殺す力を秘めた結晶。禁断の力。"
+        "description": "神をも殺す力を秘めた結晶。禁断の力。",
+        "price": 600
     },
     "死皇の冠": {
         "type": "material",
