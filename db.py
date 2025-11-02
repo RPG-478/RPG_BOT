@@ -1072,3 +1072,132 @@ async def restore_player_snapshot(user_id, snapshot_data: dict):
         logger.info(f"Restored snapshot for user {user_id}")
     else:
         logger.warning(f"No valid data to restore for user {user_id}")
+
+# ========================================
+# レイドボスシステム - DB関数
+# ========================================
+
+async def get_raid_boss_progress(raid_boss_id):
+    """レイドボスの進捗を取得"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_progress"
+    params = {"raid_boss_id": f"eq.{raid_boss_id}", "select": "*"}
+    
+    try:
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+        return data[0] if data else None
+    except Exception as e:
+        logger.error(f"Error getting raid boss progress: {e}")
+        return None
+
+async def create_raid_boss(raid_boss_id, max_hp):
+    """レイドボスを新規作成"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_progress"
+    
+    boss_data = {
+        "raid_boss_id": raid_boss_id,
+        "current_hp": max_hp,
+        "max_hp": max_hp,
+        "is_defeated": False
+    }
+    
+    try:
+        response = await client.post(url, headers=_get_headers(), json=boss_data)
+        response.raise_for_status()
+        logger.info(f"Created raid boss: {raid_boss_id} with {max_hp} HP")
+        return response.json()
+    except Exception as e:
+        logger.error(f"Error creating raid boss: {e}")
+        return None
+
+async def update_raid_boss_hp(raid_boss_id, new_hp, is_defeated=False):
+    """レイドボスのHPを更新"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_progress"
+    params = {"raid_boss_id": f"eq.{raid_boss_id}"}
+    
+    update_data = {
+        "current_hp": max(0, new_hp),
+        "is_defeated": is_defeated,
+        "last_damaged_at": "now()"
+    }
+    
+    if is_defeated:
+        update_data["defeated_at"] = "now()"
+    
+    try:
+        response = await client.patch(url, headers=_get_headers(), params=params, json=update_data)
+        response.raise_for_status()
+        logger.info(f"Updated raid boss {raid_boss_id} HP: {new_hp}, defeated: {is_defeated}")
+        return response.json()
+    except Exception as e:
+        logger.error(f"Error updating raid boss HP: {e}")
+        return None
+
+async def add_raid_boss_contribution(raid_boss_id, user_id, damage):
+    """レイドボス貢献度を記録"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_contributions"
+    
+    # 既存の貢献度を取得
+    params = {
+        "raid_boss_id": f"eq.{raid_boss_id}",
+        "user_id": f"eq.{str(user_id)}",
+        "select": "*"
+    }
+    
+    try:
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        existing = response.json()
+        
+        if existing:
+            # 既存レコードを更新
+            contribution_id = existing[0]["id"]
+            new_total_damage = existing[0]["total_damage"] + damage
+            update_url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_contributions"
+            update_params = {"id": f"eq.{contribution_id}"}
+            update_data = {
+                "total_damage": new_total_damage,
+                "last_contribution_at": "now()"
+            }
+            response = await client.patch(update_url, headers=_get_headers(), params=update_params, json=update_data)
+            response.raise_for_status()
+            logger.info(f"Updated raid contribution for user {user_id}: +{damage} damage")
+        else:
+            # 新規レコードを作成
+            contribution_data = {
+                "raid_boss_id": raid_boss_id,
+                "user_id": str(user_id),
+                "total_damage": damage
+            }
+            response = await client.post(url, headers=_get_headers(), json=contribution_data)
+            response.raise_for_status()
+            logger.info(f"Created raid contribution for user {user_id}: {damage} damage")
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error adding raid boss contribution: {e}")
+        return False
+
+async def get_raid_boss_contributions(raid_boss_id, limit=10):
+    """レイドボス貢献度ランキングを取得"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_contributions"
+    params = {
+        "raid_boss_id": f"eq.{raid_boss_id}",
+        "select": "*",
+        "order": "total_damage.desc",
+        "limit": limit
+    }
+    
+    try:
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error(f"Error getting raid boss contributions: {e}")
+        return []

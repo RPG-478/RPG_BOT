@@ -38,15 +38,15 @@ from views import (
     FinalBossBattleView,
     BossBattleView,
     SpecialEventView,
-    TrapChestView
+    TrapChestView,
+    RaidBossView
 )
 import game
 from story import StoryView
 import death_system
 from titles import get_title_rarity_emoji, RARITY_COLORS
-import merchant_system
+from merchant_system import MerchantView
 import raid_boss_system
-import enemy_ai
 
 load_dotenv()
 
@@ -373,18 +373,39 @@ async def move(ctx: commands.Context):
                             view_delegated = True
                             return
 
-        # 優先度2: 特殊イベント（500m毎、1000m除く）
-        special_distances = [500, 1500, 2500, 3500, 4500, 5500, 6500, 7500, 8500, 9500]
-        for special_distance in special_distances:
-            if passed_through(special_distance):
-                view = SpecialEventView(user.id, user_processing, special_distance)
+        # 優先度2: レイドボスイベント（500m毎、1000m除く）
+        raid_distances = [500, 1500, 2500, 3500, 4500, 5500, 6500, 7500, 8500, 9500]
+        for raid_distance in raid_distances:
+            if passed_through(raid_distance):
+                logger.info(f"レイドボス遭遇: User {user.id} at {raid_distance}m")
+                
+                # レイドボスデータ取得
+                raid_boss_data = raid_boss_system.get_raid_boss_data(raid_distance)
+                if not raid_boss_data:
+                    logger.warning(f"レイドボスデータが見つかりません: {raid_distance}m")
+                    continue
+                
+                # レイドボス進捗チェック（既に倒されているか確認）
+                raid_boss_id = raid_boss_system.get_raid_boss_id(raid_distance)
+                boss_progress = await db.get_raid_boss_progress(raid_boss_id)
+                
+                if boss_progress and boss_progress.get("is_defeated"):
+                    # 既に倒されている場合は通過
+                    logger.info(f"レイドボス既に撃破済み: {raid_boss_id}")
+                    continue
+                
+                # レイドボス戦闘開始
                 embed = discord.Embed(
-                    title="✨ 特殊な雰囲気の場所だ……",
-                    description="何が起こるのだろうか？",
-                    color=discord.Color.purple()
+                    title="🔥 レイドボス出現！",
+                    description=f"**{raid_boss_data['name']}** が現れた！\n\n共闘して倒せ！",
+                    color=discord.Color.red()
                 )
-                embed.set_footer(text=f"📏 現在の距離: {special_distance}m")
-                await exploring_msg.edit(content=None, embed=embed, view=view)
+                embed.set_footer(text=f"📏 現在の距離: {raid_distance}m")
+                await exploring_msg.edit(content=None, embed=embed)
+                await asyncio.sleep(2)
+                
+                view = RaidBossView(user.id, user_processing, raid_distance, raid_boss_data, raid_boss_id)
+                await view.send_initial_embed(ctx)
                 view_delegated = True
                 return
 
@@ -414,23 +435,7 @@ async def move(ctx: commands.Context):
                     view_delegated = True
                     return
 
-        # 優先度4: 商人遭遇（0.5%）
-        merchant_roll = random.random() * 100
-        if merchant_roll < 0.5:
-            embed = discord.Embed(
-                title="🏪 旅の商人を発見！",
-                description="見知らぬ商人がこんなところに…何か売ってくれるかもしれない。",
-                color=discord.Color.gold()
-            )
-            await exploring_msg.edit(content=None, embed=embed)
-            await asyncio.sleep(2)
-            
-            view = merchant_system.MerchantView(user.id, player)
-            await ctx.send(embed=embed, view=view)
-            view_delegated = True
-            return
-        
-        # 優先度5: 超低確率で選択肢分岐ストーリー（0.1%）
+        # 優先度4: 超低確率で選択肢分岐ストーリー（3%）
         choice_story_roll = random.random() * 100
         if choice_story_roll < 0.1:
             # 選択肢ストーリーのリスト
@@ -468,11 +473,25 @@ async def move(ctx: commands.Context):
                 view_delegated = True
                 return
 
-        # 優先度6: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱）
+        # 優先度5: 通常イベント抽選（0.5%商人/1%トラップ宝箱/9%宝箱/30%敵/59.5%何もなし）
         event_roll = random.random() * 100
-
+        
+        # 0.5% 商人遭遇
+        if event_roll < 0.5:
+            logger.info(f"商人遭遇: User {user.id} at {total_distance}m")
+            embed = discord.Embed(
+                title="🏪 旅の商人に遭遇！",
+                description="「いらっしゃい！良いものを揃えているよ」\n\n商人が話しかけてきた。",
+                color=discord.Color.gold()
+            )
+            embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
+            view = MerchantView(user.id, player)
+            await exploring_msg.edit(content=None, embed=embed, view=view)
+            view_delegated = True
+            return
+        
         # 1% トラップ宝箱
-        if event_roll < 1:
+        elif event_roll < 1.5:
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
@@ -484,8 +503,8 @@ async def move(ctx: commands.Context):
             view_delegated = True
             return
 
-        # 9% 宝箱（1～10%）
-        elif event_roll < 10:
+        # 9% 宝箱（1.5～10.5%）
+        elif event_roll < 10.5:
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
@@ -496,8 +515,8 @@ async def move(ctx: commands.Context):
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
-        # 30% 敵との遭遇（10～40%）
-        elif event_roll < 40:
+        # 30% 敵との遭遇（10.5～40.5%）
+        elif event_roll < 40.5:
             # game.pyから距離に応じた敵を取得
             enemy = game.get_random_enemy(total_distance)
 
@@ -1088,5 +1107,68 @@ async def unequip_title(ctx: commands.Context):
     )
     await ctx.send(embed=embed)
 
+@bot.command(name="raid_info")
+@check_ban()
+async def raid_info(ctx: commands.Context):
+    """レイドボスの状態を確認"""
+    user = ctx.author
+    player = await get_player(user.id)
+
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+
+    player_distance = player.get("distance", 0)
+
+    raid_bosses_info = []
+    for boss_id, boss_data in game.RAID_BOSSES.items():
+        if boss_data["distance"] <= player_distance + 100:
+            raid_boss_db = await db.get_raid_boss(boss_data["id"])
+
+            if raid_boss_db:
+                current_hp = raid_boss_db.get("current_hp", boss_data["hp"])
+                max_hp = boss_data["hp"]
+                status = "撃破済み" if current_hp <= 0 else f"HP: {current_hp}/{max_hp}"
+                
+                contributions = await db.get_raid_contributions(raid_boss_db["id"])
+                user_contribution = await db.get_user_raid_contribution(raid_boss_db["id"], user.id)
+                user_damage = user_contribution.get("damage_dealt", 0) if user_contribution else 0
+
+                raid_bosses_info.append({
+                    "name": boss_data["name"],
+                    "distance": boss_data["distance"],
+                    "status": status,
+                    "participants": len(contributions),
+                    "user_damage": user_damage
+                })
+            else:
+                raid_bosses_info.append({
+                    "name": boss_data["name"],
+                    "distance": boss_data["distance"],
+                    "status": "未出現",
+                    "participants": 0,
+                    "user_damage": 0
+                })
+
+    if not raid_bosses_info:
+        await ctx.send("現在確認できるレイドボスはありません。")
+        return
+
+    embed = discord.Embed(
+        title="🐉 レイドボス情報",
+        description="現在のレイドボス状態",
+        color=discord.Color.blue()
+    )
+    for boss in raid_bosses_info:
+        value = f"距離: {boss['distance']}m\n状態: {boss['status']}\n参加者: {boss['participants']}人"
+        if boss['user_damage'] > 0:
+            value += f"\nあなたの貢献: {boss['user_damage']}ダメージ"
+
+        embed.add_field(
+            name=f"{boss['name']}",
+            value=value,
+            inline=False
+        )
+    await ctx.send(embed=embed)
 if __name__ == "__main__":
     asyncio.run(main())
