@@ -44,6 +44,9 @@ import game
 from story import StoryView
 import death_system
 from titles import get_title_rarity_emoji, RARITY_COLORS
+import merchant_system
+import raid_boss_system
+import enemy_ai
 
 load_dotenv()
 
@@ -411,7 +414,23 @@ async def move(ctx: commands.Context):
                     view_delegated = True
                     return
 
-        # 優先度4: 超低確率で選択肢分岐ストーリー（3%）
+        # 優先度4: 商人遭遇（0.5%）
+        merchant_roll = random.random() * 100
+        if merchant_roll < 0.5:
+            embed = discord.Embed(
+                title="🏪 旅の商人を発見！",
+                description="見知らぬ商人がこんなところに…何か売ってくれるかもしれない。",
+                color=discord.Color.gold()
+            )
+            await exploring_msg.edit(content=None, embed=embed)
+            await asyncio.sleep(2)
+            
+            view = merchant_system.MerchantView(user.id, player)
+            await ctx.send(embed=embed, view=view)
+            view_delegated = True
+            return
+        
+        # 優先度5: 超低確率で選択肢分岐ストーリー（0.1%）
         choice_story_roll = random.random() * 100
         if choice_story_roll < 0.1:
             # 選択肢ストーリーのリスト
@@ -449,7 +468,7 @@ async def move(ctx: commands.Context):
                 view_delegated = True
                 return
 
-        # 優先度5: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱）
+        # 優先度6: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱）
         event_roll = random.random() * 100
 
         # 1% トラップ宝箱

@@ -17,3 +17,8 @@ discord.py
 httpx
 python-dotenv
 supabase
+aiohttp
+discord.py
+httpx
+python-dotenv
+supabase
