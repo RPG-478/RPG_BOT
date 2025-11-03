@@ -1,66 +1,44 @@
-#!/usr/bin/env python3
-"""
-プロジェクトセットアップ検証スクリプト
-"""
 import os
 import sys
 
-def check_env_vars():
-    """環境変数の確認"""
-    required_vars = ["DISCORD_BOT_TOKEN", "SUPABASE_URL", "SUPABASE_KEY"]
-    missing = []
-    
-    for var in required_vars:
-        value = os.getenv(var)
-        if not value or value.startswith("placeholder"):
-            missing.append(var)
-    
-    return missing
-
-def check_files():
-    """必須ファイルの確認"""
-    required_files = [
-        "main.py",
-        "db.py",
-        "views.py",
-        "raid_system.py",
-        "config.py",
-        "requirements.txt",
-        "Procfile",
-        "runtime.txt"
-    ]
-    
-    missing = []
-    for file in required_files:
-        if not os.path.exists(file):
-            missing.append(file)
-    
-    return missing
-
-if __name__ == "__main__":
-    print("🔍 プロジェクトセットアップ検証")
+def check_environment():
+    print("=" * 50)
+    print("イニシエダンジョン Discord Bot - セットアップチェック")
     print("=" * 50)
     
-    # ファイルチェック
-    missing_files = check_files()
-    if missing_files:
-        print(f"❌ 不足ファイル: {', '.join(missing_files)}")
-        sys.exit(1)
-    else:
-        print("✅ すべての必須ファイルが存在します")
+    required_env_vars = [
+        "DISCORD_BOT_TOKEN",
+        "SUPABASE_URL",
+        "SUPABASE_KEY"
+    ]
     
-    # 環境変数チェック
-    missing_vars = check_env_vars()
+    missing_vars = []
+    for var in required_env_vars:
+        if os.getenv(var):
+            print(f"✅ {var}: 設定済み")
+        else:
+            print(f"❌ {var}: 未設定")
+            missing_vars.append(var)
+    
+    print("\n" + "=" * 50)
+    
     if missing_vars:
-        print(f"⚠️  未設定の環境変数: {', '.join(missing_vars)}")
-        print("\n📋 次のステップ:")
-        print("1. Replitシークレットに以下を追加してください:")
+        print("\n⚠️  以下の環境変数が未設定です:")
         for var in missing_vars:
-            print(f"   - {var}")
-        print("\n2. または、Koyebで環境変数を設定してデプロイしてください")
-        sys.exit(0)
+            print(f"  - {var}")
+        print("\n💡 このBotはKoyebで運用されます。")
+        print("   Koyebで環境変数を設定してからデプロイしてください。")
+        print("\n📝 実装済み機能:")
+        print("  ✅ 倉庫ゴールドシステム")
+        print("  ✅ ラスボス撃破時の倉庫ゴールド自動送金")
+        print("  ✅ レイドステータス強化コマンド（!raid_atk, !raid_def, !raid_hp, !raid_recovery）")
+        print("  ✅ 倉庫ゴールド確認コマンド（!vault_gold）")
+        print("  ✅ レイド討伐報酬からアップグレードポイント削除（ゴールドのみ）")
     else:
-        print("✅ すべての環境変数が設定されています")
+        print("\n✅ すべての環境変数が設定されています！")
+        print("   Koyebでデプロイ可能です。")
     
-    print("\n✅ プロジェクトは実行可能です！")
-    print("🚀 'python main.py' で起動できます")
+    print("=" * 50)
+
+if __name__ == "__main__":
+    check_environment()

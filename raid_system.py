@@ -140,12 +140,11 @@ def calculate_raid_damage(player_raid_atk, player_raid_def, boss_data, skill_mul
     return max(1, final_damage)
 
 def calculate_raid_rewards(contribution, total_damage, boss_defeated=False):
-    """貢献度に応じた報酬を計算"""
+    """貢献度に応じた報酬を計算（ゴールド報酬のみ）"""
     boss = get_current_raid_boss()
     
-    # 基本報酬
+    # 基本報酬（ゴールドのみ）
     base_gold = random.randint(*boss["rewards"]["gold"])
-    base_points = boss["rewards"]["upgrade_points"]
     
     # 貢献度割合に応じて報酬調整（最低10%保証）
     if total_damage > 0:
@@ -153,14 +152,12 @@ def calculate_raid_rewards(contribution, total_damage, boss_defeated=False):
     else:
         contribution_ratio = 0.1
     
-    # 報酬計算
+    # ゴールド報酬計算
     gold_reward = int(base_gold * contribution_ratio)
-    points_reward = max(1, int(base_points * contribution_ratio))
     
     # 討伐完了ボーナス
     bonus_multiplier = 1.5 if boss_defeated else 1.0
     gold_reward = int(gold_reward * bonus_multiplier)
-    points_reward = int(points_reward * bonus_multiplier)
     
     # アイテム報酬（討伐時のみ、貢献度により確率変動）
     item_reward = None
@@ -169,7 +166,6 @@ def calculate_raid_rewards(contribution, total_damage, boss_defeated=False):
     
     return {
         "gold": gold_reward,
-        "upgrade_points": points_reward,
         "item": item_reward,
         "contribution_ratio": contribution_ratio
     }
@@ -202,8 +198,7 @@ def format_raid_info_embed(boss_data, current_hp, total_damage, top_contributors
     embed.add_field(
         name="💎 討伐報酬",
         value=f"🪙 {boss_data['rewards']['gold'][0]}〜{boss_data['rewards']['gold'][1]} ゴールド\n"
-              f"⭐ {boss_data['rewards']['upgrade_points']} アップグレードポイント\n"
-              f"📦 レアアイテム",
+              f"📦 レアアイテム（討伐時のみ）",
         inline=True
     )
     

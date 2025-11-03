@@ -38,12 +38,14 @@ from views import (
     FinalBossBattleView,
     BossBattleView,
     SpecialEventView,
-    TrapChestView
+    TrapChestView,
+    RaidBattleView
 )
 import game
 from story import StoryView
 import death_system
 from titles import get_title_rarity_emoji, RARITY_COLORS
+import raid_system
 
 load_dotenv()
 
@@ -370,18 +372,27 @@ async def move(ctx: commands.Context):
                             view_delegated = True
                             return
 
-        # 優先度2: 特殊イベント（500m毎、1000m除く）
+        # 優先度2: 500m毎の特殊イベント（鍛冶屋・商人・レイドボス・ストーリー）
         special_distances = [500, 1500, 2500, 3500, 4500, 5500, 6500, 7500, 8500, 9500]
         for special_distance in special_distances:
             if passed_through(special_distance):
-                view = SpecialEventView(user.id, user_processing, special_distance)
                 embed = discord.Embed(
-                    title="✨ 特殊な雰囲気の場所だ……",
-                    description="何が起こるのだろうか？",
-                    color=discord.Color.purple()
+                    title="✨ 特殊な場所を発見！",
+                    description="500m地点に到達した！\n何か特別なことが起こりそうだ…",
+                    color=discord.Color.gold()
                 )
-                embed.set_footer(text=f"📏 現在の距離: {special_distance}m")
-                await exploring_msg.edit(content=None, embed=embed, view=view)
+                await exploring_msg.edit(content=None, embed=embed)
+                await asyncio.sleep(2)
+                
+                special_embed = discord.Embed(
+                    title="🏛️ 特殊イベント",
+                    description="この場所では様々な選択肢がある。\n何をしますか？",
+                    color=discord.Color.blue()
+                )
+                special_embed.set_footer(text=f"📏 現在の距離: {special_distance}m")
+                
+                view = SpecialEventView(user.id, user_processing, special_distance)
+                await exploring_msg.edit(content=None, embed=special_embed, view=view)
                 view_delegated = True
                 return
 
@@ -460,7 +471,7 @@ async def move(ctx: commands.Context):
                 color=discord.Color.gold()
             )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-            view = TrapChestView(user.id, user_processing, player)
+            view = TrapChestView(user.id, user_processing, player, False, 0, ctx)
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
@@ -473,7 +484,7 @@ async def move(ctx: commands.Context):
                 color=discord.Color.gold()
             )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-            view = TreasureView(user.id, user_processing)
+            view = TreasureView(user.id, user_processing, False, 0, ctx)
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
@@ -506,7 +517,20 @@ async def move(ctx: commands.Context):
             color=discord.Color.dark_grey()
         )
         embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-        await exploring_msg.edit(content=None, embed=embed)
+        
+        # 500m地点の場合、レイドボスオプションボタンを追加
+        if is_raid_distance:
+            boss_data = raid_system.get_current_raid_boss()
+            embed.add_field(
+                name=f"\n{boss_data['emoji']} レイドボス出現！",
+                value=f"**{boss_data['name']}** が近くにいる気配を感じる…\nレイドボスに挑戦しますか？",
+                inline=False
+            )
+            raid_view = views.RaidOptionButton(ctx, user_processing, current_raid_distance)
+            await exploring_msg.edit(content=None, embed=embed, view=raid_view)
+            view_delegated = True
+        else:
+            await exploring_msg.edit(content=None, embed=embed)
     finally:
         # Viewに委譲していない場合のみクリア（View自身がクリアする責任を持つ）
         if not view_delegated:
@@ -1067,6 +1091,366 @@ async def unequip_title(ctx: commands.Context):
         description="現在、称号を装備していません。",
         color=discord.Color.grey()
     )
+    await ctx.send(embed=embed)
+
+# ==============================
+# レイドボスコマンド
+# ==============================
+
+@bot.command(name="raid_info", aliases=["ri"])
+@check_ban()
+async def raid_info(ctx: commands.Context):
+    """現在のレイドボス情報を表示"""
+    from datetime import datetime, timezone, timedelta
+    
+    # 現在の曜日別レイドボスを取得
+    boss_data = raid_system.get_current_raid_boss()
+    
+    # 日本時間で今日の日付を取得
+    jst = timezone(timedelta(hours=9))
+    today = datetime.now(jst).date().isoformat()
+    weekday_names = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"]
+    current_weekday = weekday_names[datetime.now(jst).weekday()]
+    
+    # レイドボスの状態を取得
+    raid_boss_db = await db.get_or_create_raid_boss(
+        boss_data["id"],
+        boss_data["max_hp"],
+        today
+    )
+    
+    current_hp = raid_boss_db.get("current_hp", boss_data["max_hp"])
+    total_damage = raid_boss_db.get("total_damage", 0)
+    is_defeated = raid_boss_db.get("is_defeated", False)
+    
+    # トップ貢献者を取得
+    top_contributors = await db.get_raid_contributions(boss_data["id"], limit=10)
+    
+    # Embed作成
+    embed = raid_system.format_raid_info_embed(
+        boss_data,
+        current_hp,
+        total_damage,
+        top_contributors
+    )
+    
+    embed.add_field(
+        name="📅 本日のレイドボス",
+        value=f"{current_weekday} - **{boss_data['name']}**",
+        inline=False
+    )
+    
+    if is_defeated:
+        embed.add_field(
+            name="✅ 討伐完了",
+            value="このレイドボスは既に討伐されています！\n明日、新しいレイドボスが出現します。",
+            inline=False
+        )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_upgrade", aliases=["ru"])
+@check_ban()
+async def raid_upgrade(ctx: commands.Context):
+    """レイド専用ステータスのアップグレード"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    # レイド専用ステータスを取得
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    upgrade_points = player.get("upgrade_points", 0)
+    
+    # 現在のステータス表示
+    embed = discord.Embed(
+        title="⚔️ レイドアップグレードメニュー",
+        description="レイドボス戦専用のステータスを強化できます。",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="💎 所持アップグレードポイント",
+        value=f"**{upgrade_points}** ポイント",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="⚔️ 現在のレイドステータス",
+        value=f"❤️ HP: {raid_stats.get('raid_hp')}/{raid_stats.get('raid_max_hp')}\n"
+              f"⚔️ 攻撃力: {raid_stats.get('raid_atk')}\n"
+              f"🛡️ 防御力: {raid_stats.get('raid_def')}\n"
+              f"💚 6時間回復: {raid_stats.get('raid_hp_recovery_rate', 10)} HP",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="📈 アップグレード履歴",
+        value=f"⚔️ 攻撃力: Lv.{raid_stats.get('raid_atk_upgrade', 0)}\n"
+              f"🛡️ 防御力: Lv.{raid_stats.get('raid_def_upgrade', 0)}\n"
+              f"❤️ 最大HP: Lv.{raid_stats.get('raid_hp_upgrade', 0)}\n"
+              f"💚 回復速度: Lv.{raid_stats.get('raid_hp_recovery_upgrade', 0)}",
+        inline=True
+    )
+    
+    vault_gold = await db.get_vault_gold(ctx.author.id)
+    
+    # コスト計算
+    atk_cost = await db.get_raid_upgrade_cost("atk", ctx.author.id)
+    def_cost = await db.get_raid_upgrade_cost("def", ctx.author.id)
+    hp_cost = await db.get_raid_upgrade_cost("hp", ctx.author.id)
+    recovery_cost = await db.get_raid_upgrade_cost("recovery", ctx.author.id)
+    
+    embed.add_field(
+        name="💰 倉庫ゴールド",
+        value=f"**{vault_gold:,}** G\n倉庫ゴールドはラスボス撃破時に手持ちゴールド全額が自動送金されます",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🔧 アップグレードコマンド（倉庫ゴールド使用）",
+        value=f"• `!raid_atk` - 攻撃力+5 (コスト: {atk_cost:,}G)\n"
+              f"• `!raid_def` - 防御力+3 (コスト: {def_cost:,}G)\n"
+              f"• `!raid_hp` - 最大HP+50 (コスト: {hp_cost:,}G)\n"
+              f"• `!raid_recovery` - 6時間ごとの回復量+5 (コスト: {recovery_cost:,}G)\n"
+              "• `!raid_heal` - HP全回復 (コスト: 1PT)",
+        inline=False
+    )
+    
+    embed.set_footer(text="レイドボス戦で強敵に挑もう！")
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_atk", aliases=["ra"])
+@check_ban()
+async def raid_atk(ctx: commands.Context):
+    """レイド攻撃力をアップグレード（倉庫ゴールド使用）"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    vault_gold = await db.get_vault_gold(user.id)
+    cost = await db.get_raid_upgrade_cost("atk", user.id)
+    
+    if vault_gold < cost:
+        await ctx.send(f"⚠️ 倉庫ゴールドが不足しています。（必要: {cost:,}G / 所持: {vault_gold:,}G）")
+        return
+    
+    # アップグレード実行
+    success = await db.spend_vault_gold(user.id, cost)
+    if not success:
+        await ctx.send("❌ アップグレードに失敗しました。")
+        return
+    
+    await db.upgrade_raid_atk(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    remaining_gold = await db.get_vault_gold(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイド攻撃力アップグレード！",
+        description=f"レイド攻撃力が **{raid_stats.get('raid_atk')}** になりました！\n\n残り倉庫ゴールド: {remaining_gold:,}G",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_def", aliases=["rd"])
+@check_ban()
+async def raid_def(ctx: commands.Context):
+    """レイド防御力をアップグレード（倉庫ゴールド使用）"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    vault_gold = await db.get_vault_gold(user.id)
+    cost = await db.get_raid_upgrade_cost("def", user.id)
+    
+    if vault_gold < cost:
+        await ctx.send(f"⚠️ 倉庫ゴールドが不足しています。（必要: {cost:,}G / 所持: {vault_gold:,}G）")
+        return
+    
+    # アップグレード実行
+    success = await db.spend_vault_gold(user.id, cost)
+    if not success:
+        await ctx.send("❌ アップグレードに失敗しました。")
+        return
+    
+    await db.upgrade_raid_def(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    remaining_gold = await db.get_vault_gold(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイド防御力アップグレード！",
+        description=f"レイド防御力が **{raid_stats.get('raid_def')}** になりました！\n\n残り倉庫ゴールド: {remaining_gold:,}G",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_hp", aliases=["rh"])
+@check_ban()
+async def raid_hp(ctx: commands.Context):
+    """レイド最大HPをアップグレード（倉庫ゴールド使用）"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    vault_gold = await db.get_vault_gold(user.id)
+    cost = await db.get_raid_upgrade_cost("hp", user.id)
+    
+    if vault_gold < cost:
+        await ctx.send(f"⚠️ 倉庫ゴールドが不足しています。（必要: {cost:,}G / 所持: {vault_gold:,}G）")
+        return
+    
+    # アップグレード実行
+    success = await db.spend_vault_gold(user.id, cost)
+    if not success:
+        await ctx.send("❌ アップグレードに失敗しました。")
+        return
+    
+    await db.upgrade_raid_hp(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    remaining_gold = await db.get_vault_gold(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイド最大HPアップグレード！",
+        description=f"レイド最大HPが **{raid_stats.get('raid_max_hp')}** になりました！\n\n残り倉庫ゴールド: {remaining_gold:,}G",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_heal", aliases=["rhe"])
+@check_ban()
+async def raid_heal(ctx: commands.Context):
+    """レイドHPを全回復"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    upgrade_points = player.get("upgrade_points", 0)
+    cost = 1
+    
+    if upgrade_points < cost:
+        await ctx.send(f"⚠️ アップグレードポイントが不足しています。（必要: {cost}PT / 所持: {upgrade_points}PT）")
+        return
+    
+    # HP回復実行
+    await db.spend_upgrade_points(user.id, cost)
+    await db.restore_raid_hp(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイドHP全回復！",
+        description=f"レイドHPを **{raid_stats.get('raid_max_hp')}** まで回復しました！\n\n残りポイント: {upgrade_points - cost}PT",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_recovery", aliases=["rr"])
+@check_ban()
+async def raid_recovery(ctx: commands.Context):
+    """レイドHP回復速度をアップグレード（倉庫ゴールド使用）"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    vault_gold = await db.get_vault_gold(user.id)
+    cost = await db.get_raid_upgrade_cost("recovery", user.id)
+    
+    if vault_gold < cost:
+        await ctx.send(f"⚠️ 倉庫ゴールドが不足しています。（必要: {cost:,}G / 所持: {vault_gold:,}G）")
+        return
+    
+    # アップグレード実行
+    success = await db.spend_vault_gold(user.id, cost)
+    if not success:
+        await ctx.send("❌ アップグレードに失敗しました。")
+        return
+    
+    await db.upgrade_raid_hp_recovery(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    remaining_gold = await db.get_vault_gold(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイドHP回復速度アップグレード！",
+        description=f"6時間ごとの回復量が **{raid_stats.get('raid_hp_recovery_rate')} HP** になりました！\n\n残り倉庫ゴールド: {remaining_gold:,}G",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="vault_gold", aliases=["vg", "vault"])
+@check_ban()
+async def vault_gold(ctx: commands.Context):
+    """倉庫ゴールドの残高と統計を表示"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    vault_data = await db.get_or_create_vault_gold(user.id)
+    
+    vault_gold = vault_data.get("vault_gold", 0)
+    total_deposited = vault_data.get("total_deposited", 0)
+    total_withdrawn = vault_data.get("total_withdrawn", 0)
+    
+    embed = discord.Embed(
+        title="💰 倉庫ゴールド情報",
+        description="倉庫ゴールドはラスボス撃破時に手持ちゴールド全額が自動送金されます。\n倉庫ゴールドはレイドステータス強化専用で、取り出すことはできません。",
+        color=discord.Color.gold()
+    )
+    
+    embed.add_field(
+        name="💎 現在の倉庫ゴールド",
+        value=f"**{vault_gold:,}** G",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="📊 統計情報",
+        value=f"📥 累計入金: {total_deposited:,} G\n"
+              f"📤 累計出金: {total_withdrawn:,} G",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🔧 使用方法",
+        value="• `!raid_status` - レイドステータスとアップグレードコストを確認\n"
+              "• `!raid_atk` - レイド攻撃力強化\n"
+              "• `!raid_def` - レイド防御力強化\n"
+              "• `!raid_hp` - レイド最大HP強化\n"
+              "• `!raid_recovery` - HP回復速度強化",
+        inline=False
+    )
+    
+    embed.set_footer(text="💡 ラスボスを倒してゴールドを倉庫に送金しよう！")
+    
     await ctx.send(embed=embed)
 
 if __name__ == "__main__":
