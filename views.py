@@ -1313,16 +1313,43 @@ class FinalBossBattleView(View):
             # HPを保存
             await db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
-            await interaction.response.defer()
+    
+            # ✅ 修正: ボタンを再有効化
+            for child in self.children:
+                child.disabled = False
+            await self.message.edit(view=self)
+    
+            # ロックはasync withで自動解放される
             return
 
         # 凍結効果で敵がスキップ
-        if ability_result.get("freeze", False):
-            text += "\nラスボスは凍結して動けない！"
+        if ability_result.get("enemy_freeze", False):
+            text += "\nラスボスは凍りついて動けない！"
             # HPを保存
             await db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
-            await interaction.response.defer()
+
+            # ✅ 修正: ボタンを再有効化
+            for child in self.children:
+                child.disabled = False
+            await self.message.edit(view=self)
+    
+            # ロックはasync withで自動解放される
+            return
+
+        # 麻痺効果で敵がスキップ
+        if ability_result.get("paralyze", False):
+            text += "\nラスボスは麻痺して動けない！"
+            # HPを保存
+            await db.update_player(interaction.user.id, hp=self.player["hp"])
+            await self.update_embed(text)
+    
+            # ✅ 修正: ボタンを再有効化
+            for child in self.children:
+                child.disabled = False
+            await self.message.edit(view=self)
+    
+            # ロックはasync withで自動解放される
             return
 
         # ラスボス反撃
@@ -1555,9 +1582,9 @@ class BossBattleView(View):
     async def _async_init(self):
         """Async initialization logic"""
         fresh_boss = game.get_boss(self.boss_stage)
-    if fresh_boss:
-        self.boss = fresh_boss
-        print(f"[DEBUG] ボス初期化 - {self.boss['name']}: HP={self.boss['hp']}, ATK={self.boss['atk']}, DEF={self.boss['def']}")
+        if fresh_boss:
+            self.boss = fresh_boss
+            print(f"[DEBUG] ボス初期化 - {self.boss['name']}: HP={self.boss['hp']}, ATK={self.boss['atk']}, DEF={self.boss['def']}")
         
         if "user_id" in self.player:
             fresh_player = await db.get_player(self.player["user_id"])
@@ -1872,20 +1899,47 @@ class BossBattleView(View):
 
         # 怯み効果で敵がスキップ
         if ability_result.get("enemy_flinch", False):
-            text += "\nボスは怯んで動けない！"
+            text += "\n敵は怯んで動けない！"
             # HPを保存
             await db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
-            await interaction.response.defer()
+    
+            # ✅ 修正: ボタンを再有効化
+            for child in self.children:
+                child.disabled = False
+            await self.message.edit(view=self)
+    
+            # ロックはasync withで自動解放される
             return
 
         # 凍結効果で敵がスキップ
-        if ability_result.get("freeze", False):
-            text += "\nボスは凍結して動けない！"
+        if ability_result.get("enemy_freeze", False):
+            text += "\n敵は凍りついて動けない！"
             # HPを保存
             await db.update_player(interaction.user.id, hp=self.player["hp"])
             await self.update_embed(text)
-            await interaction.response.defer()
+
+            # ✅ 修正: ボタンを再有効化
+            for child in self.children:
+                child.disabled = False
+            await self.message.edit(view=self)
+    
+            # ロックはasync withで自動解放される
+            return
+
+        # 麻痺効果で敵がスキップ
+        if ability_result.get("paralyze", False):
+            text += "\n敵は麻痺して動けない！"
+            # HPを保存
+            await db.update_player(interaction.user.id, hp=self.player["hp"])
+            await self.update_embed(text)
+    
+            # ✅ 修正: ボタンを再有効化
+            for child in self.children:
+                child.disabled = False
+            await self.message.edit(view=self)
+    
+            # ロックはasync withで自動解放される
             return
 
         # ボス反撃
@@ -2415,19 +2469,46 @@ class BattleView(View):
 
                 # 怯み効果で敵がスキップ
                 if ability_result.get("enemy_flinch", False):
-                    text += "\n敵は怯んで動けない！\n『よしっ！』"
+                    text += "\n敵は怯んで動けない！"
                     # HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
                     await self.update_embed(text)
+    
+                    # ✅ 修正: ボタンを再有効化
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+    
                     # ロックはasync withで自動解放される
                     return
 
                 # 凍結効果で敵がスキップ
-                if ability_result.get("freeze", False):
-                    text += "\n敵は凍結して動けない！"
+                if ability_result.get("enemy_freeze", False):
+                    text += "\n敵は凍りついて動けない！"
                     # HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
                     await self.update_embed(text)
+
+                    # ✅ 修正: ボタンを再有効化
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+    
+                    # ロックはasync withで自動解放される
+                    return
+
+                # 麻痺効果で敵がスキップ
+                if ability_result.get("paralyze", False):
+                    text += "\n敵は麻痺して動けない！"
+                    # HPを保存
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self.update_embed(text)
+    
+                    # ✅ 修正: ボタンを再有効化
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+    
                     # ロックはasync withで自動解放される
                     return
 

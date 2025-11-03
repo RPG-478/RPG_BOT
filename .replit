@@ -15,20 +15,19 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Koyeb Deploy Ready"
+args = "discord-bot"
 
 [[workflows.workflow]]
-name = "Koyeb Deploy Ready"
+name = "discord-bot"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python dummy_workflow.py"
-waitForPort = 8000
+args = "python main.py"
 
 [workflows.workflow.metadata]
 outputType = "console"
 
 [[ports]]
 localPort = 8000
-externalPort = 8000
+externalPort = 80

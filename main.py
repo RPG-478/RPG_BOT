@@ -183,7 +183,7 @@ async def start(ctx: commands.Context):
 
 
 
-@bot.command(name="reset")
+@bot.command(name="reset", aliases=["r"])
 @check_ban()
 async def reset(ctx: commands.Context):
     """2段階確認付きでプレイヤーデータと専用チャンネルを削除する"""
@@ -211,7 +211,7 @@ async def reset(ctx: commands.Context):
 
 
 #move
-@bot.command(name="move")
+@bot.command(name="move", aliases=["m"])
 @check_ban()
 async def move(ctx: commands.Context):
     user = ctx.author
@@ -240,6 +240,9 @@ async def move(ctx: commands.Context):
             )
             await ctx.send(embed=embed)
             return
+        
+        # 🔖 スナップショット作成（!rollback用）
+        await snapshot_manager.create_snapshot(user.id, "!move", player)
 
         # intro_2: 1回目の死亡後、最初のmove時に表示
         loop_count = await db.get_loop_count(user.id)
@@ -511,7 +514,7 @@ async def move(ctx: commands.Context):
 
 
 # インベントリ
-@bot.command()
+@bot.command(aliases=["inv"])
 @check_ban()
 async def inventory(ctx):
     # 処理中チェック
@@ -528,7 +531,7 @@ async def inventory(ctx):
     await ctx.send("🎒 インベントリ", view=view)
 
 # ステータス&装備
-@bot.command()
+@bot.command(aliases=["s"])
 @check_ban()
 async def status(ctx):
     try:
@@ -589,7 +592,7 @@ async def status(ctx):
         print(f"statusコマンドエラー: {e}")
 
 # アップグレード
-@bot.command()
+@bot.command(aliases=["up"])
 @check_ban()
 async def upgrade(ctx):
     if user_processing.get(ctx.author.id):
@@ -652,7 +655,7 @@ async def upgrade(ctx):
     await ctx.send(embed=embed)
 
 # アップグレード購入
-@bot.command()
+@bot.command(aliases=["bup"])
 @check_ban()
 async def buy_upgrade(ctx, upgrade_type: int):
     if user_processing.get(ctx.author.id):
@@ -846,7 +849,7 @@ async def show_servers(ctx: commands.Context):
     await ctx.send(embed=view.create_embed(), view=view)
 
 
-@bot.command(name="death_stats")
+@bot.command(name="death_stats", aliases=["ds"])
 @check_ban()
 async def death_stats(ctx: commands.Context):
     """死亡統計を表示"""
@@ -898,7 +901,7 @@ async def death_stats(ctx: commands.Context):
 
     await ctx.send(embed=embed)
 
-@bot.command(name="death_history")
+@bot.command(name="death_history", aliases=["dh"])
 @check_ban()
 async def death_history(ctx: commands.Context, limit: int = 10):
     """最近の死亡履歴を表示"""
@@ -944,7 +947,7 @@ async def death_history(ctx: commands.Context, limit: int = 10):
 
     await ctx.send(embed=embed)
 
-@bot.command(name="titles")
+@bot.command(name="titles", aliases=["t"])
 @check_ban()
 async def titles(ctx: commands.Context):
     """所持している称号を表示"""
@@ -1003,7 +1006,7 @@ async def titles(ctx: commands.Context):
 
     await ctx.send(embed=embed)
 
-@bot.command(name="equip_title")
+@bot.command(name="equip_title", aliases=["et"])
 @check_ban()
 async def equip_title(ctx: commands.Context, *, title_name: str = None):
     """称号を装備する"""
@@ -1046,7 +1049,7 @@ async def equip_title(ctx: commands.Context, *, title_name: str = None):
         await ctx.send("⚠️ 称号の装備に失敗しました。")
 
 
-@bot.command(name="unequip_title")
+@bot.command(name="unequip_title", aliases=["ut"])
 @check_ban()
 async def unequip_title(ctx: commands.Context):
     """称号を外す"""
