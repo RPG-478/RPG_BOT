@@ -3,6 +3,8 @@ supabase>=2.22.0
 python-dotenv>=1.1.1
 httpx>=0.27.0
 aiohttp>=3.13.1
+aiohttp
 discord.py
+httpx
 python-dotenv
 supabase

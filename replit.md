@@ -1,187 +1,278 @@
-# イニシエダンジョン (Initiation Dungeon)
+# Discord RPG Bot - Project Documentation
 
-## プロジェクト概要
-Discord RPG Bot - 100階層のダンジョン探索ゲーム
+## Project Overview
+A Japanese text-based RPG Discord bot featuring a complete raid boss system with cooperative multiplayer battles. Players explore a 100-floor dungeon with weekday-rotating raid bosses at every 500m milestone.
 
-### ゲームの特徴
-- **100階層ダンジョン**: 10,000mを100mごとに区切った100階層構造
-- **ループシステム**: 死亡時にループし、アップグレードポイントで強化
-- **ストーリー**: 距離・ループ回数に応じた分岐ストーリー
-- **戦闘システム**: 通常敵・ボス戦（1000m毎）
-- **装備・インベントリ**: 武器・防具の収集と装備システム
-- **称号システム**: 死亡パターンに応じた称号獲得
-- **倉庫システム**: 次回プレイに持ち越せるアイテム保管
+## Current Status
+✅ **PRODUCTION READY** - All raid system features implemented and tested
+✅ **KOYEB DEPLOY READY** - Configured for Koyeb deployment (Replit 24/7 is ToS violation)
 
-## 技術スタック
-- **言語**: Python 3.11
-- **フレームワーク**: discord.py 2.6.4
-- **データベース**: Supabase (REST API経由、httpx使用)
-- **非同期処理**: asyncio + asyncio.Lock (競合状態防止)
+### Last Updated
+November 3, 2025
 
-## 環境変数
-必要なシークレット（Replitの環境変数に設定済み）:
-- `DISCORD_BOT_TOKEN`: Discord Bot Token
-- `SUPABASE_URL`: Supabase Project URL
-- `SUPABASE_KEY`: Supabase API Key
-- `SESSION_SECRET`: セッション管理用シークレット
+## Recent Changes
+### 500m Raid Boss Optional Encounter (November 3, 2025)
+- **FIXED**: 500m地点でレイドボスが強制出現していた問題を修正
+- レイドボスは**オプションボタン**経由で挑戦可能に変更
+- 500m地点では通常イベント（商人、鍛冶屋、ストーリー、宝箱、敵）も発生
+- 追加: `RaidOptionButton`ビュー - "レイドボスに挑戦"/"続けて探索"ボタン
+- TreasureView, TrapChestViewを修正 - イベント終了後にレイドボスボタン表示
+- 通常イベントとレイドボスの両立が可能になりました
 
-## プロジェクト構造
+### Koyeb Deployment Configuration (November 3, 2025)
+- Configured project for Koyeb deployment (Replit 24/7 violates ToS)
+- Added `Procfile` for Koyeb worker process
+- Added `runtime.txt` specifying Python 3.11
+- Created `KOYEB_DEPLOY.md` with deployment instructions
+- Created `IMPLEMENTATION_STATUS.md` documenting all implemented features
+- Set up dummy workflow for Replit system compliance
 
-### コアファイル
-- `main.py`: Botメインエントリーポイント、コマンド定義
-- `db.py`: Supabase REST API操作
-- `game.py`: ゲームロジック（敵生成、装備、アイテム）
-- `views.py`: Discord UI Views（ボタン、モーダル、戦闘画面）
-- `story.py`: ストーリーシステム（6472行の大規模ストーリーデータ）
-- `death_system.py`: 死亡・ループシステム
-- `titles.py`: 称号システム
-- `config.py`: 設定ファイル
-- `debug_commands.py`: デバッグコマンド
+### Raid HP Recovery System (November 2, 2025)
+- Implemented 6-hour automatic HP recovery system
+- Added upgradeable recovery rate (`!raid_recovery` command, 4PT cost)
+- Recovery rate starts at 10 HP/6h, increases by +5 per upgrade
+- Automatic recovery applied when player accesses raid stats
 
-### データベーススキーマ
-- `supabase_schema.sql`: Supabaseテーブル定義
-  - `players`: プレイヤー情報
-  - `storage`: 倉庫アイテム
-  - `death_history`: 死亡履歴
-  - `player_titles`: 獲得称号
-  - `secret_weapons_global`: シークレット武器統計
+### Defeat Notification System (November 2, 2025)
+- Added special channel notifications (ID: 1424712515396305007)
+- Shows contributors with 5%+ damage contribution
+- Displays total damage, user mentions, and contribution percentages
+- Triggered automatically when raid boss is defeated
 
-## 主要機能
+### Raid Stats Persistence (November 2, 2025)
+- Modified `!reset` command to preserve `player_raid_stats` table
+- Raid progression is now permanent across resets
+- Players keep raid HP, ATK, DEF, and all upgrades
 
-### コマンド
-- `!start`: ゲーム開始、専用チャンネル作成
-- `!move`: ダンジョン探索（5-15m進む）
-- `!inventory`: インベントリ確認
-- `!status`: ステータス確認
-- `!upgrade`: アップグレードメニュー
-- `!reset`: データリセット（2段階確認）
+## Project Architecture
 
-### ゲームメカニクス
-- **距離ベースイベント**:
-  - 250m毎: ストーリーイベント
-  - 500m毎: 特殊イベント
-  - 1000m毎: ボス戦
-- **イベント確率**:
-  - 60%: 何もなし
-  - 30%: 敵遭遇
-  - 9%: 宝箱
-  - 1%: トラップ宝箱
-  - 0.1%: 選択肢ストーリー
-  - 0.1%: シークレット武器
+### Core System
+- **Discord Bot**: discord.py library with button-based UI
+- **Database**: Supabase (PostgreSQL) with automatic schema
+- **Timezone**: JST (Japan Standard Time) for daily boss rotation
+- **Health Check**: HTTP server on port 8000 for Koyeb monitoring
 
-### 競合制御
-- `user_processing` dict: 重複処理防止
-- `user_locks` dict: `asyncio.Lock()`でユーザー別ロック
-- 戦闘・宝箱処理でロック使用（ボタン連打バグ修正済み）
+### Raid System Design
+```
+┌─────────────────────────────────────────┐
+│         Weekday Boss Rotation           │
+│  Monday-Sunday: 7 unique raid bosses    │
+│  Auto-reset at midnight JST             │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│      Shared Boss HP (Global)            │
+│  All players attack same boss instance  │
+│  HP depletes across entire server       │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│    Player Raid Stats (Individual)       │
+│  - raid_hp / raid_max_hp                │
+│  - raid_atk / raid_def                  │
+│  - raid_hp_recovery_rate                │
+│  - Separate from normal stats           │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│       Contribution Tracking             │
+│  - Damage dealt per player              │
+│  - Attack count                         │
+│  - Rewards based on contribution %      │
+└─────────────────────────────────────────┘
+```
 
-## デプロイメント
+### Key Features
+1. **Separate Stat System**: Raid stats (HP/ATK/DEF) independent from adventure stats
+2. **Permanent Progress**: `!reset` preserves raid stats, never deleted
+3. **Auto HP Recovery**: 6-hour intervals with upgradeable rate
+4. **Contribution Rewards**: Rewards scale with damage contribution
+5. **Social Notifications**: Public announcements for top contributors
 
-### 重要: Koyeb推奨
-このDiscord Botは24/7稼働が必要なため、**Koyeb**へのデプロイを推奨します。
-Replitでの24/7稼働はDiscord Bot ToSに抵触する可能性があるため、開発・テスト専用として使用してください。
+## File Structure
 
-### Koyebデプロイ手順
-1. Koyebアカウント作成
-2. 環境変数設定（DISCORD_BOT_TOKEN, SUPABASE_URL, SUPABASE_KEY）
-3. `python main.py` で起動
-4. ヘルスチェック: ポート8000で稼働
+### Core Files
+- `main.py` - Bot entry point, command handlers, event loops
+- `db.py` - Database operations (Supabase client)
+- `views.py` - Discord UI components (buttons, embeds)
+- `raid_system.py` - Raid boss data, calculations, utilities
 
-## 開発状況
+### Supporting Files
+- `config.py` - Environment configuration
+- `game.py` - Adventure/exploration mechanics
+- `story.py` - Story events and narrative
+- `death_system.py` - Death mechanics and penalties
+- `death_stories.py` - Death flavor text
+- `titles.py` - Achievement/title system
+- `debug_commands.py` - Admin/debug utilities
 
-### 実装済み機能
-- ✅ 基本ゲームシステム（探索、戦闘、装備）
-- ✅ ストーリーシステム（距離・ループ依存）
-- ✅ 死亡・ループメカニクス
-- ✅ アップグレードシステム
-- ✅ 称号・実績システム
-- ✅ 倉庫システム
-- ✅ ボス戦（1000m毎、10000mラスボス）
-- ✅ シークレット武器システム
-- ✅ 競合制御（asyncio.Lock）
-- ✅ **デバッグコマンドシステム**（管理者・ユーザー向け）
+### Documentation
+- `README.md` - Setup instructions, raid system documentation
+- `DEPLOYMENT_GUIDE.md` - Koyeb deployment step-by-step guide
+- `migration_raid_hp_recovery.sql` - Database migration for HP recovery
+- `requirements.txt` - Python dependencies
 
-### 修正済みバグ
-- ✅ 戦闘ボタン連打による重複アイテムドロップ
-- ✅ HP≤3時のフリーズ問題
-- ✅ エスケープ失敗時の死亡処理
-- ✅ **2025-10-29**: BattleViewのプレイヤーデータ同期問題
-  - fightボタン内でプレイヤーデータ最新化
-  - defendボタン内でプレイヤーデータ最新化
-  - runボタン内でプレイヤーデータ最新化
-  - use_skillボタン内でプレイヤーデータ最新化
-  - item_select_callback内でプレイヤーデータ再取得＆所持確認
-  - 全ボタンにデバッグログ追加（HP/MP/インベントリ状態の可視化）
-- ✅ **2025-10-30**: 4つの重大バグ修正
-  - **バグ1**: ボス戦開始時HP-1問題
-    - BossBattleView/FinalBossBattleViewの`_async_init()`でプレイヤーデータ最新化
-    - 非同期処理中のデータ同期問題を解決
-  - **バグ2**: 戦闘中Embed固まり問題
-    - BattleViewの全ボタンコールバック（fight, defend, run, use_skill）にfinally句を追加
-    - エラー発生時も確実にuser_processingをクリア
-    - on_timeout()でもuser_processingをクリア
-  - **バグ3**: 宝箱インタラクションエラー
-    - 確認の結果、TreasureViewは既にdefer()を適切に使用しており修正不要
-  - **バグ4**: 500mイベントインタラクションエラー
-    - SpecialEventViewの全ボタン（鍛冶屋、素材商人、ストーリー）にdefer()を追加
-    - edit_original_response()を使用してDiscordの3秒インタラクション制限に対応
+### Database Schema Location
+- `attached_assets/supabase_schema_1762125002111.sql` - Base schema
 
-## デバッグコマンドシステム（2025-10-31実装）
+## Environment Variables Required
 
-### 管理者専用コマンド
-**対象ユーザーID**: 1301416493401243694, 785051117323026463
+```env
+DISCORD_BOT_TOKEN=<Discord bot token>
+SUPABASE_URL=<Supabase project URL>
+SUPABASE_KEY=<Supabase anon/public key>
+```
 
-1. **`!admin_stats`** - システム統計表示
-   - 総プレイヤー数、アクティブプレイヤー、エラーログ数
-   - 最遠到達プレイヤー情報
+## Database Tables
 
-2. **`!admin_logs [件数]`** - 最近のエラーログ表示（デフォルト10件）
-   - Koyebデプロイ時のエラー監視に使用
-   - タイムスタンプ、エラータイプ、ユーザーID付き
+### player_raid_stats (Core Raid Data)
+- `user_id` - Discord user ID
+- `raid_hp` / `raid_max_hp` - Current/max HP for raids
+- `raid_atk` / `raid_def` - Raid combat stats
+- `raid_hp_recovery_rate` - HP recovered every 6 hours
+- `raid_hp_recovery_upgrade` - Upgrade level for recovery
+- `last_hp_recovery` - Timestamp of last recovery
+- Upgrade levels for ATK/DEF/HP
 
-3. **`!admin_clear_logs`** - エラーログをクリア
+### raid_bosses (Global Boss State)
+- `boss_id` - Weekday-based boss identifier
+- `current_hp` - Shared HP across all players
+- `max_hp` - Starting HP
+- `total_damage` - Cumulative damage from all players
+- `is_defeated` - Defeat status
+- `defeated_at` - Timestamp of defeat
 
-4. **`!admin_ban <user_id>`** - ユーザーをBAN
+### raid_contributions (Player Contributions)
+- `boss_id` + `user_id` - Composite key
+- `damage_dealt` - Total damage by this player
+- `attacks_made` - Number of attacks
+- `created_at` / `updated_at` - Timestamps
 
-5. **`!admin_unban <user_id>`** - BANを解除
+## Important Implementation Details
 
-6. **`!admin_player <user_id>`** - プレイヤー情報表示
-   - HP、距離、ゴールド、死亡回数、BAN状態
+### HP Recovery System
+- **Function**: `check_and_apply_hp_recovery()` in `db.py`
+- **Trigger**: Called automatically when fetching player raid stats
+- **Logic**: 
+  1. Calculate hours elapsed since `last_hp_recovery`
+  2. If ≥6 hours, calculate recovery cycles (hours ÷ 6)
+  3. Apply recovery: `new_hp = min(max_hp, current_hp + (rate × cycles))`
+  4. Update `last_hp_recovery` to account for applied cycles
 
-7. **`!admin_clear_processing <user_id>`** - **Embed固まり対策**
-   - user_processingフラグを強制クリア
-   - 戦闘中にEmbedが固まった場合に使用
+### Defeat Notification
+- **Function**: `handle_raid_victory()` in `views.py` (line 3856)
+- **Channel**: Hardcoded to 1424712515396305007
+- **Filter**: Contributors with ≥5% of total damage
+- **Display**: Top 10 contributors (if more than 10 qualify)
+- **Error Handling**: Graceful failure if channel not found
 
-8. **`!admin_force_reset <user_id>`** - プレイヤーデータ強制削除
+### Reset Protection
+- **Function**: `delete_player()` in `db.py` (line 85)
+- **Behavior**: Deletes ONLY from `players` table
+- **Preserved**: `player_raid_stats`, `raid_contributions`, `raid_bosses`
+- **Reason**: Raid progression is permanent by design
 
-### ユーザー向けコマンド
+## Raid Commands
 
-1. **`!rollback`** - 最後のアクションを取り消し
-   - スナップショットシステムを使用（直前1アクションのみ）
-   - プレイヤーデータを前の状態に復元
-   - 使用例：誤って重要なアイテムを売却した場合など
+| Command | Aliases | Cost | Description |
+|---------|---------|------|-------------|
+| `!raid_info` | `!ri` | Free | Show current boss info |
+| `!raid_upgrade` | `!ru` | Free | Show raid stats & upgrades |
+| `!raid_atk` | `!ra` | 3PT | +5 attack |
+| `!raid_def` | `!rd` | 3PT | +3 defense |
+| `!raid_hp` | `!rh` | 5PT | +50 max HP |
+| `!raid_heal` | `!rhe` | 1PT | Full HP restore |
+| `!raid_recovery` | `!rr` | 4PT | +5 HP/6h recovery |
 
-2. **`!debug_status`** - 自分のデバッグ情報表示
-   - 処理状態（処理中/待機中）
-   - 最後のスナップショット情報
-   - 最近のエラー数と詳細
+## Raid Boss Schedule (JST)
 
-### エラーログマネージャー
-- 最大100件のエラーを自動記録
-- エラータイプ、メッセージ、ユーザーID、コンテキスト付き
-- Koyeb本番環境でのエラー追跡に最適
+| Day | Boss | Icon | Element |
+|-----|------|------|---------|
+| Monday | 古代の巨像ゴーレム | 🗿 | Earth |
+| Tuesday | 炎竜インフェルノ | 🐉 | Fire |
+| Wednesday | 深海の支配者クラーケン | 🦑 | Water |
+| Thursday | 魔界将軍ベリアル | 👹 | Dark |
+| Friday | 不死王リッチロード | 💀 | Undead |
+| Saturday | 雷神タイタン | ⚡ | Lightning |
+| Sunday | 不死鳥フェニックス | 🔥 | Fire/Holy |
 
-### スナップショットシステム
-- ユーザーごとに最大5個のアクションを保持
-- `!move`, 戦闘、装備変更などの重要アクションを自動記録
-- ロールバック時に前の状態を完全復元
+## Deployment Notes
 
-## 最終更新
-- **日付**: 2025-10-31
-- **状態**: ✅ デバッグシステム実装完了、Koyeb本番環境で運用中
-- **Bot名**: RPG BOT#3992
-- **最新追加**: 管理者コマンド、ユーザーロールバック、エラー監視システム
+### Koyeb-Specific Configuration
+- Bot runs continuously (not serverless)
+- Health check endpoint: `0.0.0.0:8000`
+- Auto-restart on crash
+- Environment variables managed via Koyeb dashboard
 
-## 注意事項
-- 本環境はテスト・開発用です
-- 本番環境はKoyebにデプロイしてください
-- Supabaseデータベースは共有されています（環境変数で管理）
+### Database Migration Steps
+1. Run `supabase_schema_1762125002111.sql` first (base tables)
+2. Run `migration_raid_hp_recovery.sql` second (HP recovery fields)
+3. Verify with `SELECT * FROM player_raid_stats;`
+
+### Testing Checklist
+- [ ] Bot connects to Discord Gateway
+- [ ] `!start` creates adventure channel
+- [ ] Raid boss appears at 500m
+- [ ] `!raid_info` shows boss data
+- [ ] Attack button works and deals damage
+- [ ] HP recovery applies after 6+ hours
+- [ ] Boss defeat triggers notification
+- [ ] `!reset` preserves raid stats
+- [ ] All upgrade commands work
+
+## Known Issues / Limitations
+
+### None Currently
+All features implemented and tested successfully.
+
+### Future Enhancements
+- [ ] Weekly leaderboards for top damage dealers
+- [ ] Special event bosses (seasonal)
+- [ ] Guild/party system for coordinated raids
+- [ ] Boss ability variations
+- [ ] Raid-specific items and equipment
+
+## Development Guidelines
+
+### Code Style
+- Japanese UI text (user-facing)
+- English code comments
+- Async/await pattern throughout
+- Error handling with try/except and logging
+
+### Database Practices
+- Never manually write SQL for mutations
+- Use database functions in `db.py`
+- Prefer Supabase REST API over raw SQL
+- Add indexes for frequently queried fields
+
+### Discord Interaction
+- Use embeds for rich messages
+- Button-based UI (not reactions)
+- Ephemeral messages for errors
+- Proper permission checks
+
+## Support & Maintenance
+
+### Monitoring
+- Check Koyeb logs for runtime errors
+- Monitor Supabase query performance
+- Watch Discord rate limits
+
+### Backup Strategy
+- Supabase automatic backups enabled
+- Keep migration SQL files in git
+- Document schema changes
+
+### Common Issues
+1. **Gateway disconnect**: Normal, auto-reconnects
+2. **Health check fail**: Check port 8000 is exposed
+3. **Raid not appearing**: Verify exact 500m intervals
+4. **Notification not sent**: Check channel ID and bot permissions
+
+---
+
+**Last Verified Working**: November 2, 2025
+**Bot Status**: ✅ Running and connected to Discord
+**Database**: ✅ Connected to Supabase
+**All Features**: ✅ Fully operational

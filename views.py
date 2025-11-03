@@ -6,11 +6,70 @@ import game
 from db import get_player, update_player, delete_player
 import death_system
 from titles import get_title_rarity_emoji, get_title_rarity_color
-import enemy_ai
-import raid_boss_system
-import logging
+import raid_system
 
-logger = logging.getLogger("rpgbot")
+# -------------------------
+# レイドボスオプションボタン（500m地点用）
+# -------------------------
+class RaidOptionButton(discord.ui.View):
+    """500m地点でレイドボスに挑戦するかのオプションボタン"""
+    def __init__(self, ctx, user_processing: dict, distance: int):
+        super().__init__(timeout=120)
+        self.ctx = ctx
+        self.user_id = ctx.author.id
+        self.user_processing = user_processing
+        self.distance = distance
+    
+    @discord.ui.button(label="⚔️ レイドボスに挑戦", style=discord.ButtonStyle.danger, emoji="🗡️")
+    async def challenge_raid_boss(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("⚠️ これはあなたの冒険ではありません！", ephemeral=True)
+            return
+        
+        # ボタン無効化
+        for item in self.children:
+            item.disabled = True
+        await interaction.message.edit(view=self)
+        
+        # レイドボス戦闘開始
+        boss_data = raid_system.get_current_raid_boss()
+        player_raid_stats = await db.get_or_create_player_raid_stats(self.user_id)
+        
+        embed = discord.Embed(
+            title=f"{boss_data['emoji']} レイドボス出現！",
+            description=f"**{boss_data['name']}**\n\n{boss_data['description']}\n\n全プレイヤーと協力して討伐せよ！",
+            color=boss_data['color']
+        )
+        embed.set_footer(text=f"📏 現在の距離: {self.distance}m | 曜日別レイドボス")
+        await interaction.response.send_message(embed=embed)
+        await asyncio.sleep(2)
+        
+        # RaidBattleViewをインポートして戦闘開始
+        view = await RaidBattleView.create(self.ctx, player_raid_stats, boss_data, self.user_processing, self.distance)
+        await view.send_initial_embed()
+    
+    @discord.ui.button(label="続けて探索", style=discord.ButtonStyle.secondary, emoji="🚶")
+    async def continue_exploration(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("⚠️ これはあなたの冒険ではありません！", ephemeral=True)
+            return
+        
+        # ボタン無効化
+        for item in self.children:
+            item.disabled = True
+        await interaction.message.edit(view=self)
+        
+        # 処理終了
+        self.user_processing[self.user_id] = False
+        
+        await interaction.response.send_message(
+            embed=discord.Embed(
+                title="🚶 探索続行",
+                description="レイドボスを避けて探索を続けた。",
+                color=discord.Color.blue()
+            )
+        )
+
 # -------------------------
 # 名前入力View
 # -------------------------
@@ -350,11 +409,14 @@ class ResetFinalConfirmView(discord.ui.View):
 from discord.ui import View, button
 
 class TreasureView(View):
-    def __init__(self, user_id: int, user_processing: dict):
+    def __init__(self, user_id: int, user_processing: dict, is_raid_distance: bool = False, raid_distance: int = 0, ctx=None):
         super().__init__(timeout=30)
         self.user_id = user_id
         self.user_processing = user_processing
         self.message = None
+        self.is_raid_distance = is_raid_distance
+        self.raid_distance = raid_distance
+        self.ctx = ctx
 
     # ==============================
     # 「開ける」ボタン
@@ -403,9 +465,20 @@ class TreasureView(View):
         )
         await interaction.response.edit_message(embed=embed, view=None)
 
-        # 処理完了フラグをクリア
-        if self.user_id in self.user_processing:
-            self.user_processing[self.user_id] = False
+        # 500m地点の場合、レイドボスボタンを表示
+        if self.is_raid_distance and self.ctx:
+            boss_data = raid_system.get_current_raid_boss()
+            raid_embed = discord.Embed(
+                title=f"{boss_data['emoji']} レイドボス出現！",
+                description=f"**{boss_data['name']}** が近くにいる気配を感じる…\nレイドボスに挑戦しますか？",
+                color=boss_data['color']
+            )
+            raid_view = RaidOptionButton(self.ctx, self.user_processing, self.raid_distance)
+            await interaction.followup.send(embed=raid_embed, view=raid_view)
+        else:
+            # 処理完了フラグをクリア
+            if self.user_id in self.user_processing:
+                self.user_processing[self.user_id] = False
 
     # ==============================
     # 宝箱報酬処理
@@ -498,6 +571,17 @@ class TreasureView(View):
 
             msg = self.message or interaction.message
             await msg.edit(embed=embed, view=None)
+        
+        # 500m地点の場合、レイドボスボタンを表示
+        if self.is_raid_distance and self.ctx:
+            boss_data = raid_system.get_current_raid_boss()
+            raid_embed = discord.Embed(
+                title=f"{boss_data['emoji']} レイドボス出現！",
+                description=f"**{boss_data['name']}** が近くにいる気配を感じる…\nレイドボスに挑戦しますか？",
+                color=boss_data['color']
+            )
+            raid_view = RaidOptionButton(self.ctx, self.user_processing, self.raid_distance)
+            await interaction.followup.send(embed=raid_embed, view=raid_view)
 
 
     # ==============================
@@ -549,11 +633,14 @@ class TreasureView(View):
 # トラップ宝箱View
 # ==============================
 class TrapChestView(View):
-    def __init__(self, user_id: int, user_processing: dict, player: dict):
+    def __init__(self, user_id: int, user_processing: dict, player: dict, is_raid_distance: bool = False, raid_distance: int = 0, ctx=None):
         super().__init__(timeout=30)
         self.user_id = user_id
         self.user_processing = user_processing
         self.player = player
+        self.is_raid_distance = is_raid_distance
+        self.raid_distance = raid_distance
+        self.ctx = ctx
 
     @button(label="開ける", style=discord.ButtonStyle.danger)
     async def open_trap_chest(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -591,9 +678,20 @@ class TrapChestView(View):
         )
         await interaction.response.edit_message(embed=embed, view=None)
 
-        # 処理完了フラグをクリア
-        if self.user_id in self.user_processing:
-            self.user_processing[self.user_id] = False
+        # 500m地点の場合、レイドボスボタンを表示
+        if self.is_raid_distance and self.ctx:
+            boss_data = raid_system.get_current_raid_boss()
+            raid_embed = discord.Embed(
+                title=f"{boss_data['emoji']} レイドボス出現！",
+                description=f"**{boss_data['name']}** が近くにいる気配を感じる…\nレイドボスに挑戦しますか？",
+                color=boss_data['color']
+            )
+            raid_view = RaidOptionButton(self.ctx, self.user_processing, self.raid_distance)
+            await interaction.followup.send(embed=raid_embed, view=raid_view)
+        else:
+            # 処理完了フラグをクリア
+            if self.user_id in self.user_processing:
+                self.user_processing[self.user_id] = False
 
     async def handle_trap(self, interaction: discord.Interaction, trap_type: str):
         player = await get_player(interaction.user.id)
@@ -617,6 +715,18 @@ class TrapChestView(View):
                 color=discord.Color.red()
             )
             await interaction.message.edit(embed=embed, view=None)
+            
+            # 500m地点の場合、レイドボスボタンを表示
+            if self.is_raid_distance and self.ctx:
+                await asyncio.sleep(1)
+                boss_data = raid_system.get_current_raid_boss()
+                raid_embed = discord.Embed(
+                    title=f"{boss_data['emoji']} レイドボス出現！",
+                    description=f"**{boss_data['name']}** が近くにいる気配を感じる…\nレイドボスに挑戦しますか？",
+                    color=boss_data['color']
+                )
+                raid_view = RaidOptionButton(self.ctx, self.user_processing, self.raid_distance)
+                await interaction.followup.send(embed=raid_embed, view=raid_view)
 
         elif trap_type == "ambush":
             embed = discord.Embed(
@@ -2517,103 +2627,29 @@ class BattleView(View):
                     # ロックはasync withで自動解放される
                     return
 
-                # 敵のターン - AI行動決定
-                enemy_action = enemy_ai.get_enemy_action(
-                    self.enemy["name"],
-                    self.enemy["hp"],
-                    self.enemy.get("max_hp", self.enemy["hp"]),
-                    0  # ターン数（必要に応じて追加）
+                # 敵反撃
+                enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
+
+                # 防具効果を適用
+                armor_ability = equipment_bonus.get("armor_ability", "")
+                armor_result = game.apply_armor_effects(
+                    enemy_base_dmg, 
+                    armor_ability, 
+                    self.player["hp"], 
+                    self.player.get("max_hp", 50),
+                    enemy_base_dmg,
+                    self.enemy.get("attribute", "none")
                 )
-                
-                logger.info(f"敵AI行動: {self.enemy['name']} - {enemy_action}")
-                
-                # 敵の行動を実行
-                if enemy_action["action"] == "flee":
-                    text += "\n敵は逃げ出した！"
-                    # 戦闘終了
-                    await db.update_player(interaction.user.id, hp=self.player["hp"])
-                    await self.update_embed(text + "\n💨 敵が逃走した！")
-                    self.disable_all_items()
-                    await self.message.edit(view=self)
-                    if self.ctx.author.id in self.user_processing:
-                        self.user_processing[self.ctx.author.id] = False
-                    return
-                
-                elif enemy_action["action"] == "defend":
-                    text += "\n敵は防御している！"
-                    # 防御中なのでダメージなし
-                    enemy_dmg = 0
-                
-                elif enemy_action["action"] == "skill":
-                    # スキル使用
-                    skill_name = enemy_action.get("skill_name", "体当たり")
-                    skill_result = enemy_ai.calculate_enemy_skill_damage(
-                        skill_name,
-                        self.enemy["atk"],
-                        self.player["defense"]
-                    )
-                    
-                    text += f"\n敵は**{skill_name}**を使用！"
-                    
-                    # 即死判定
-                    if skill_result["type"] == "instant_death":
-                        instant_death_rate = skill_result.get("extra_effects", {}).get("instant_death_rate", 0)
-                        if random.random() < instant_death_rate:
-                            text += "\n💀 即死効果発動！"
-                            self.player["hp"] = 0
-                            enemy_dmg = 0
-                        else:
-                            enemy_dmg = skill_result["damage"]
-                            text += f" {enemy_dmg}のダメージを受けた！"
-                    else:
-                        enemy_dmg = skill_result["damage"]
-                        text += f" {enemy_dmg}のダメージを受けた！"
-                    
-                    # 防具効果を適用
-                    armor_ability = equipment_bonus.get("armor_ability", "")
-                    armor_result = game.apply_armor_effects(
-                        enemy_dmg,
-                        armor_ability,
-                        self.player["hp"],
-                        self.player.get("max_hp", 50),
-                        enemy_dmg,
-                        self.enemy.get("attribute", "none")
-                    )
-                    
-                    if armor_result["evaded"]:
+
+                if armor_result["evaded"]:
+                    text += f"\n敵の攻撃！ {armor_result['effect_text']}"
+                else:
+                    enemy_dmg = armor_result["damage"]
+                    self.player["hp"] -= enemy_dmg
+                    self.player["hp"] = max(0, self.player["hp"])
+                    text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
+                    if armor_result["effect_text"]:
                         text += f"\n{armor_result['effect_text']}"
-                        enemy_dmg = 0
-                    else:
-                        enemy_dmg = armor_result["damage"]
-                        self.player["hp"] -= enemy_dmg
-                        self.player["hp"] = max(0, self.player["hp"])
-                        if armor_result["effect_text"]:
-                            text += f"\n{armor_result['effect_text']}"
-                
-                else:  # 通常攻撃
-                    enemy_base_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
-                    
-                    # 防具効果を適用
-                    armor_ability = equipment_bonus.get("armor_ability", "")
-                    armor_result = game.apply_armor_effects(
-                        enemy_base_dmg,
-                        armor_ability,
-                        self.player["hp"],
-                        self.player.get("max_hp", 50),
-                        enemy_base_dmg,
-                        self.enemy.get("attribute", "none")
-                    )
-                    
-                    if armor_result["evaded"]:
-                        text += f"\n敵の攻撃！ {armor_result['effect_text']}"
-                        enemy_dmg = 0
-                    else:
-                        enemy_dmg = armor_result["damage"]
-                        self.player["hp"] -= enemy_dmg
-                        self.player["hp"] = max(0, self.player["hp"])
-                        text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
-                        if armor_result["effect_text"]:
-                            text += f"\n{armor_result['effect_text']}"
 
                     # 反撃ダメージ
                     if armor_result["counter_damage"] > 0:
@@ -3741,179 +3777,312 @@ async def handle_death_with_triggers(ctx, user_id, user_processing, enemy_name=N
 
     return death_result
 
-
-# ========================================
-# レイドボスView
-# ========================================
-class RaidBossView(discord.ui.View):
-    def __init__(self, user_id, user_processing, distance, raid_boss_data, raid_boss_id):
-        super().__init__(timeout=300)
-        self.user_id = user_id
+# ==============================
+# レイドバトルView
+# ==============================
+class RaidBattleView(View):
+    """レイドボス専用戦闘View"""
+    def __init__(self, ctx, player_raid_stats: dict, boss_data: dict, user_processing: dict, distance: int):
+        super().__init__(timeout=120)
+        self.ctx = ctx
+        self.user_id = ctx.author.id
+        self.player_raid_stats = player_raid_stats
+        self.boss_data = boss_data
         self.user_processing = user_processing
         self.distance = distance
-        self.raid_boss_data = raid_boss_data
-        self.raid_boss_id = raid_boss_id
         self.message = None
-    
-    async def send_initial_embed(self, ctx):
-        """レイドボス戦闘開始画面を表示"""
-        # レイドボス進捗を取得または作成
-        boss_progress = await db.get_raid_boss_progress(self.raid_boss_id)
-        if not boss_progress:
-            await db.create_raid_boss(self.raid_boss_id, self.raid_boss_data["hp"])
-            boss_progress = await db.get_raid_boss_progress(self.raid_boss_id)
-        
-        current_hp = boss_progress.get("current_hp", self.raid_boss_data["hp"])
-        max_hp = boss_progress.get("max_hp", self.raid_boss_data["hp"])
-        
+        self.attacks_made = 0
+
+    @classmethod
+    async def create(cls, ctx, player_raid_stats, boss_data, user_processing, distance):
+        """非同期初期化"""
+        view = cls(ctx, player_raid_stats, boss_data, user_processing, distance)
+        await view._async_init()
+        return view
+
+    async def _async_init(self):
+        """非同期で必要なデータを取得"""
+        self.player_raid_stats = await db.get_or_create_player_raid_stats(self.user_id)
+
+    async def send_initial_embed(self):
+        """初期戦闘画面を送信"""
+        embed = await self.create_battle_embed()
+        self.message = await self.ctx.send(embed=embed, view=self)
+
+    async def create_battle_embed(self):
+        """戦闘画面のEmbedを作成"""
+        import raid_system
+        from datetime import datetime, timezone, timedelta
+
+        # 日本時間で今日の日付を取得
+        jst = timezone(timedelta(hours=9))
+        today = datetime.now(jst).date().isoformat()
+
+        # レイドボスの状態を取得
+        raid_boss_db = await db.get_or_create_raid_boss(
+            self.boss_data["id"],
+            self.boss_data["max_hp"],
+            today
+        )
+
+        current_hp = raid_boss_db.get("current_hp", self.boss_data["max_hp"])
+        total_damage = raid_boss_db.get("total_damage", 0)
+        is_defeated = raid_boss_db.get("is_defeated", False)
+
+        # HP バー
+        hp_percentage = (current_hp / self.boss_data["max_hp"]) * 100
+        hp_bar_length = 20
+        filled = int((current_hp / self.boss_data["max_hp"]) * hp_bar_length)
+        hp_bar = "█" * filled + "░" * (hp_bar_length - filled)
+
+        # プレイヤーのレイドHP
+        player_hp = self.player_raid_stats.get("raid_hp", 100)
+        player_max_hp = self.player_raid_stats.get("raid_max_hp", 100)
+        player_atk = self.player_raid_stats.get("raid_atk", 10)
+        player_def = self.player_raid_stats.get("raid_def", 5)
+
         embed = discord.Embed(
-            title=f"🔥 レイドボス: {self.raid_boss_data['name']}",
-            description=f"全員で協力して倒せ！\n\n**HP**: {current_hp}/{max_hp}",
-            color=discord.Color.red()
+            title=f"{self.boss_data['emoji']} レイドバトル！",
+            description=f"**{self.boss_data['name']}**\n{self.boss_data['description']}",
+            color=self.boss_data['color']
         )
+
         embed.add_field(
-            name="⚔️ 攻撃力",
-            value=str(self.raid_boss_data["atk"]),
+            name="🏴 ボス体力",
+            value=f"{hp_bar}\n**{current_hp:,} / {self.boss_data['max_hp']:,} HP** ({hp_percentage:.1f}%)",
+            inline=False
+        )
+
+        embed.add_field(
+            name="⚔️ あなたのレイドステータス",
+            value=f"❤️ HP: {player_hp}/{player_max_hp}\n"
+                  f"⚔️ 攻撃力: {player_atk}\n"
+                  f"🛡️ 防御力: {player_def}",
             inline=True
         )
+
         embed.add_field(
-            name="🛡️ 防御力",
-            value=str(self.raid_boss_data["def"]),
+            name="📊 レイド統計",
+            value=f"💥 総ダメージ: {total_damage:,}\n"
+                  f"🎯 あなたの攻撃回数: {self.attacks_made}",
             inline=True
         )
-        embed.set_footer(text=f"📏 距離: {self.distance}m | レイドボス戦闘")
-        
-        self.message = await ctx.send(embed=embed, view=self)
-    
-    @discord.ui.button(label="攻撃する", style=discord.ButtonStyle.danger, emoji="⚔️")
-    async def attack_raid_boss(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        if is_defeated:
+            embed.add_field(
+                name="✅ 討伐完了！",
+                value="このレイドボスは既に討伐されています！",
+                inline=False
+            )
+
+        embed.set_footer(text=f"距離: {self.distance}m | 全プレイヤー協力型レイドバトル")
+
+        return embed
+
+    @discord.ui.button(label="⚔️ 攻撃", style=discord.ButtonStyle.danger)
+    async def attack(self, interaction: discord.Interaction, button: discord.ui.Button):
         """レイドボスを攻撃"""
-        await interaction.response.defer()
-        
-        try:
-            # プレイヤーデータ取得
-            player = await db.get_player(interaction.user.id)
-            if not player:
-                await interaction.followup.send("プレイヤーデータが見つかりません", ephemeral=True)
-                return
-            
-            # レイドボス進捗取得
-            boss_progress = await db.get_raid_boss_progress(self.raid_boss_id)
-            if not boss_progress or boss_progress.get("is_defeated"):
-                await interaction.followup.send("このレイドボスは既に倒されています", ephemeral=True)
-                return
-            
-            # ダメージ計算
-            equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
-            base_atk = player.get("atk", 5) + equipment_bonus.get("attack_bonus", 0)
-            damage = max(1, base_atk + random.randint(-3, 3) - self.raid_boss_data["def"])
-            
-            # レイドボスにダメージを与える
-            new_hp = max(0, boss_progress["current_hp"] - damage)
-            is_defeated = new_hp <= 0
-            
-            await db.update_raid_boss_hp(self.raid_boss_id, new_hp, is_defeated)
-            await db.add_raid_boss_contribution(self.raid_boss_id, interaction.user.id, damage)
-            
-            # 結果メッセージ
-            if is_defeated:
-                # レイドボス撃破
-                contributions = await db.get_raid_boss_contributions(self.raid_boss_id, limit=10)
-                
-                # 報酬計算（貢献度ベース）
-                player_contribution = next((c for c in contributions if c["user_id"] == str(interaction.user.id)), None)
-                if player_contribution:
-                    total_damage = player_contribution["total_damage"]
-                    reward_multiplier = raid_boss_system.calculate_raid_rewards(total_damage, boss_progress["max_hp"])
-                    
-                    # ドロップアイテム
-                    drops = self.raid_boss_data.get("drops", [])
-                    num_drops = int(1 * reward_multiplier)
-                    dropped_items = random.sample(drops, min(num_drops, len(drops)))
-                    
-                    # ゴールド報酬
-                    gold_range = self.raid_boss_data.get("gold_range", [100, 200])
-                    gold_reward = int(random.randint(gold_range[0], gold_range[1]) * reward_multiplier)
-                    
-                    # 報酬付与
-                    await db.add_gold(interaction.user.id, gold_reward)
-                    for item in dropped_items:
-                        await db.add_item_to_inventory(interaction.user.id, item)
-                    
-                    embed = discord.Embed(
-                        title="🏆 レイドボス撃破！",
-                        description=f"**{self.raid_boss_data['name']}** を倒した！\n\nあなたの貢献度: **{total_damage}**ダメージ",
-                        color=discord.Color.gold()
-                    )
-                    embed.add_field(name="💰 報酬ゴールド", value=f"{gold_reward}G", inline=False)
-                    if dropped_items:
-                        items_text = "\n".join([f"• {item}" for item in dropped_items])
-                        embed.add_field(name="🎁 ドロップアイテム", value=items_text, inline=False)
-                    
-                    await interaction.followup.send(embed=embed)
-                    
-                    # ボタン無効化
-                    for child in self.children:
-                        child.disabled = True
-                    await self.message.edit(view=self)
-                    
-                    if self.user_id in self.user_processing:
-                        self.user_processing[self.user_id] = False
-                else:
-                    await interaction.followup.send("レイドボスを倒しました！", ephemeral=True)
-            else:
-                # 継続戦闘
-                embed = discord.Embed(
-                    title=f"⚔️ {self.raid_boss_data['name']}に攻撃！",
-                    description=f"**{damage}**ダメージを与えた！\n\n残りHP: **{new_hp}/{boss_progress['max_hp']}**",
-                    color=discord.Color.orange()
-                )
-                await interaction.followup.send(embed=embed, ephemeral=True)
-                
-                # Embed更新
-                await self.update_raid_boss_embed(new_hp, boss_progress["max_hp"])
-        
-        except Exception as e:
-            logger.error(f"レイドボス攻撃エラー: {e}")
-            await interaction.followup.send("エラーが発生しました", ephemeral=True)
-    
-    @discord.ui.button(label="立ち去る", style=discord.ButtonStyle.secondary, emoji="🚶")
-    async def leave_raid_boss(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """レイドボスから離脱"""
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("これはあなたの戦闘ではありません", ephemeral=True)
-            return
-        
-        embed = discord.Embed(
-            title="🚶 レイドボスから離脱",
-            description="レイドボスを避けて先に進んだ",
-            color=discord.Color.grey()
+            return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+
+        await interaction.response.defer()
+
+        try:
+            # 最新のプレイヤーデータを取得
+            self.player_raid_stats = await db.get_or_create_player_raid_stats(self.user_id)
+            
+            player_hp = self.player_raid_stats.get("raid_hp", 100)
+            if player_hp <= 0:
+                embed = discord.Embed(
+                    title="💀 レイドHPが0です",
+                    description="レイドHPを回復してから再挑戦してください。\n`!raid_upgrade` で回復できます。",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed)
+                return
+
+            # ダメージ計算
+            import raid_system
+            player_atk = self.player_raid_stats.get("raid_atk", 10)
+            damage = raid_system.calculate_raid_damage(
+                player_atk,
+                self.player_raid_stats.get("raid_def", 5),
+                self.boss_data
+            )
+
+            # レイドボスのHPを更新
+            from datetime import datetime, timezone, timedelta
+            jst = timezone(timedelta(hours=9))
+            today = datetime.now(jst).date().isoformat()
+
+            boss_result = await db.update_raid_boss_hp(self.boss_data["id"], damage)
+            
+            if not boss_result:
+                await interaction.followup.send("エラーが発生しました。", ephemeral=True)
+                return
+
+            # 貢献度を記録
+            await db.record_raid_contribution(self.boss_data["id"], self.user_id, damage)
+            self.attacks_made += 1
+
+            # ボスからの反撃ダメージ
+            boss_damage = max(1, self.boss_data["attack"] - self.player_raid_stats.get("raid_def", 5))
+            new_player_hp = max(0, player_hp - boss_damage)
+            await db.update_player_raid_stats(self.user_id, raid_hp=new_player_hp)
+            self.player_raid_stats["raid_hp"] = new_player_hp
+
+            # 討伐完了チェック
+            if boss_result["is_defeated"]:
+                await self.handle_raid_victory(interaction)
+                return
+
+            # 戦闘継続
+            embed = discord.Embed(
+                title=f"⚔️ 攻撃！",
+                description=f"**{self.boss_data['name']}** に {damage:,} ダメージを与えた！\n"
+                           f"ボスの反撃で {boss_damage} ダメージを受けた！",
+                color=discord.Color.orange()
+            )
+            await interaction.followup.send(embed=embed)
+
+            # HP0で戦闘不能
+            if new_player_hp <= 0:
+                defeat_embed = discord.Embed(
+                    title="💀 戦闘不能！",
+                    description=f"レイドHPが0になりました。\n`!raid_upgrade` で回復してから再挑戦できます。",
+                    color=discord.Color.dark_red()
+                )
+                await interaction.followup.send(embed=defeat_embed)
+                for item in self.children:
+                    item.disabled = True
+                await self.message.edit(view=self)
+                if self.user_id in self.user_processing:
+                    self.user_processing[self.user_id] = False
+                return
+
+            # Embed更新
+            embed = await self.create_battle_embed()
+            await self.message.edit(embed=embed, view=self)
+
+        except Exception as e:
+            logger.error(f"Raid battle error: {e}")
+            await interaction.followup.send(f"エラーが発生しました: {e}", ephemeral=True)
+
+    async def handle_raid_victory(self, interaction):
+        """レイドボス討伐時の処理"""
+        import raid_system
+
+        # 総ダメージと貢献度を取得
+        raid_boss_db = await db.get_or_create_raid_boss(
+            self.boss_data["id"],
+            self.boss_data["max_hp"],
+            ""
         )
-        await interaction.response.edit_message(embed=embed, view=None)
+        total_damage = raid_boss_db.get("total_damage", 0)
+
+        # プレイヤーの貢献度を取得
+        contrib = await db.get_player_contribution(self.boss_data["id"], self.user_id)
+        player_damage = contrib.get("damage_dealt", 0) if contrib else 0
+
+        # 報酬計算
+        rewards = raid_system.calculate_raid_rewards(player_damage, total_damage, boss_defeated=True)
+
+        # 報酬付与
+        await db.add_gold(self.user_id, rewards["gold"])
+        await db.add_upgrade_points(self.user_id, rewards["upgrade_points"])
         
+        if rewards["item"]:
+            await db.add_item_to_inventory(self.user_id, rewards["item"])
+
+        # 討伐完了Embed
+        embed = discord.Embed(
+            title=f"🏆 レイドボス討伐完了！",
+            description=f"**{self.boss_data['name']}** を討伐した！\n\n"
+                       f"あなたの貢献度: {rewards['contribution_ratio']*100:.1f}%",
+            color=discord.Color.gold()
+        )
+
+        embed.add_field(
+            name="💰 獲得報酬",
+            value=f"🪙 {rewards['gold']} ゴールド\n"
+                  f"⭐ {rewards['upgrade_points']} アップグレードポイント" +
+                  (f"\n📦 {rewards['item']}" if rewards["item"] else ""),
+            inline=False
+        )
+
+        await interaction.followup.send(embed=embed)
+
+        # 通知チャンネルへ討伐通知（5%以上の貢献者を表示）
+        try:
+            bot = interaction.client
+            notify_channel = bot.get_channel(1424712515396305007)
+            if notify_channel:
+                # 全貢献者を取得
+                all_contributors = await db.get_raid_contributions(self.boss_data["id"], limit=100)
+                
+                # 5%以上の貢献者をフィルタリング
+                significant_contributors = []
+                for contrib in all_contributors:
+                    contribution_ratio = contrib['damage_dealt'] / total_damage if total_damage > 0 else 0
+                    if contribution_ratio >= 0.05:
+                        significant_contributors.append({
+                            'user_id': contrib['user_id'],
+                            'damage_dealt': contrib['damage_dealt'],
+                            'contribution_ratio': contribution_ratio
+                        })
+                
+                notif_embed = discord.Embed(
+                    title=f"🎉 レイドボス討伐！",
+                    description=f"**{self.boss_data['name']}** が討伐されました！\n\n"
+                               f"💥 総ダメージ: {total_damage:,}",
+                    color=self.boss_data['color']
+                )
+                
+                if significant_contributors:
+                    contrib_text = ""
+                    for i, c in enumerate(significant_contributors[:10], 1):
+                        contrib_text += f"{i}. <@{c['user_id']}>: {c['damage_dealt']:,} ({c['contribution_ratio']*100:.1f}%)\n"
+                    notif_embed.add_field(
+                        name="🏆 主要貢献者 (5%以上)",
+                        value=contrib_text,
+                        inline=False
+                    )
+                else:
+                    notif_embed.add_field(
+                        name="🏆 貢献者",
+                        value="貢献者データが見つかりませんでした",
+                        inline=False
+                    )
+                
+                await notify_channel.send(embed=notif_embed)
+        except Exception as e:
+            logger.error(f"Raid victory notification error: {e}")
+
+        # ボタン無効化
+        for item in self.children:
+            item.disabled = True
+        await self.message.edit(view=self)
+
         if self.user_id in self.user_processing:
             self.user_processing[self.user_id] = False
-    
-    async def update_raid_boss_embed(self, current_hp, max_hp):
-        """レイドボスのHPを更新"""
-        if not self.message:
-            return
-        
+
+    @discord.ui.button(label="🚪 撤退", style=discord.ButtonStyle.secondary)
+    async def retreat(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """戦闘から撤退"""
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+
         embed = discord.Embed(
-            title=f"🔥 レイドボス: {self.raid_boss_data['name']}",
-            description=f"全員で協力して倒せ！\n\n**HP**: {current_hp}/{max_hp}",
-            color=discord.Color.red()
+            title="🚪 撤退しました",
+            description="レイドボス戦から撤退しました。\nまた挑戦できます！",
+            color=discord.Color.blue()
         )
-        embed.add_field(
-            name="⚔️ 攻撃力",
-            value=str(self.raid_boss_data["atk"]),
-            inline=True
-        )
-        embed.add_field(
-            name="🛡️ 防御力",
-            value=str(self.raid_boss_data["def"]),
-            inline=True
-        )
-        embed.set_footer(text=f"📏 距離: {self.distance}m | レイドボス戦闘")
-        
-        await self.message.edit(embed=embed, view=self)
+        await interaction.response.edit_message(embed=embed, view=None)
+
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False
+
+    async def on_timeout(self):
+        """タイムアウト時の処理"""
+        if self.user_id in self.user_processing:
+            self.user_processing[self.user_id] = False

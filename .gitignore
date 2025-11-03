@@ -4,30 +4,12 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environments
+env/
 venv/
 ENV/
-env/
-.venv
+*.egg-info/
+dist/
+build/
 
 # Environment variables
 .env
@@ -38,19 +20,17 @@ env/
 .idea/
 *.swp
 *.swo
-*~
-
-# Logs
-*.log
-logs/
-/tmp/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Replit specific - DO NOT IGNORE
-!.replit
-!replit.nix
-!pyproject.toml
-!uv.lock
+# Replit
+.replit
+.config/
+.pythonlibs/
+.cache/
+.local/
+
+# Logs
+*.log

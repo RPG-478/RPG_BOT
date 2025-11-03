@@ -39,14 +39,13 @@ from views import (
     BossBattleView,
     SpecialEventView,
     TrapChestView,
-    RaidBossView
+    RaidBattleView
 )
 import game
 from story import StoryView
 import death_system
 from titles import get_title_rarity_emoji, RARITY_COLORS
-from merchant_system import MerchantView
-import raid_boss_system
+import raid_system
 
 load_dotenv()
 
@@ -373,41 +372,15 @@ async def move(ctx: commands.Context):
                             view_delegated = True
                             return
 
-        # 優先度2: レイドボスイベント（500m毎、1000m除く）
+        # 優先度2: レイドボス出現判定（500m毎、ただし強制ではなくオプション）
         raid_distances = [500, 1500, 2500, 3500, 4500, 5500, 6500, 7500, 8500, 9500]
+        is_raid_distance = False
+        current_raid_distance = 0
         for raid_distance in raid_distances:
             if passed_through(raid_distance):
-                logger.info(f"レイドボス遭遇: User {user.id} at {raid_distance}m")
-                
-                # レイドボスデータ取得
-                raid_boss_data = raid_boss_system.get_raid_boss_data(raid_distance)
-                if not raid_boss_data:
-                    logger.warning(f"レイドボスデータが見つかりません: {raid_distance}m")
-                    continue
-                
-                # レイドボス進捗チェック（既に倒されているか確認）
-                raid_boss_id = raid_boss_system.get_raid_boss_id(raid_distance)
-                boss_progress = await db.get_raid_boss_progress(raid_boss_id)
-                
-                if boss_progress and boss_progress.get("is_defeated"):
-                    # 既に倒されている場合は通過
-                    logger.info(f"レイドボス既に撃破済み: {raid_boss_id}")
-                    continue
-                
-                # レイドボス戦闘開始
-                embed = discord.Embed(
-                    title="🔥 レイドボス出現！",
-                    description=f"**{raid_boss_data['name']}** が現れた！\n\n共闘して倒せ！",
-                    color=discord.Color.red()
-                )
-                embed.set_footer(text=f"📏 現在の距離: {raid_distance}m")
-                await exploring_msg.edit(content=None, embed=embed)
-                await asyncio.sleep(2)
-                
-                view = RaidBossView(user.id, user_processing, raid_distance, raid_boss_data, raid_boss_id)
-                await view.send_initial_embed(ctx)
-                view_delegated = True
-                return
+                is_raid_distance = True
+                current_raid_distance = raid_distance
+                break
 
         # 優先度3: 距離ベースストーリー（250m, 750m, 1250m, etc.）
         story_distances = [250, 750, 1250, 1750, 2250, 2750, 3250, 3750, 4250, 4750, 5250, 5750, 6250, 6750, 7250, 7750, 8250, 8750, 9250, 9750]
@@ -473,50 +446,52 @@ async def move(ctx: commands.Context):
                 view_delegated = True
                 return
 
-        # 優先度5: 通常イベント抽選（0.5%商人/1%トラップ宝箱/9%宝箱/30%敵/59.5%何もなし）
+        # 優先度5: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱）
         event_roll = random.random() * 100
-        
-        # 0.5% 商人遭遇
-        if event_roll < 0.5:
-            logger.info(f"商人遭遇: User {user.id} at {total_distance}m")
-            embed = discord.Embed(
-                title="🏪 旅の商人に遭遇！",
-                description="「いらっしゃい！良いものを揃えているよ」\n\n商人が話しかけてきた。",
-                color=discord.Color.gold()
-            )
-            embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-            view = MerchantView(user.id, player)
-            await exploring_msg.edit(content=None, embed=embed, view=view)
-            view_delegated = True
-            return
-        
+
         # 1% トラップ宝箱
-        elif event_roll < 1.5:
+        if event_roll < 1:
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
                 color=discord.Color.gold()
             )
+            # 500m地点の場合、レイドボス情報を追加
+            if is_raid_distance:
+                boss_data = raid_system.get_current_raid_boss()
+                embed.add_field(
+                    name=f"\n{boss_data['emoji']} レイドボスの気配",
+                    value=f"**{boss_data['name']}** が近くにいる…",
+                    inline=False
+                )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-            view = TrapChestView(user.id, user_processing, player)
+            view = TrapChestView(user.id, user_processing, player, is_raid_distance, current_raid_distance if is_raid_distance else 0, ctx)
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
 
-        # 9% 宝箱（1.5～10.5%）
-        elif event_roll < 10.5:
+        # 9% 宝箱（1～10%）
+        elif event_roll < 10:
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
                 color=discord.Color.gold()
             )
+            # 500m地点の場合、レイドボス情報を追加
+            if is_raid_distance:
+                boss_data = raid_system.get_current_raid_boss()
+                embed.add_field(
+                    name=f"\n{boss_data['emoji']} レイドボスの気配",
+                    value=f"**{boss_data['name']}** が近くにいる…",
+                    inline=False
+                )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-            view = TreasureView(user.id, user_processing)
+            view = TreasureView(user.id, user_processing, is_raid_distance, current_raid_distance if is_raid_distance else 0, ctx)
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
-        # 30% 敵との遭遇（10.5～40.5%）
-        elif event_roll < 40.5:
+        # 30% 敵との遭遇（10～40%）
+        elif event_roll < 40:
             # game.pyから距離に応じた敵を取得
             enemy = game.get_random_enemy(total_distance)
 
@@ -527,7 +502,9 @@ async def move(ctx: commands.Context):
                 "defense": player.get("def", 2),
                 "inventory": player.get("inventory", []),
                 "distance": total_distance,
-                "user_id": user.id
+                "user_id": user.id,
+                "is_raid_distance": is_raid_distance,
+                "raid_distance": current_raid_distance if is_raid_distance else 0
             }
 
             # 戦闘Embed呼び出し
@@ -544,7 +521,20 @@ async def move(ctx: commands.Context):
             color=discord.Color.dark_grey()
         )
         embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-        await exploring_msg.edit(content=None, embed=embed)
+        
+        # 500m地点の場合、レイドボスオプションボタンを追加
+        if is_raid_distance:
+            boss_data = raid_system.get_current_raid_boss()
+            embed.add_field(
+                name=f"\n{boss_data['emoji']} レイドボス出現！",
+                value=f"**{boss_data['name']}** が近くにいる気配を感じる…\nレイドボスに挑戦しますか？",
+                inline=False
+            )
+            raid_view = views.RaidOptionButton(ctx, user_processing, current_raid_distance)
+            await exploring_msg.edit(content=None, embed=embed, view=raid_view)
+            view_delegated = True
+        else:
+            await exploring_msg.edit(content=None, embed=embed)
     finally:
         # Viewに委譲していない場合のみクリア（View自身がクリアする責任を持つ）
         if not view_delegated:
@@ -1107,68 +1097,281 @@ async def unequip_title(ctx: commands.Context):
     )
     await ctx.send(embed=embed)
 
-@bot.command(name="raid_info")
+# ==============================
+# レイドボスコマンド
+# ==============================
+
+@bot.command(name="raid_info", aliases=["ri"])
 @check_ban()
 async def raid_info(ctx: commands.Context):
-    """レイドボスの状態を確認"""
+    """現在のレイドボス情報を表示"""
+    from datetime import datetime, timezone, timedelta
+    
+    # 現在の曜日別レイドボスを取得
+    boss_data = raid_system.get_current_raid_boss()
+    
+    # 日本時間で今日の日付を取得
+    jst = timezone(timedelta(hours=9))
+    today = datetime.now(jst).date().isoformat()
+    weekday_names = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"]
+    current_weekday = weekday_names[datetime.now(jst).weekday()]
+    
+    # レイドボスの状態を取得
+    raid_boss_db = await db.get_or_create_raid_boss(
+        boss_data["id"],
+        boss_data["max_hp"],
+        today
+    )
+    
+    current_hp = raid_boss_db.get("current_hp", boss_data["max_hp"])
+    total_damage = raid_boss_db.get("total_damage", 0)
+    is_defeated = raid_boss_db.get("is_defeated", False)
+    
+    # トップ貢献者を取得
+    top_contributors = await db.get_raid_contributions(boss_data["id"], limit=10)
+    
+    # Embed作成
+    embed = raid_system.format_raid_info_embed(
+        boss_data,
+        current_hp,
+        total_damage,
+        top_contributors
+    )
+    
+    embed.add_field(
+        name="📅 本日のレイドボス",
+        value=f"{current_weekday} - **{boss_data['name']}**",
+        inline=False
+    )
+    
+    if is_defeated:
+        embed.add_field(
+            name="✅ 討伐完了",
+            value="このレイドボスは既に討伐されています！\n明日、新しいレイドボスが出現します。",
+            inline=False
+        )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_upgrade", aliases=["ru"])
+@check_ban()
+async def raid_upgrade(ctx: commands.Context):
+    """レイド専用ステータスのアップグレード"""
     user = ctx.author
     player = await get_player(user.id)
-
+    
     if not player:
         await ctx.send("!start で冒険を始めてみてね。")
         return
-
-    player_distance = player.get("distance", 0)
-
-    raid_bosses_info = []
-    for boss_id, boss_data in game.RAID_BOSSES.items():
-        if boss_data["distance"] <= player_distance + 100:
-            raid_boss_db = await db.get_raid_boss(boss_data["id"])
-
-            if raid_boss_db:
-                current_hp = raid_boss_db.get("current_hp", boss_data["hp"])
-                max_hp = boss_data["hp"]
-                status = "撃破済み" if current_hp <= 0 else f"HP: {current_hp}/{max_hp}"
-                
-                contributions = await db.get_raid_contributions(raid_boss_db["id"])
-                user_contribution = await db.get_user_raid_contribution(raid_boss_db["id"], user.id)
-                user_damage = user_contribution.get("damage_dealt", 0) if user_contribution else 0
-
-                raid_bosses_info.append({
-                    "name": boss_data["name"],
-                    "distance": boss_data["distance"],
-                    "status": status,
-                    "participants": len(contributions),
-                    "user_damage": user_damage
-                })
-            else:
-                raid_bosses_info.append({
-                    "name": boss_data["name"],
-                    "distance": boss_data["distance"],
-                    "status": "未出現",
-                    "participants": 0,
-                    "user_damage": 0
-                })
-
-    if not raid_bosses_info:
-        await ctx.send("現在確認できるレイドボスはありません。")
-        return
-
+    
+    # レイド専用ステータスを取得
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    upgrade_points = player.get("upgrade_points", 0)
+    
+    # 現在のステータス表示
     embed = discord.Embed(
-        title="🐉 レイドボス情報",
-        description="現在のレイドボス状態",
+        title="⚔️ レイドアップグレードメニュー",
+        description="レイドボス戦専用のステータスを強化できます。",
         color=discord.Color.blue()
     )
-    for boss in raid_bosses_info:
-        value = f"距離: {boss['distance']}m\n状態: {boss['status']}\n参加者: {boss['participants']}人"
-        if boss['user_damage'] > 0:
-            value += f"\nあなたの貢献: {boss['user_damage']}ダメージ"
-
-        embed.add_field(
-            name=f"{boss['name']}",
-            value=value,
-            inline=False
-        )
+    
+    embed.add_field(
+        name="💎 所持アップグレードポイント",
+        value=f"**{upgrade_points}** ポイント",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="⚔️ 現在のレイドステータス",
+        value=f"❤️ HP: {raid_stats.get('raid_hp')}/{raid_stats.get('raid_max_hp')}\n"
+              f"⚔️ 攻撃力: {raid_stats.get('raid_atk')}\n"
+              f"🛡️ 防御力: {raid_stats.get('raid_def')}\n"
+              f"💚 6時間回復: {raid_stats.get('raid_hp_recovery_rate', 10)} HP",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="📈 アップグレード履歴",
+        value=f"⚔️ 攻撃力: Lv.{raid_stats.get('raid_atk_upgrade', 0)}\n"
+              f"🛡️ 防御力: Lv.{raid_stats.get('raid_def_upgrade', 0)}\n"
+              f"❤️ 最大HP: Lv.{raid_stats.get('raid_hp_upgrade', 0)}\n"
+              f"💚 回復速度: Lv.{raid_stats.get('raid_hp_recovery_upgrade', 0)}",
+        inline=True
+    )
+    
+    embed.add_field(
+        name="🔧 アップグレードコマンド",
+        value="• `!raid_atk` - 攻撃力+5 (コスト: 3PT)\n"
+              "• `!raid_def` - 防御力+3 (コスト: 3PT)\n"
+              "• `!raid_hp` - 最大HP+50 (コスト: 5PT)\n"
+              "• `!raid_heal` - HP全回復 (コスト: 1PT)\n"
+              "• `!raid_recovery` - 6時間ごとの回復量+5 (コスト: 4PT)",
+        inline=False
+    )
+    
+    embed.set_footer(text="レイドボス戦で強敵に挑もう！")
+    
     await ctx.send(embed=embed)
+
+@bot.command(name="raid_atk", aliases=["ra"])
+@check_ban()
+async def raid_atk(ctx: commands.Context):
+    """レイド攻撃力をアップグレード"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    upgrade_points = player.get("upgrade_points", 0)
+    cost = 3
+    
+    if upgrade_points < cost:
+        await ctx.send(f"⚠️ アップグレードポイントが不足しています。（必要: {cost}PT / 所持: {upgrade_points}PT）")
+        return
+    
+    # アップグレード実行
+    await db.spend_upgrade_points(user.id, cost)
+    await db.upgrade_raid_atk(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイド攻撃力アップグレード！",
+        description=f"レイド攻撃力が **{raid_stats.get('raid_atk')}** になりました！\n\n残りポイント: {upgrade_points - cost}PT",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_def", aliases=["rd"])
+@check_ban()
+async def raid_def(ctx: commands.Context):
+    """レイド防御力をアップグレード"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    upgrade_points = player.get("upgrade_points", 0)
+    cost = 3
+    
+    if upgrade_points < cost:
+        await ctx.send(f"⚠️ アップグレードポイントが不足しています。（必要: {cost}PT / 所持: {upgrade_points}PT）")
+        return
+    
+    # アップグレード実行
+    await db.spend_upgrade_points(user.id, cost)
+    await db.upgrade_raid_def(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイド防御力アップグレード！",
+        description=f"レイド防御力が **{raid_stats.get('raid_def')}** になりました！\n\n残りポイント: {upgrade_points - cost}PT",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_hp", aliases=["rh"])
+@check_ban()
+async def raid_hp(ctx: commands.Context):
+    """レイド最大HPをアップグレード"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    upgrade_points = player.get("upgrade_points", 0)
+    cost = 5
+    
+    if upgrade_points < cost:
+        await ctx.send(f"⚠️ アップグレードポイントが不足しています。（必要: {cost}PT / 所持: {upgrade_points}PT）")
+        return
+    
+    # アップグレード実行
+    await db.spend_upgrade_points(user.id, cost)
+    await db.upgrade_raid_hp(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイド最大HPアップグレード！",
+        description=f"レイド最大HPが **{raid_stats.get('raid_max_hp')}** になりました！\n\n残りポイント: {upgrade_points - cost}PT",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_heal", aliases=["rhe"])
+@check_ban()
+async def raid_heal(ctx: commands.Context):
+    """レイドHPを全回復"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    upgrade_points = player.get("upgrade_points", 0)
+    cost = 1
+    
+    if upgrade_points < cost:
+        await ctx.send(f"⚠️ アップグレードポイントが不足しています。（必要: {cost}PT / 所持: {upgrade_points}PT）")
+        return
+    
+    # HP回復実行
+    await db.spend_upgrade_points(user.id, cost)
+    await db.restore_raid_hp(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイドHP全回復！",
+        description=f"レイドHPを **{raid_stats.get('raid_max_hp')}** まで回復しました！\n\n残りポイント: {upgrade_points - cost}PT",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
+@bot.command(name="raid_recovery", aliases=["rr"])
+@check_ban()
+async def raid_recovery(ctx: commands.Context):
+    """レイドHP回復速度をアップグレード"""
+    user = ctx.author
+    player = await get_player(user.id)
+    
+    if not player:
+        await ctx.send("!start で冒険を始めてみてね。")
+        return
+    
+    upgrade_points = player.get("upgrade_points", 0)
+    cost = 4
+    
+    if upgrade_points < cost:
+        await ctx.send(f"⚠️ アップグレードポイントが不足しています。（必要: {cost}PT / 所持: {upgrade_points}PT）")
+        return
+    
+    # アップグレード実行
+    await db.spend_upgrade_points(user.id, cost)
+    await db.upgrade_raid_hp_recovery(user.id)
+    
+    raid_stats = await db.get_or_create_player_raid_stats(user.id)
+    
+    embed = discord.Embed(
+        title="✅ レイドHP回復速度アップグレード！",
+        description=f"6時間ごとの回復量が **{raid_stats.get('raid_hp_recovery_rate')} HP** になりました！\n\n残りポイント: {upgrade_points - cost}PT",
+        color=discord.Color.green()
+    )
+    
+    await ctx.send(embed=embed)
+
 if __name__ == "__main__":
     asyncio.run(main())

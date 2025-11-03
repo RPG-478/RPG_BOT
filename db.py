@@ -83,7 +83,7 @@ async def update_player(user_id, **kwargs):
     return response.json()
 
 async def delete_player(user_id):
-    """プレイヤーデータを削除"""
+    """プレイヤーデータを削除（レイドステータスは保持）"""
     client = await get_client()
     url = f"{config.SUPABASE_URL}/rest/v1/players"
     params = {"user_id": f"eq.{str(user_id)}"}
@@ -1073,124 +1073,177 @@ async def restore_player_snapshot(user_id, snapshot_data: dict):
     else:
         logger.warning(f"No valid data to restore for user {user_id}")
 
-# ========================================
-# レイドボスシステム - DB関数
-# ========================================
+# ==============================
+# レイドボス関連関数
+# ==============================
 
-async def get_raid_boss_progress(raid_boss_id):
-    """レイドボスの進捗を取得"""
+async def get_or_create_raid_boss(boss_id, max_hp, reset_date):
+    """レイドボスを取得または作成"""
     client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_progress"
-    params = {"raid_boss_id": f"eq.{raid_boss_id}", "select": "*"}
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
+    params = {"boss_id": f"eq.{boss_id}", "select": "*"}
     
     try:
         response = await client.get(url, headers=_get_headers(), params=params)
         response.raise_for_status()
         data = response.json()
-        return data[0] if data else None
+        
+        if data and len(data) > 0:
+            boss = data[0]
+            # リセット日が違う、または討伐済みの場合は新しいレイドボスを作成
+            if boss.get("reset_date") != reset_date or boss.get("is_defeated"):
+                await reset_raid_boss(boss_id, max_hp, reset_date)
+                return await get_or_create_raid_boss(boss_id, max_hp, reset_date)
+            return boss
+        else:
+            # 新規作成
+            boss_data = {
+                "boss_id": boss_id,
+                "current_hp": max_hp,
+                "max_hp": max_hp,
+                "total_damage": 0,
+                "is_defeated": False,
+                "reset_date": reset_date
+            }
+            response = await client.post(url, headers=_get_headers(), json=boss_data)
+            response.raise_for_status()
+            return response.json()[0] if response.json() else None
     except Exception as e:
-        logger.error(f"Error getting raid boss progress: {e}")
+        logger.error(f"Error getting/creating raid boss: {e}")
         return None
 
-async def create_raid_boss(raid_boss_id, max_hp):
-    """レイドボスを新規作成"""
+async def reset_raid_boss(boss_id, max_hp, reset_date):
+    """レイドボスをリセット"""
     client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_progress"
-    
-    boss_data = {
-        "raid_boss_id": raid_boss_id,
-        "current_hp": max_hp,
-        "max_hp": max_hp,
-        "is_defeated": False
-    }
-    
-    try:
-        response = await client.post(url, headers=_get_headers(), json=boss_data)
-        response.raise_for_status()
-        logger.info(f"Created raid boss: {raid_boss_id} with {max_hp} HP")
-        return response.json()
-    except Exception as e:
-        logger.error(f"Error creating raid boss: {e}")
-        return None
-
-async def update_raid_boss_hp(raid_boss_id, new_hp, is_defeated=False):
-    """レイドボスのHPを更新"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_progress"
-    params = {"raid_boss_id": f"eq.{raid_boss_id}"}
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
+    params = {"boss_id": f"eq.{boss_id}"}
     
     update_data = {
-        "current_hp": max(0, new_hp),
-        "is_defeated": is_defeated,
-        "last_damaged_at": "now()"
+        "current_hp": max_hp,
+        "max_hp": max_hp,
+        "total_damage": 0,
+        "is_defeated": False,
+        "defeated_at": None,
+        "reset_date": reset_date
     }
-    
-    if is_defeated:
-        update_data["defeated_at"] = "now()"
     
     try:
         response = await client.patch(url, headers=_get_headers(), params=params, json=update_data)
         response.raise_for_status()
-        logger.info(f"Updated raid boss {raid_boss_id} HP: {new_hp}, defeated: {is_defeated}")
-        return response.json()
+        
+        # 貢献度もクリア
+        await clear_raid_contributions(boss_id)
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error resetting raid boss: {e}")
+        return False
+
+async def update_raid_boss_hp(boss_id, damage):
+    """レイドボスのHPを更新"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
+    params = {"boss_id": f"eq.{boss_id}", "select": "*"}
+    
+    try:
+        # 現在の状態を取得
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data or len(data) == 0:
+            logger.error(f"Raid boss {boss_id} not found")
+            return None
+        
+        boss = data[0]
+        current_hp = boss.get("current_hp", 0)
+        total_damage = boss.get("total_damage", 0)
+        
+        # HP計算
+        new_hp = max(0, current_hp - damage)
+        new_total_damage = total_damage + damage
+        is_defeated = new_hp <= 0
+        
+        # 更新
+        update_data = {
+            "current_hp": new_hp,
+            "total_damage": new_total_damage,
+            "is_defeated": is_defeated
+        }
+        
+        if is_defeated:
+            from datetime import datetime, timezone
+            update_data["defeated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        params = {"boss_id": f"eq.{boss_id}"}
+        response = await client.patch(url, headers=_get_headers(), params=params, json=update_data)
+        response.raise_for_status()
+        
+        return {
+            "current_hp": new_hp,
+            "total_damage": new_total_damage,
+            "is_defeated": is_defeated
+        }
     except Exception as e:
         logger.error(f"Error updating raid boss HP: {e}")
         return None
 
-async def add_raid_boss_contribution(raid_boss_id, user_id, damage):
-    """レイドボス貢献度を記録"""
+async def record_raid_contribution(boss_id, user_id, damage):
+    """レイド貢献度を記録"""
     client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_contributions"
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
     
     # 既存の貢献度を取得
-    params = {
-        "raid_boss_id": f"eq.{raid_boss_id}",
-        "user_id": f"eq.{str(user_id)}",
-        "select": "*"
-    }
+    params = {"boss_id": f"eq.{boss_id}", "user_id": f"eq.{str(user_id)}", "select": "*"}
     
     try:
         response = await client.get(url, headers=_get_headers(), params=params)
         response.raise_for_status()
-        existing = response.json()
+        data = response.json()
         
-        if existing:
-            # 既存レコードを更新
-            contribution_id = existing[0]["id"]
-            new_total_damage = existing[0]["total_damage"] + damage
-            update_url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_contributions"
-            update_params = {"id": f"eq.{contribution_id}"}
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        
+        if data and len(data) > 0:
+            # 既存の貢献度を更新
+            contrib = data[0]
+            new_damage = contrib.get("damage_dealt", 0) + damage
+            new_attacks = contrib.get("attacks_count", 0) + 1
+            
             update_data = {
-                "total_damage": new_total_damage,
-                "last_contribution_at": "now()"
+                "damage_dealt": new_damage,
+                "attacks_count": new_attacks,
+                "last_attack": now
             }
-            response = await client.patch(update_url, headers=_get_headers(), params=update_params, json=update_data)
+            
+            params = {"boss_id": f"eq.{boss_id}", "user_id": f"eq.{str(user_id)}"}
+            response = await client.patch(url, headers=_get_headers(), params=params, json=update_data)
             response.raise_for_status()
-            logger.info(f"Updated raid contribution for user {user_id}: +{damage} damage")
         else:
-            # 新規レコードを作成
-            contribution_data = {
-                "raid_boss_id": raid_boss_id,
+            # 新規作成
+            contrib_data = {
+                "boss_id": boss_id,
                 "user_id": str(user_id),
-                "total_damage": damage
+                "damage_dealt": damage,
+                "attacks_count": 1,
+                "last_attack": now
             }
-            response = await client.post(url, headers=_get_headers(), json=contribution_data)
+            response = await client.post(url, headers=_get_headers(), json=contrib_data)
             response.raise_for_status()
-            logger.info(f"Created raid contribution for user {user_id}: {damage} damage")
         
         return True
     except Exception as e:
-        logger.error(f"Error adding raid boss contribution: {e}")
+        logger.error(f"Error recording raid contribution: {e}")
         return False
 
-async def get_raid_boss_contributions(raid_boss_id, limit=10):
-    """レイドボス貢献度ランキングを取得"""
+async def get_raid_contributions(boss_id, limit=10):
+    """レイドの貢献度ランキングを取得"""
     client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_boss_contributions"
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
     params = {
-        "raid_boss_id": f"eq.{raid_boss_id}",
+        "boss_id": f"eq.{boss_id}",
         "select": "*",
-        "order": "total_damage.desc",
+        "order": "damage_dealt.desc",
         "limit": limit
     }
     
@@ -1199,5 +1252,179 @@ async def get_raid_boss_contributions(raid_boss_id, limit=10):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        logger.error(f"Error getting raid boss contributions: {e}")
+        logger.error(f"Error getting raid contributions: {e}")
         return []
+
+async def clear_raid_contributions(boss_id):
+    """レイドの貢献度をクリア"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
+    params = {"boss_id": f"eq.{boss_id}"}
+    
+    try:
+        response = await client.delete(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Error clearing raid contributions: {e}")
+        return False
+
+async def get_player_contribution(boss_id, user_id):
+    """プレイヤーのレイド貢献度を取得"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
+    params = {"boss_id": f"eq.{boss_id}", "user_id": f"eq.{str(user_id)}", "select": "*"}
+    
+    try:
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+        return data[0] if data and len(data) > 0 else None
+    except Exception as e:
+        logger.error(f"Error getting player contribution: {e}")
+        return None
+
+# ==============================
+# プレイヤーレイド専用ステータス関数
+# ==============================
+
+async def get_or_create_player_raid_stats(user_id):
+    """プレイヤーのレイド専用ステータスを取得または作成"""
+    from datetime import datetime, timezone
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/player_raid_stats"
+    params = {"user_id": f"eq.{str(user_id)}", "select": "*"}
+    
+    try:
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data and len(data) > 0:
+            stats = data[0]
+            await check_and_apply_hp_recovery(user_id, stats)
+            updated_response = await client.get(url, headers=_get_headers(), params=params)
+            updated_response.raise_for_status()
+            updated_data = updated_response.json()
+            return updated_data[0] if updated_data else stats
+        else:
+            # 新規作成
+            raid_stats = {
+                "user_id": str(user_id),
+                "raid_atk": 10,
+                "raid_def": 5,
+                "raid_max_hp": 100,
+                "raid_hp": 100,
+                "raid_atk_upgrade": 0,
+                "raid_def_upgrade": 0,
+                "raid_hp_upgrade": 0,
+                "raid_hp_recovery_rate": 10,
+                "raid_hp_recovery_upgrade": 0,
+                "last_hp_recovery": datetime.now(timezone.utc).isoformat()
+            }
+            response = await client.post(url, headers=_get_headers(), json=raid_stats)
+            response.raise_for_status()
+            return response.json()[0] if response.json() else None
+    except Exception as e:
+        logger.error(f"Error getting/creating player raid stats: {e}")
+        return None
+
+async def update_player_raid_stats(user_id, **kwargs):
+    """プレイヤーのレイド専用ステータスを更新"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/player_raid_stats"
+    params = {"user_id": f"eq.{str(user_id)}"}
+    
+    try:
+        response = await client.patch(url, headers=_get_headers(), params=params, json=kwargs)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error(f"Error updating player raid stats: {e}")
+        return None
+
+async def upgrade_raid_atk(user_id):
+    """レイド攻撃力をアップグレード"""
+    stats = await get_or_create_player_raid_stats(user_id)
+    if stats:
+        new_atk = stats.get("raid_atk", 10) + 5
+        new_upgrade = stats.get("raid_atk_upgrade", 0) + 1
+        await update_player_raid_stats(user_id, raid_atk=new_atk, raid_atk_upgrade=new_upgrade)
+        return True
+    return False
+
+async def upgrade_raid_def(user_id):
+    """レイド防御力をアップグレード"""
+    stats = await get_or_create_player_raid_stats(user_id)
+    if stats:
+        new_def = stats.get("raid_def", 5) + 3
+        new_upgrade = stats.get("raid_def_upgrade", 0) + 1
+        await update_player_raid_stats(user_id, raid_def=new_def, raid_def_upgrade=new_upgrade)
+        return True
+    return False
+
+async def upgrade_raid_hp(user_id):
+    """レイド最大HPをアップグレード"""
+    stats = await get_or_create_player_raid_stats(user_id)
+    if stats:
+        new_max_hp = stats.get("raid_max_hp", 100) + 50
+        new_hp = stats.get("raid_hp", 100) + 50
+        new_upgrade = stats.get("raid_hp_upgrade", 0) + 1
+        await update_player_raid_stats(user_id, raid_max_hp=new_max_hp, raid_hp=new_hp, raid_hp_upgrade=new_upgrade)
+        return True
+    return False
+
+async def restore_raid_hp(user_id):
+    """レイドHPを全回復"""
+    stats = await get_or_create_player_raid_stats(user_id)
+    if stats:
+        max_hp = stats.get("raid_max_hp", 100)
+        await update_player_raid_stats(user_id, raid_hp=max_hp)
+        return True
+    return False
+
+async def upgrade_raid_hp_recovery(user_id):
+    """レイドHP回復速度をアップグレード"""
+    stats = await get_or_create_player_raid_stats(user_id)
+    if stats:
+        new_recovery_rate = stats.get("raid_hp_recovery_rate", 10) + 5
+        new_upgrade = stats.get("raid_hp_recovery_upgrade", 0) + 1
+        await update_player_raid_stats(user_id, raid_hp_recovery_rate=new_recovery_rate, raid_hp_recovery_upgrade=new_upgrade)
+        return True
+    return False
+
+async def check_and_apply_hp_recovery(user_id, stats):
+    """6時間ごとのHP自動回復をチェックして適用"""
+    from datetime import datetime, timezone, timedelta
+    
+    try:
+        last_recovery = stats.get("last_hp_recovery")
+        if not last_recovery:
+            await update_player_raid_stats(user_id, last_hp_recovery=datetime.now(timezone.utc).isoformat())
+            return
+        
+        last_recovery_time = datetime.fromisoformat(last_recovery.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        time_diff = now - last_recovery_time
+        
+        hours_passed = time_diff.total_seconds() / 3600
+        if hours_passed >= 6:
+            recovery_cycles = int(hours_passed // 6)
+            recovery_rate = stats.get("raid_hp_recovery_rate", 10)
+            total_recovery = recovery_rate * recovery_cycles
+            
+            current_hp = stats.get("raid_hp", 100)
+            max_hp = stats.get("raid_max_hp", 100)
+            new_hp = min(max_hp, current_hp + total_recovery)
+            
+            new_last_recovery = last_recovery_time + timedelta(hours=6 * recovery_cycles)
+            
+            await update_player_raid_stats(
+                user_id,
+                raid_hp=new_hp,
+                last_hp_recovery=new_last_recovery.isoformat()
+            )
+            
+            logger.info(f"Applied HP recovery for {user_id}: +{total_recovery} HP ({recovery_cycles} cycles)")
+    except Exception as e:
+        logger.error(f"Error in HP recovery check: {e}")
