@@ -8,9 +8,7 @@ import death_system
 from titles import get_title_rarity_emoji, get_title_rarity_color
 import raid_system
 
-# -------------------------
 # レイドボスオプションボタン（500m地点用）
-# -------------------------
 class RaidOptionButton(discord.ui.View):
     """500m地点でレイドボスに挑戦するかのオプションボタン"""
     def __init__(self, ctx, user_processing: dict, distance: int):
