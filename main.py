@@ -275,6 +275,10 @@ async def move(ctx: commands.Context):
 
         current_floor = total_distance // 100 + 1
         current_stage = total_distance // 1000 + 1
+        
+        # レイド距離チェック（500m間隔）
+        is_raid_distance = total_distance % 500 == 0 and total_distance > 0
+        current_raid_distance = total_distance if is_raid_distance else 0
 
         # 移動演出
         exploring_msg = await ctx.send(

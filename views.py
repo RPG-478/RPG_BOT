@@ -44,9 +44,21 @@ class RaidOptionButton(discord.ui.View):
         await interaction.response.send_message(embed=embed)
         await asyncio.sleep(2)
         
-        # RaidBattleViewをインポートして戦闘開始
-        view = await RaidBattleView.create(self.ctx, player_raid_stats, boss_data, self.user_processing, self.distance)
-        await view.send_initial_embed()
+        # RaidBattleViewを動的に取得して戦闘開始
+        try:
+            RaidBattleViewClass = globals().get('RaidBattleView')
+            if not RaidBattleViewClass:
+                await self.ctx.send("⚠️ レイドバトルシステムの初期化に失敗しました。")
+                self.user_processing[self.user_id] = False
+                return
+            
+            view = await RaidBattleViewClass.create(self.ctx, player_raid_stats, boss_data, self.user_processing, self.distance)
+            await view.send_initial_embed()
+        except Exception as e:
+            await self.ctx.send(f"⚠️ レイドバトルの開始中にエラーが発生しました: {e}")
+            self.user_processing[self.user_id] = False
+            import traceback
+            traceback.print_exc()
     
     @discord.ui.button(label="続けて探索", style=discord.ButtonStyle.secondary, emoji="🚶")
     async def continue_exploration(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -867,8 +879,22 @@ class SpecialEventView(View):
                 return await self.channel.send(*args, **kwargs)
 
         fake_ctx = FakeContext(interaction)
-        view = await RaidBattleView.create(fake_ctx, player_raid_stats, boss_data, self.user_processing, self.distance)
-        await view.send_initial_embed()
+        
+        # RaidBattleViewを動的に取得して戦闘開始
+        try:
+            RaidBattleViewClass = globals().get('RaidBattleView')
+            if not RaidBattleViewClass:
+                await fake_ctx.send("⚠️ レイドバトルシステムの初期化に失敗しました。")
+                self.user_processing[self.user_id] = False
+                return
+            
+            view = await RaidBattleViewClass.create(fake_ctx, player_raid_stats, boss_data, self.user_processing, self.distance)
+            await view.send_initial_embed()
+        except Exception as e:
+            await fake_ctx.send(f"⚠️ レイドバトルの開始中にエラーが発生しました: {e}")
+            self.user_processing[self.user_id] = False
+            import traceback
+            traceback.print_exc()
 
     @button(label="📖 ストーリー", style=discord.ButtonStyle.secondary)
     async def story_event(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -3752,6 +3778,9 @@ class RaidBattleView(View):
         self.distance = distance
         self.message = None
         self.attacks_made = 0
+        self.last_attack_damage = 0
+        self.last_boss_damage = 0
+        self.last_action = None
 
     @classmethod
     async def create(cls, ctx, player_raid_stats, boss_data, user_processing, distance):
@@ -3828,6 +3857,21 @@ class RaidBattleView(View):
             inline=True
         )
 
+        if self.last_action:
+            if self.last_action == "attack":
+                embed.add_field(
+                    name="⚔️ 前回の攻撃",
+                    value=f"与えたダメージ: **{self.last_attack_damage:,}**\n"
+                          f"受けたダメージ: **{self.last_boss_damage}**",
+                    inline=False
+                )
+            elif self.last_action == "defeated":
+                embed.add_field(
+                    name="💀 戦闘不能",
+                    value="レイドHPが0になりました。\n`!raid_upgrade` で回復してから再挑戦できます。",
+                    inline=False
+                )
+
         if is_defeated:
             embed.add_field(
                 name="✅ 討伐完了！",
@@ -3896,31 +3940,23 @@ class RaidBattleView(View):
                 await self.handle_raid_victory(interaction)
                 return
 
-            # 戦闘継続
-            embed = discord.Embed(
-                title=f"⚔️ 攻撃！",
-                description=f"**{self.boss_data['name']}** に {damage:,} ダメージを与えた！\n"
-                           f"ボスの反撃で {boss_damage} ダメージを受けた！",
-                color=discord.Color.orange()
-            )
-            await interaction.followup.send(embed=embed)
+            # 攻撃情報を保存
+            self.last_attack_damage = damage
+            self.last_boss_damage = boss_damage
 
             # HP0で戦闘不能
             if new_player_hp <= 0:
-                defeat_embed = discord.Embed(
-                    title="💀 戦闘不能！",
-                    description=f"レイドHPが0になりました。\n`!raid_upgrade` で回復してから再挑戦できます。",
-                    color=discord.Color.dark_red()
-                )
-                await interaction.followup.send(embed=defeat_embed)
+                self.last_action = "defeated"
                 for item in self.children:
                     item.disabled = True
-                await self.message.edit(view=self)
+                embed = await self.create_battle_embed()
+                await self.message.edit(embed=embed, view=self)
                 if self.user_id in self.user_processing:
                     self.user_processing[self.user_id] = False
                 return
 
-            # Embed更新
+            # 戦闘継続
+            self.last_action = "attack"
             embed = await self.create_battle_embed()
             await self.message.edit(embed=embed, view=self)
 
