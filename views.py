@@ -1099,6 +1099,7 @@ class FinalBossBattleView(View):
         self.message = None
         self.user_processing = user_processing
         self.boss_stage = boss_stage
+        self._battle_lock = asyncio.Lock()
 
     @classmethod
     async def create(cls, ctx, player, boss, user_processing: dict, boss_stage: int):
@@ -1259,15 +1260,15 @@ class FinalBossBattleView(View):
                 text = f"✨ **{skill_info['name']}** を使用！（MP -{mp_cost}）\n"
 
                 if skill_info["type"] == "attack":
-                    base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.enemy["def"])
+                    base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.boss["def"])
                     skill_damage = int(base_damage * skill_info["power"])
-                    self.enemy["hp"] -= skill_damage
+                    self.boss["hp"] -= skill_damage
                     text += f"⚔️ {skill_damage} のダメージを与えた！"
 
-                    if self.enemy["hp"] <= 0:
+                    if self.boss["hp"] <= 0:
                         await db.update_player(interaction.user.id, hp=self.player["hp"])
                         distance = self.player.get("distance", 0)
-                        drop_result = game.get_enemy_drop(self.enemy["name"], distance)
+                        drop_result = game.get_enemy_drop(self.boss["name"], distance)
 
                         drop_text = ""
                         if drop_result:
@@ -1286,7 +1287,7 @@ class FinalBossBattleView(View):
                         await interaction.response.defer()
                         return
 
-                    enemy_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
+                    enemy_dmg = max(0, self.boss["atk"] + random.randint(-2, 2) - self.player["defense"])
                     self.player["hp"] -= enemy_dmg
                     self.player["hp"] = max(0, self.player["hp"])
                     text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
@@ -1672,6 +1673,7 @@ class BossBattleView(View):
         self.message = None
         self.user_processing = user_processing
         self.boss_stage = boss_stage
+        self._battle_lock = asyncio.Lock()
 
     @classmethod
     async def create(cls, ctx, player, boss, user_processing: dict, boss_stage: int):
@@ -1837,15 +1839,15 @@ class BossBattleView(View):
                 text = f"✨ **{skill_info['name']}** を使用！（MP -{mp_cost}）\n"
 
                 if skill_info["type"] == "attack":
-                    base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.enemy["def"])
+                    base_damage = max(0, self.player["attack"] + random.randint(-3, 3) - self.boss["def"])
                     skill_damage = int(base_damage * skill_info["power"])
-                    self.enemy["hp"] -= skill_damage
+                    self.boss["hp"] -= skill_damage
                     text += f"⚔️ {skill_damage} のダメージを与えた！"
 
-                    if self.enemy["hp"] <= 0:
+                    if self.boss["hp"] <= 0:
                         await db.update_player(interaction.user.id, hp=self.player["hp"])
                         distance = self.player.get("distance", 0)
-                        drop_result = game.get_enemy_drop(self.enemy["name"], distance)
+                        drop_result = game.get_enemy_drop(self.boss["name"], distance)
 
                         drop_text = ""
                         if drop_result:
@@ -1864,7 +1866,7 @@ class BossBattleView(View):
                         await interaction.response.defer()
                         return
 
-                    enemy_dmg = max(0, self.enemy["atk"] + random.randint(-2, 2) - self.player["defense"])
+                    enemy_dmg = max(0, self.boss["atk"] + random.randint(-2, 2) - self.player["defense"])
                     self.player["hp"] -= enemy_dmg
                     self.player["hp"] = max(0, self.player["hp"])
                     text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
