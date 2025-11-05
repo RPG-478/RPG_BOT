@@ -46,6 +46,9 @@ from story import StoryView
 import death_system
 from titles import get_title_rarity_emoji, RARITY_COLORS
 import raid_system
+import anti_cheat
+import admin_notifications
+import admin_anti_cheat
 
 load_dotenv()
 
@@ -88,6 +91,10 @@ def check_ban():
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
+    
+    # Setup anti-cheat admin commands
+    admin_anti_cheat.setup_admin_commands(bot)
+    print("✅ Anti-cheat admin commands loaded")
 
 
 #スタート×チュートリアル開始
@@ -232,6 +239,15 @@ async def move(ctx: commands.Context):
         if not player:
             await ctx.send("!start で冒険を始めてみてね。")
             return
+        
+        # Anti-cheat: Log command execution
+        await anti_cheat.log_command(
+            user_id=user.id,
+            command="move",
+            success=True,
+            metadata={"distance": player.get("distance", 0)},
+            bot=bot
+        )
 
         # クリア状態チェック
         if await db.is_game_cleared(user.id):

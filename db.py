@@ -1566,3 +1566,231 @@ async def get_raid_upgrade_cost(upgrade_type, user_id):
         return 1500 + (current_level * 300)
     
     return 500
+
+# ==============================
+# Anti-Cheat System
+# ==============================
+
+async def log_command(user_id: int, command: str, success: bool = True, metadata: Dict = None):
+    """コマンド実行をログに記録"""
+    from datetime import datetime, timezone
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/command_logs"
+    
+    try:
+        log_data = {
+            "user_id": str(user_id),
+            "command": command,
+            "success": success,
+            "metadata": metadata or {},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        response = await client.post(url, headers=_get_headers(), json=log_data)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Error logging command: {e}")
+        return False
+
+async def get_recent_command_logs(user_id: int, limit: int = 100) -> List[Dict]:
+    """最近のコマンドログを取得"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/command_logs"
+    
+    try:
+        params = {
+            "user_id": f"eq.{str(user_id)}",
+            "select": "*",
+            "order": "timestamp.desc",
+            "limit": limit
+        }
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        
+        # Convert timestamp strings to datetime objects
+        from datetime import datetime
+        logs = response.json()
+        for log in logs:
+            if "timestamp" in log and isinstance(log["timestamp"], str):
+                log["timestamp"] = datetime.fromisoformat(log["timestamp"].replace('Z', '+00:00'))
+        
+        return logs
+    except Exception as e:
+        logger.error(f"Error getting command logs: {e}")
+        return []
+
+async def get_total_command_count(user_id: int) -> int:
+    """総コマンド実行数を取得"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/command_logs"
+    
+    try:
+        params = {
+            "user_id": f"eq.{str(user_id)}",
+            "select": "id"
+        }
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        return len(response.json())
+    except Exception as e:
+        logger.error(f"Error getting command count: {e}")
+        return 0
+
+async def log_anti_cheat_event(user_id: int, event_type: str, severity: str, score: int, details: Dict = None):
+    """アンチチートイベントをログに記録"""
+    from datetime import datetime, timezone
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/anti_cheat_logs"
+    
+    try:
+        event_data = {
+            "user_id": str(user_id),
+            "event_type": event_type,
+            "severity": severity,
+            "anomaly_score": score,
+            "details": details or {},
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        response = await client.post(url, headers=_get_headers(), json=event_data)
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Error logging anti-cheat event: {e}")
+        return False
+
+async def get_recent_anti_cheat_logs(user_id: int, limit: int = 10) -> List[Dict]:
+    """最近のアンチチートログを取得"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/anti_cheat_logs"
+    
+    try:
+        params = {
+            "user_id": f"eq.{str(user_id)}",
+            "select": "*",
+            "order": "timestamp.desc",
+            "limit": limit
+        }
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error(f"Error getting anti-cheat logs: {e}")
+        return []
+
+async def update_behavior_stats(user_id: int):
+    """ユーザーの行動統計を更新"""
+    from datetime import datetime, timezone, timedelta
+    client = await get_client()
+    
+    try:
+        # 既存の統計を取得
+        stats = await get_user_behavior_stats(user_id)
+        player = await get_player(user_id)
+        
+        if not player:
+            return False
+        
+        # 最近1時間のコマンドログを取得してセッション時間を計算
+        recent_logs = await get_recent_command_logs(user_id, limit=1000)
+        
+        # セッション開始時刻を計算（最後のコマンドから1時間以上空いていたら新セッション）
+        now = datetime.now(timezone.utc)
+        session_start = None
+        
+        if recent_logs:
+            # 最新のログから古い方へ遡って、1時間以上の空白を探す
+            last_timestamp = None
+            for log in recent_logs:
+                current_time = log["timestamp"]
+                if last_timestamp and (last_timestamp - current_time) > timedelta(hours=1):
+                    session_start = last_timestamp
+                    break
+                last_timestamp = current_time
+            
+            # 空白が見つからなかった場合は一番古いログから
+            if not session_start and recent_logs:
+                session_start = recent_logs[-1]["timestamp"]
+        
+        # セッション時間を計算
+        if session_start:
+            session_duration = now - session_start
+            session_hours = session_duration.total_seconds() / 3600
+        else:
+            session_hours = 0
+        
+        # 統計データを更新
+        url = f"{config.SUPABASE_URL}/rest/v1/user_behavior_stats"
+        
+        stats_data = {
+            "user_id": str(user_id),
+            "total_commands": await get_total_command_count(user_id),
+            "current_session_hours": session_hours,
+            "unused_upgrade_points": player.get("upgrade_points", 0),
+            "has_equipment": bool(player.get("equipped_weapon") or player.get("equipped_armor")),
+            "last_active": now.isoformat(),
+            "last_updated": now.isoformat()
+        }
+        
+        if stats:
+            # 更新
+            params = {"user_id": f"eq.{str(user_id)}"}
+            response = await client.patch(url, headers=_get_headers(), params=params, json=stats_data)
+        else:
+            # 新規作成
+            response = await client.post(url, headers=_get_headers(), json=stats_data)
+        
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Error updating behavior stats: {e}")
+        return False
+
+async def get_user_behavior_stats(user_id: int) -> Optional[Dict]:
+    """ユーザーの行動統計を取得"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/user_behavior_stats"
+    
+    try:
+        params = {
+            "user_id": f"eq.{str(user_id)}",
+            "select": "*"
+        }
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+        return data[0] if data else None
+    except Exception as e:
+        logger.error(f"Error getting behavior stats: {e}")
+        return None
+
+async def ban_player(user_id: int, reason: str = "Violation of Terms"):
+    """プレイヤーをBANする"""
+    from datetime import datetime, timezone
+    
+    try:
+        await update_player(user_id, is_banned=True, ban_reason=reason)
+        
+        # BANログを記録
+        await log_anti_cheat_event(
+            user_id=user_id,
+            event_type="banned",
+            severity="critical",
+            score=100,
+            details={"reason": reason, "banned_at": datetime.now(timezone.utc).isoformat()}
+        )
+        
+        logger.warning(f"Banned user {user_id}: {reason}")
+        return True
+    except Exception as e:
+        logger.error(f"Error banning user {user_id}: {e}")
+        return False
+
+async def unban_player(user_id: int):
+    """プレイヤーのBANを解除"""
+    try:
+        await update_player(user_id, is_banned=False, ban_reason=None)
+        logger.info(f"Unbanned user {user_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Error unbanning user {user_id}: {e}")
+        return False

@@ -8,3 +8,5 @@ discord.py
 httpx
 python-dotenv
 supabase
+discord.py
+python-dotenv
