@@ -3,6 +3,7 @@ Admin Notification System
 Sends alerts to admin channel for anti-cheat events
 """
 import discord
+from discord.ext import commands
 import logging
 from typing import Optional
 
@@ -11,7 +12,7 @@ logger = logging.getLogger("rpgbot")
 # Admin notification channel ID
 ADMIN_CHANNEL_ID = 1423275896445603953
 
-async def send_admin_alert(bot: discord.Bot, alert_type: str, user_id: int, details: dict):
+async def send_admin_alert(bot: commands.Bot, alert_type: str, user_id: int, details: dict):
     """
     Send an alert to the admin channel
     
@@ -25,6 +26,11 @@ async def send_admin_alert(bot: discord.Bot, alert_type: str, user_id: int, deta
         admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
         if not admin_channel:
             logger.error(f"Admin channel {ADMIN_CHANNEL_ID} not found")
+            return False
+        
+        # Type check for text channel
+        if not isinstance(admin_channel, discord.TextChannel):
+            logger.error(f"Admin channel {ADMIN_CHANNEL_ID} is not a text channel")
             return False
         
         # Create embed based on alert type
