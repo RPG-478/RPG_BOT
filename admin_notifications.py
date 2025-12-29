@@ -10,8 +10,7 @@ from discord.ext import commands
 
 logger = logging.getLogger("rpgbot")
 
-# Admin notification channel ID
-ADMIN_CHANNEL_ID = 1423275896445603953
+from runtime_settings import ADMIN_NOTIFICATION_CHANNEL_ID
 
 async def send_admin_alert(bot: commands.Bot, alert_type: str, user_id: int, details: dict):
     """
@@ -24,14 +23,18 @@ async def send_admin_alert(bot: commands.Bot, alert_type: str, user_id: int, det
         details: Dictionary with alert details
     """
     try:
-        admin_channel = bot.get_channel(ADMIN_CHANNEL_ID)
+        if not ADMIN_NOTIFICATION_CHANNEL_ID:
+            logger.error("ADMIN_NOTIFICATION_CHANNEL_ID is not set")
+            return False
+
+        admin_channel = bot.get_channel(ADMIN_NOTIFICATION_CHANNEL_ID)
         if not admin_channel:
-            logger.error(f"Admin channel {ADMIN_CHANNEL_ID} not found")
+            logger.error(f"Admin channel {ADMIN_NOTIFICATION_CHANNEL_ID} not found")
             return False
         
         # Type check for text channel
         if not isinstance(admin_channel, discord.TextChannel):
-            logger.error(f"Admin channel {ADMIN_CHANNEL_ID} is not a text channel")
+            logger.error(f"Admin channel {ADMIN_NOTIFICATION_CHANNEL_ID} is not a text channel")
             return False
         
         # Create embed based on alert type

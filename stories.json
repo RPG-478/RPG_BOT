@@ -1,0 +1,148 @@
+{
+  "stories": {
+    "test_branch": {
+      "title": "テスト：分岐と条件",
+      "start_node": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            {"speaker": "ナレーション", "text": "薄暗い通路に出た。前方に扉、足元に何か落ちている。"},
+            {"speaker": "冒険者", "text": "……これは鍵か？"}
+          ],
+          "choices": [
+            {
+              "label": "鍵を拾う",
+              "effects": [
+                {"type": "inventory.add", "item": "古い鍵"}
+              ],
+              "result": {
+                "title": "拾得",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "古びた鍵を手に入れた。"}
+                ]
+              },
+              "next": {"node": "door"}
+            },
+            {
+              "label": "そのまま扉へ向かう",
+              "result": {
+                "title": "前進",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "あなたは扉の前に立った。"}
+                ]
+              },
+              "next": {"node": "door"}
+            }
+          ]
+        },
+
+        "door": {
+          "lines": [
+            {"speaker": "ナレーション", "text": "重そうな扉だ。鍵穴がある。"}
+          ],
+          "choices": [
+            {
+              "label": "古い鍵で開ける（鍵が必要）",
+              "conditions": [
+                {"type": "inventory.has", "item": "古い鍵"}
+              ],
+              "effects": [
+                {"type": "inventory.remove", "item": "古い鍵"},
+                {"type": "flag.set", "key": "test_door_opened"}
+              ],
+              "result": {
+                "title": "解錠",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "鍵がぴたりとはまり、扉が開いた。"}
+                ]
+              },
+              "next": {"node": "treasure"}
+            },
+            {
+              "label": "引き返す",
+              "result": {
+                "title": "撤退",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "今は無理をしない方がいい。"}
+                ]
+              },
+              "next": {"end": true}
+            }
+          ]
+        },
+
+        "treasure": {
+          "lines": [
+            {"speaker": "ナレーション", "text": "扉の先には小さな部屋があった。宝箱が置かれている。"}
+          ],
+          "choices": [
+            {
+              "label": "宝箱を開ける",
+              "effects": [
+                {"type": "gold.add", "amount": 200},
+                {"type": "player.heal", "hp": 10}
+              ],
+              "result": {
+                "title": "獲得",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "中には少しのゴールドと回復薬が入っていた。"}
+                ]
+              },
+              "next": {"story_id": "test_followup"}
+            },
+            {
+              "label": "何もしないで立ち去る",
+              "result": {
+                "title": "立ち去る",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "あなたは静かに部屋を後にした。"}
+                ]
+              },
+              "next": {"end": true}
+            }
+          ]
+        }
+      }
+    },
+
+    "test_followup": {
+      "title": "テスト：フラグ分岐",
+      "start_node": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            {"speaker": "ナレーション", "text": "少し進むと、分かれ道に出た。"}
+          ],
+          "choices": [
+            {
+              "label": "（フラグあり）隠し通路へ",
+              "conditions": [
+                {"type": "flag.has", "key": "test_door_opened"}
+              ],
+              "effects": [
+                {"type": "gold.add", "amount": 50}
+              ],
+              "result": {
+                "title": "発見",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "扉を開けた者だけが知る印が、壁に残っていた。"}
+                ]
+              },
+              "next": {"end": true}
+            },
+            {
+              "label": "普通の道へ",
+              "result": {
+                "title": "通常",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "あなたは通常の道を進んだ。"}
+                ]
+              },
+              "next": {"end": true}
+            }
+          ]
+        }
+      }
+    }
+  }
+}

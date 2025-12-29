@@ -20,7 +20,7 @@ logger = logging.getLogger("rpgbot")
 # ==============================
 # 管理者ID定義
 # ==============================
-ADMIN_IDS = [1301416493401243694, 785051117323026463]
+from runtime_settings import DEBUG_ADMIN_IDS as ADMIN_IDS
 
 # ==============================
 # エラーログストレージ

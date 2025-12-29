@@ -1,3 +1,12 @@
+# Ignore environment file with secrets
+.env
+
+# Python cache
+__pycache__/
+.pytest_cache/
+
+# Byte-compiled / optimized / DLL files
+*.py[cod]
 # Python
 __pycache__/
 *.py[cod]

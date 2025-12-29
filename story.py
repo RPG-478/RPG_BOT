@@ -1,5 +1,240 @@
 import discord
 from discord.ui import View, button
+import json
+from pathlib import Path
+from typing import Any, Optional
+
+
+_EXTERNAL_STORIES_CACHE: Optional[dict[str, Any]] = None
+
+
+def _load_external_stories() -> dict[str, Any]:
+    """外部JSONからストーリーを読み込む。
+
+    - `stories.json` (プロジェクトルート/このファイルと同階層) をサポート
+    - `stories/*.json` もあればマージ
+    """
+    global _EXTERNAL_STORIES_CACHE
+    if _EXTERNAL_STORIES_CACHE is not None:
+        return _EXTERNAL_STORIES_CACHE
+
+    merged: dict[str, Any] = {}
+    base_dir = Path(__file__).resolve().parent
+
+    def load_one(path: Path) -> None:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            print(f"⚠️ ストーリーJSONの読み込みに失敗: {path} ({e})")
+            return
+
+        stories = data.get("stories") if isinstance(data, dict) else None
+        if not isinstance(stories, dict):
+            print(f"⚠️ ストーリーJSON形式が不正: {path}（トップレベルに 'stories' dict が必要）")
+            return
+
+        for story_id, story_def in stories.items():
+            if isinstance(story_id, str) and isinstance(story_def, dict):
+                merged[story_id] = story_def
+
+    # 1) stories.json
+    top = base_dir / "stories.json"
+    if top.exists():
+        load_one(top)
+
+    # 2) stories/*.json
+    stories_dir = base_dir / "stories"
+    if stories_dir.exists() and stories_dir.is_dir():
+        for p in sorted(stories_dir.glob("*.json")):
+            load_one(p)
+
+    _EXTERNAL_STORIES_CACHE = merged
+    return merged
+
+
+def _normalize_story_definition(raw: dict[str, Any]) -> dict[str, Any]:
+    """外部JSON/内部辞書のストーリー定義を共通フォーマットに正規化する。"""
+    title = str(raw.get("title") or "不明なストーリー")
+    loop_requirement = int(raw.get("loop_requirement") or 0)
+    start_node = str(raw.get("start_node") or "start")
+
+    nodes = raw.get("nodes")
+    if isinstance(nodes, dict) and nodes:
+        # nodes形式
+        normalized_nodes: dict[str, Any] = {}
+        for node_id, node_def in nodes.items():
+            if not isinstance(node_id, str) or not isinstance(node_def, dict):
+                continue
+            lines = node_def.get("lines")
+            if not isinstance(lines, list):
+                lines = []
+            normalized_nodes[node_id] = {
+                "lines": lines,
+                "choices": node_def.get("choices"),
+            }
+        if start_node not in normalized_nodes:
+            # 最低限startノードを用意
+            normalized_nodes[start_node] = {"lines": [], "choices": None}
+        return {
+            "title": title,
+            "loop_requirement": loop_requirement,
+            "start_node": start_node,
+            "nodes": normalized_nodes,
+        }
+
+    # 従来形式: lines が直下
+    lines = raw.get("lines")
+    if not isinstance(lines, list):
+        lines = []
+    return {
+        "title": title,
+        "loop_requirement": loop_requirement,
+        "start_node": "start",
+        "nodes": {
+            "start": {
+                "lines": lines,
+                "choices": raw.get("choices"),
+            }
+        },
+    }
+
+
+def get_story_definition(story_id: str) -> dict[str, Any]:
+    """story_id からストーリー定義を取得（外部JSON優先、無ければ STORY_DATA）。"""
+    ext = _load_external_stories()
+    raw = ext.get(story_id)
+    if isinstance(raw, dict):
+        return _normalize_story_definition(raw)
+
+    raw2 = STORY_DATA.get(story_id)
+    if isinstance(raw2, dict):
+        return _normalize_story_definition(raw2)
+
+    return _normalize_story_definition({"title": "不明なストーリー", "lines": [{"speaker": "システム", "text": "ストーリーが見つかりません。"}]})
+
+
+async def _story_get_state(user_id: int) -> dict[str, Any]:
+    import db
+    player = await db.get_player(user_id)
+    return player or {}
+
+
+async def _eval_conditions(user_id: int, conditions: Any) -> bool:
+    """条件リストを評価（全て満たしたらTrue）。未指定/不正はTrue扱い。"""
+    if not conditions:
+        return True
+    if not isinstance(conditions, list):
+        return True
+
+    state = await _story_get_state(user_id)
+    story_flags = state.get("story_flags", {}) if isinstance(state.get("story_flags", {}), dict) else {}
+    inventory = state.get("inventory", []) if isinstance(state.get("inventory", []), list) else []
+    gold = int(state.get("gold", 0) or 0)
+
+    for cond in conditions:
+        if not isinstance(cond, dict):
+            continue
+        ctype = cond.get("type")
+        if ctype == "flag.has":
+            key = str(cond.get("key") or "")
+            if not story_flags.get(key, False):
+                return False
+        elif ctype == "flag.missing":
+            key = str(cond.get("key") or "")
+            if story_flags.get(key, False):
+                return False
+        elif ctype == "inventory.has":
+            item = str(cond.get("item") or "")
+            if item and item not in inventory:
+                return False
+        elif ctype == "inventory.missing":
+            item = str(cond.get("item") or "")
+            if item and item in inventory:
+                return False
+        elif ctype == "gold.gte":
+            amount = int(cond.get("amount") or 0)
+            if gold < amount:
+                return False
+        else:
+            # 未知条件は無視（後方互換・段階導入のため）
+            continue
+    return True
+
+
+async def _apply_effects(user_id: int, effects: Any) -> str:
+    """effects を適用し、表示用のテキストを返す。"""
+    if not effects:
+        return ""
+    if not isinstance(effects, list):
+        return ""
+
+    import db
+    state = await _story_get_state(user_id)
+    story_flags = state.get("story_flags", {}) if isinstance(state.get("story_flags", {}), dict) else {}
+
+    reward_lines: list[str] = []
+
+    for eff in effects:
+        if not isinstance(eff, dict):
+            continue
+        etype = eff.get("type")
+
+        if etype == "inventory.add":
+            item = str(eff.get("item") or "")
+            if item:
+                await db.add_item_to_inventory(user_id, item)
+                reward_lines.append(f"📦 **{item}** を手に入れた！")
+
+        elif etype == "inventory.remove":
+            item = str(eff.get("item") or "")
+            if item:
+                await db.remove_item_from_inventory(user_id, item)
+                reward_lines.append(f"📦 **{item}** を失った…")
+
+        elif etype == "gold.add":
+            amount = int(eff.get("amount") or 0)
+            if amount:
+                await db.add_gold(user_id, amount)
+                sign = "+" if amount > 0 else ""
+                reward_lines.append(f"💰 {sign}{amount}G")
+
+        elif etype == "player.heal":
+            hp = int(eff.get("hp") or 0)
+            mp = int(eff.get("mp") or 0)
+            player = await db.get_player(user_id)
+            if player:
+                updates = {}
+                if hp:
+                    max_hp = int(player.get("max_hp", 50) or 50)
+                    cur_hp = int(player.get("hp", 50) or 50)
+                    new_hp = min(max_hp, cur_hp + hp)
+                    updates["hp"] = new_hp
+                    reward_lines.append(f"💚 HP +{hp}")
+                if mp:
+                    max_mp = int(player.get("max_mp", 20) or 20)
+                    cur_mp = int(player.get("mp", 20) or 20)
+                    new_mp = min(max_mp, cur_mp + mp)
+                    updates["mp"] = new_mp
+                    reward_lines.append(f"💙 MP +{mp}")
+                if updates:
+                    await db.update_player(user_id, **updates)
+
+        elif etype == "flag.set":
+            key = str(eff.get("key") or "")
+            if key:
+                story_flags[key] = True
+                await db.update_player(user_id, story_flags=story_flags)
+
+        elif etype == "flag.clear":
+            key = str(eff.get("key") or "")
+            if key and key in story_flags:
+                story_flags.pop(key, None)
+                await db.update_player(user_id, story_flags=story_flags)
+
+        else:
+            continue
+
+    return "\n".join(reward_lines)
 
 STORY_DATA = {
     "voice_1": {
@@ -6177,7 +6412,7 @@ STORY_DATA = {
 }
 
 class StoryView(View):
-    def __init__(self, user_id: int, story_id: str, user_processing: dict, callback_data: dict = None):
+    def __init__(self, user_id: int, story_id: str, user_processing: dict, callback_data: dict = None, node_id: str = None):
         super().__init__(timeout=300)
         self.user_id = user_id
         self.story_id = story_id
@@ -6186,15 +6421,19 @@ class StoryView(View):
         self.callback_data = callback_data
         self.ctx = None
 
-        story = STORY_DATA.get(story_id)
-        if not story:
-            self.story_title = "不明なストーリー"
-            self.story_lines = [{"speaker": "システム", "text": "ストーリーが見つかりません。"}]
-            self.choices = None
-        else:
-            self.story_title = story["title"]
-            self.story_lines = story["lines"]
-            self.choices = story.get("choices")  # 選択肢があれば取得
+        story = get_story_definition(story_id)
+        self.story_title = story["title"]
+        self._story_def = story
+        self.current_node_id = node_id or story.get("start_node", "start")
+        self._load_current_node()
+
+    def _load_current_node(self):
+        node = self._story_def.get("nodes", {}).get(self.current_node_id)
+        if not isinstance(node, dict):
+            node = {"lines": [{"speaker": "システム", "text": "ストーリーが見つかりません。"}], "choices": None}
+        self.story_lines = node.get("lines") if isinstance(node.get("lines"), list) else [{"speaker": "システム", "text": "ストーリーが見つかりません。"}]
+        self.choices = node.get("choices")
+        self.current_page = 0
 
     def get_embed(self):
         if self.current_page >= len(self.story_lines):
@@ -6253,7 +6492,21 @@ class StoryView(View):
 
             # 選択肢がある場合は選択Viewを表示
             if self.choices:
-                choice_view = StoryChoiceView(self.user_id, self.story_id, self.choices, self.user_processing, self.ctx)
+                choice_view = await StoryChoiceView.create(
+                    self.user_id,
+                    self.story_id,
+                    self.current_node_id,
+                    self._story_def,
+                    self.choices,
+                    self.user_processing,
+                    self.ctx,
+                    callback_data=self.callback_data,
+                )
+
+                # 条件に合致する選択肢が1つもない場合は完了扱い
+                if getattr(choice_view, "_visible_choice_count", 0) <= 0:
+                    await self._finish_story(interaction)
+                    return
                 embed = discord.Embed(
                     title=f"🔮 {self.story_title}",
                     description="どちらを選びますか？",
@@ -6263,82 +6516,111 @@ class StoryView(View):
                 return
 
             # 選択肢がない場合は通常通り完了
-            await db.set_story_flag(self.user_id, self.story_id)
+            await self._finish_story(interaction)
 
-            embed = discord.Embed(
-                title="📘 ストーリー完了！",
-                description="物語が一区切りついた。冒険を続けよう。",
-                color=discord.Color.green()
-            )
-            await interaction.response.edit_message(embed=embed, view=None)
+    async def _finish_story(self, interaction: discord.Interaction):
+        import db
 
-            if self.callback_data and self.callback_data.get('type') == 'boss_battle':
-                import asyncio
-                await asyncio.sleep(1.5)
+        await db.set_story_flag(self.user_id, self.story_id)
 
-                import game
-                from views import BossBattleView, FinalBossBattleView
+        embed = discord.Embed(
+            title="📘 ストーリー完了！",
+            description="物語が一区切りついた。冒険を続けよう。",
+            color=discord.Color.green()
+        )
+        await interaction.response.edit_message(embed=embed, view=None)
 
-                boss_stage = self.callback_data['boss_stage']
-                ctx = self.callback_data['ctx']
+        # boss_battle コールバック互換
+        if self.callback_data and self.callback_data.get('type') == 'boss_battle':
+            import asyncio
+            await asyncio.sleep(1.5)
 
-                boss = game.get_boss(boss_stage)
-                if boss:
-                    player = await db.get_player(self.user_id)
-                    player_data = {
-                        "hp": player.get("hp", 50),
-                        "attack": player.get("atk", 5),
-                        "defense": player.get("def", 2),
-                        "inventory": player.get("inventory", []),
-                        "distance": player.get("distance", 0),
-                        "user_id": self.user_id
-                    }
+            import game
+            from views import BossBattleView, FinalBossBattleView
 
-                    if boss_stage == 10:
-                        embed = discord.Embed(
-                            title="⚔️ ラスボス出現！",
-                            description=f"**{boss['name']}** が最後の戦いに臨む！\n\nこれが最終決戦だ…！",
-                            color=discord.Color.dark_gold()
-                        )
-                        await ctx.channel.send(embed=embed)
-                        await asyncio.sleep(2)
+            boss_stage = self.callback_data['boss_stage']
+            ctx = self.callback_data['ctx']
 
-                        view = await FinalBossBattleView.create(ctx, player_data, boss, self.user_processing, boss_stage)
-                        await view.send_initial_embed()
-                    else:
-                        embed = discord.Embed(
-                            title="⚠️ ボス出現！",
-                            description=f"**{boss['name']}** が立ちはだかる！",
-                            color=discord.Color.dark_red()
-                        )
-                        await ctx.channel.send(embed=embed)
-                        await asyncio.sleep(1.5)
+            boss = game.get_boss(boss_stage)
+            if boss:
+                player = await db.get_player(self.user_id)
+                player_data = {
+                    "hp": player.get("hp", 50),
+                    "attack": player.get("atk", 5),
+                    "defense": player.get("def", 2),
+                    "inventory": player.get("inventory", []),
+                    "distance": player.get("distance", 0),
+                    "user_id": self.user_id
+                }
 
-                        view = await BossBattleView.create(ctx, player_data, boss, self.user_processing, boss_stage)
-                        await view.send_initial_embed()
-            else:
-                if self.user_id in self.user_processing:
-                    self.user_processing[self.user_id] = False
+                if boss_stage == 10:
+                    embed = discord.Embed(
+                        title="⚔️ ラスボス出現！",
+                        description=f"**{boss['name']}** が最後の戦いに臨む！\n\nこれが最終決戦だ…！",
+                        color=discord.Color.dark_gold()
+                    )
+                    await ctx.channel.send(embed=embed)
+                    await asyncio.sleep(2)
+
+                    view = await FinalBossBattleView.create(ctx, player_data, boss, self.user_processing, boss_stage)
+                    await view.send_initial_embed()
+                else:
+                    embed = discord.Embed(
+                        title="⚠️ ボス出現！",
+                        description=f"**{boss['name']}** が立ちはだかる！",
+                        color=discord.Color.dark_red()
+                    )
+                    await ctx.channel.send(embed=embed)
+                    await asyncio.sleep(1.5)
+
+                    view = await BossBattleView.create(ctx, player_data, boss, self.user_processing, boss_stage)
+                    await view.send_initial_embed()
+        else:
+            if self.user_id in self.user_processing:
+                self.user_processing[self.user_id] = False
 
 
 class StoryChoiceView(View):
     """ストーリー選択肢View"""
-    def __init__(self, user_id: int, story_id: str, choices: list, user_processing: dict, ctx):
+    def __init__(self, user_id: int, story_id: str, node_id: str, story_def: dict, choices: list, user_processing: dict, ctx, callback_data: dict = None):
         super().__init__(timeout=300)
         self.user_id = user_id
         self.story_id = story_id
+        self.node_id = node_id
+        self.story_def = story_def
         self.choices = choices
         self.user_processing = user_processing
         self.ctx = ctx
+        self.callback_data = callback_data
 
+        self._visible_choice_count: int = 0
+
+    @classmethod
+    async def create(cls, user_id: int, story_id: str, node_id: str, story_def: dict, choices: list, user_processing: dict, ctx, callback_data: dict = None) -> "StoryChoiceView":
+        view = cls(user_id, story_id, node_id, story_def, choices, user_processing, ctx, callback_data=callback_data)
+
+        visible_idx: list[int] = []
         for idx, choice in enumerate(choices):
+            if not isinstance(choice, dict):
+                visible_idx.append(idx)
+                continue
+            if await _eval_conditions(user_id, choice.get("conditions")):
+                visible_idx.append(idx)
+
+        view._visible_choice_count = len(visible_idx)
+
+        for button_pos, idx in enumerate(visible_idx):
+            choice = choices[idx]
+            label = str(choice.get("label") or f"choice_{idx}") if isinstance(choice, dict) else f"choice_{idx}"
             btn = discord.ui.Button(
-                label=choice["label"],
-                style=discord.ButtonStyle.primary if idx == 0 else discord.ButtonStyle.secondary,
+                label=label,
+                style=discord.ButtonStyle.primary if button_pos == 0 else discord.ButtonStyle.secondary,
                 custom_id=f"choice_{idx}"
             )
-            btn.callback = self.create_choice_callback(idx)
-            self.add_item(btn)
+            btn.callback = view.create_choice_callback(idx)
+            view.add_item(btn)
+
+        return view
 
     def create_choice_callback(self, choice_idx):
         async def callback(interaction: discord.Interaction):
@@ -6351,120 +6633,93 @@ class StoryChoiceView(View):
             import random
 
             choice = self.choices[choice_idx]
-            result = choice["result"]
+            if not isinstance(choice, dict):
+                await interaction.response.send_message("⚠️ 選択肢データが不正です", ephemeral=True)
+                return
 
-            lines_text = "\n".join([f"**{line['speaker']}**：{line['text']}" for line in result["lines"]])
+            # 条件チェック（満たさない場合は弾く）
+            if not await _eval_conditions(self.user_id, choice.get("conditions")):
+                await interaction.response.send_message("⚠️ 条件を満たしていないため、その選択肢は選べません", ephemeral=True)
+                return
+
+            result = choice.get("result") if isinstance(choice.get("result"), dict) else {}
+            result_title = str(result.get("title") or "結果")
+            result_lines = result.get("lines") if isinstance(result.get("lines"), list) else []
+
+            if result_lines:
+                lines_text = "\n".join([f"**{line.get('speaker','???')}**：{line.get('text','')}" for line in result_lines if isinstance(line, dict)])
+            else:
+                lines_text = ""
 
             embed = discord.Embed(
-                title=f"✨ {result['title']}",
-                description=lines_text,
+                title=f"✨ {result_title}",
+                description=lines_text or "（……）",
                 color=discord.Color.gold()
             )
 
-            reward_text = ""
+            # 1) 新方式: effects
+            reward_text = await _apply_effects(self.user_id, choice.get("effects"))
+
+            # 2) 互換: 旧方式 reward（従来のハードコード報酬）
             player = await db.get_player(self.user_id)
-
-            if result.get("reward") == "hp_restore":
-                max_hp = player.get("max_hp", 50)
-                heal_amount = int(max_hp * 1)
-                new_hp = min(max_hp, player.get("hp", 50) + heal_amount)
-                await db.update_player(self.user_id, hp=new_hp)
-                reward_text = f"\n\n💚 HP +{heal_amount} 回復！"
-
-            elif result.get("reward") == "weapon_drop":
-                weapons = [w for w, info in game.ITEMS_DATABASE.items() if info.get('type') == 'weapon']
-                if weapons:
-                    weapon = random.choice(weapons)
-                    await db.add_item_to_inventory(self.user_id, weapon)
-                    reward_text = f"\n\n⚔️ **{weapon}** を手に入れた！"
-
-            elif result.get("reward") == "item_drop":
-                gold_cost = result.get("gold_cost", 0)
-                current_gold = player.get("gold", 0)
-
-                if current_gold >= gold_cost:
-                    items = list(game.ITEMS_DATABASE.keys())
-                    item = random.choice(items)
-                    await db.add_item_to_inventory(self.user_id, item)
-                    await db.add_gold(self.user_id, -gold_cost)
-                    reward_text = f"\n\n💰 -{gold_cost}G\n📦 **{item}** を手に入れた！"
-                else:
-                    reward_text = f"\n\n💸 ゴールドが足りない…（必要: {gold_cost}G）"
-
-            elif result.get("reward") == "small_gold":
-                gold_amount = random.randint(50, 100)
-                await db.add_gold(self.user_id, gold_amount)
-                reward_text = f"\n\n💰 {gold_amount}G を手に入れた！"
-
-            elif result.get("reward") == "rare_item_with_damage":
-                rare_items = [w for w, info in game.ITEMS_DATABASE.items() if info.get('attack', 0) >= 20 or info.get('defense', 0) >= 15]
-                if rare_items:
-                    item = random.choice(rare_items)
-                    await db.add_item_to_inventory(self.user_id, item)
-                    damage = random.randint(10, 20)
-                    new_hp = max(1, player.get("hp", 50) - damage)
+            if isinstance(result, dict) and result.get("reward"):
+                if result.get("reward") == "hp_restore":
+                    max_hp = player.get("max_hp", 50)
+                    heal_amount = int(max_hp * 1)
+                    new_hp = min(max_hp, player.get("hp", 50) + heal_amount)
                     await db.update_player(self.user_id, hp=new_hp)
-                    reward_text = f"\n\n📦 **{item}** を手に入れた！\n💔 HP -{damage}"
+                    reward_text = (reward_text + "\n" if reward_text else "") + f"💚 HP +{heal_amount} 回復！"
+                elif result.get("reward") == "weapon_drop":
+                    weapons = [w for w, info in game.ITEMS_DATABASE.items() if info.get('type') == 'weapon']
+                    if weapons:
+                        weapon = random.choice(weapons)
+                        await db.add_item_to_inventory(self.user_id, weapon)
+                        reward_text = (reward_text + "\n" if reward_text else "") + f"⚔️ **{weapon}** を手に入れた！"
+                elif result.get("reward") == "small_gold":
+                    gold_amount = random.randint(50, 100)
+                    await db.add_gold(self.user_id, gold_amount)
+                    reward_text = (reward_text + "\n" if reward_text else "") + f"💰 {gold_amount}G を手に入れた！"
 
-            elif result.get("reward") == "max_hp_boost":
-                gold_cost = result.get("gold_cost", 0)
-                current_gold = player.get("gold", 0)
-
-                if current_gold >= gold_cost:
-                    current_max_hp = player.get("max_hp", 50)
-                    new_max_hp = current_max_hp + 20
-                    await db.update_player(self.user_id, max_hp=new_max_hp)
-                    await db.add_gold(self.user_id, -gold_cost)
-                    reward_text = f"\n\n💰 -{gold_cost}G\n❤️ 最大HP +20！（{current_max_hp} → {new_max_hp}）"
-                else:
-                    reward_text = f"\n\n💸 ゴールドが足りない…（必要: {gold_cost}G）"
-
-            elif result.get("reward") == "legendary_item":
-                legendary_items = [w for w, info in game.ITEMS_DATABASE.items() if info.get('attack', 0) >= 30 or info.get('defense', 0) >= 25]
-                if legendary_items:
-                    item = random.choice(legendary_items)
-                    await db.add_item_to_inventory(self.user_id, item)
-                    reward_text = f"\n\n✨ 伝説の **{item}** を手に入れた！"
-
-            elif result.get("reward") == "gold_with_damage":
-                gold_amount = random.randint(200, 400)
-                await db.add_gold(self.user_id, gold_amount)
-                damage = random.randint(10, 20)
-                new_hp = max(1, player.get("hp", 50) - damage)
-                await db.update_player(self.user_id, hp=new_hp)
-                reward_text = f"\n\n💰 {gold_amount}G を手に入れた！\n💔 HP -{damage}"
-
-            elif result.get("reward") == "mp_restore":
-                max_mp = player.get("max_mp", 20)
-                heal_amount = int(max_mp * 1)
-                new_mp = min(max_mp, player.get("mp", 20) + heal_amount)
-                await db.update_player(self.user_id, mp=new_mp)
-                reward_text = f"\n\n💙 MP +{heal_amount} 回復！"
-
-            elif result.get("reward") == "defense_boost":
-                def_boost = random.randint(1, 3)
-                current_def = player.get("def", 5)
-                await db.update_player(self.user_id, def_=current_def + def_boost)
-                reward_text = f"\n\n🛡️ 防御力 +{def_boost}！（{current_def} → {current_def + def_boost}）"
-
-            elif result.get("reward") == "attack_boost":
-                atk_boost = random.randint(3, 5)
-                current_atk = player.get("atk", 10)
-                await db.update_player(self.user_id, atk=current_atk + atk_boost)
-                reward_text = f"\n\n⚔️ 攻撃力 +{atk_boost}！（{current_atk} → {current_atk + atk_boost}）"
-
-            elif result.get("reward") == "full_heal":
-                max_hp = player.get("max_hp", 100)
-                max_mp = player.get("max_mp", 100)
-                await db.update_player(self.user_id, hp=max_hp, mp=max_mp)
-                reward_text = f"\n\n✨ HP・MP完全回復！"
-
-            embed.description += reward_text
+            if reward_text:
+                embed.description += "\n\n" + reward_text
 
             await interaction.response.edit_message(embed=embed, view=None)
 
+            # 現ストーリーは既読扱いにする（従来互換）
             await db.set_story_flag(self.user_id, self.story_id)
 
+            # 次への分岐（任意）
+            nxt = choice.get("next") if isinstance(choice.get("next"), dict) else None
+            if nxt:
+                import asyncio
+                await asyncio.sleep(1.0)
+
+                next_story_id = nxt.get("story_id")
+                next_node_id = nxt.get("node")
+                end = bool(nxt.get("end"))
+
+                if end:
+                    # 完全終了
+                    if self.callback_data and self.callback_data.get('type') == 'boss_battle':
+                        # boss_pre等で使う場合に備え、終了後はStoryView側のfinishに寄せたいが、互換優先で単純に解除
+                        pass
+                    if self.user_id in self.user_processing:
+                        self.user_processing[self.user_id] = False
+                    return
+
+                # story_id指定があれば別ストーリーへ
+                if isinstance(next_story_id, str) and next_story_id:
+                    view = StoryView(self.user_id, next_story_id, self.user_processing, node_id=str(next_node_id) if next_node_id else None)
+                    await view.send_story(self.ctx)
+                    return
+
+                # nodeのみ指定なら同一ストーリー内の別ノードへ
+                if isinstance(next_node_id, str) and next_node_id:
+                    view = StoryView(self.user_id, self.story_id, self.user_processing, node_id=next_node_id)
+                    await view.send_story(self.ctx)
+                    return
+
+            # 分岐が無ければ終了（従来と同じ）
             if self.user_id in self.user_processing:
                 self.user_processing[self.user_id] = False
 

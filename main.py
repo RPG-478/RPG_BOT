@@ -1,7 +1,4 @@
 import logging  # ← 最初
-from dotenv import load_dotenv
-
-load_dotenv()
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -17,6 +14,9 @@ logger.setLevel(logging.DEBUG)
 
 logging.getLogger("discord").setLevel(logging.INFO)
 logging.getLogger("discord.http").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.INFO)
 
 print("✅ ロギング設定完了")
 
@@ -25,7 +25,7 @@ from discord.ext import commands
 import random
 import asyncio
 import os
-from dotenv import load_dotenv
+from pathlib import Path
 from aiohttp import web
 import db
 from db import get_player
@@ -38,27 +38,38 @@ from views import (
     FinalBossBattleView,
     BossBattleView,
     SpecialEventView,
-    TrapChestView,
-    RaidBattleView
+    TrapChestView
 )
 import game
 from story import StoryView
 import death_system
 from titles import get_title_rarity_emoji, RARITY_COLORS
-import raid_system
 import anti_cheat
 import admin_notifications
 import admin_anti_cheat
 
-load_dotenv()
+from bot_state import attach_bot_state
+from bot_utils import check_ban
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-user_processing = {}
-user_locks = {}
+# cogs 側から参照できるように共有状態を bot にぶら下げる
+user_processing, user_locks = attach_bot_state(bot)
+
+# main.py 内で snapshot_manager を参照している箇所があるため、
+# debug_commands を extension(cog) としてロードする場合でもシンボルだけ確保する。
+try:
+    from debug_commands import snapshot_manager  # type: ignore
+except Exception:
+    class _NoopSnapshotManager:
+        async def create_snapshot(self, *args, **kwargs):
+            return None
+
+    snapshot_manager = _NoopSnapshotManager()
+
 
 def get_user_lock(user_id: int) -> asyncio.Lock:
     """ユーザー別ロックを取得（なければ作成）"""
@@ -66,158 +77,10 @@ def get_user_lock(user_id: int) -> asyncio.Lock:
         user_locks[user_id] = asyncio.Lock()
     return user_locks[user_id]
 
-from functools import wraps
-def check_ban():
-    """BAN確認デコレーター"""
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(ctx: commands.Context, *args, **kwargs):
-            user_id = str(ctx.author.id)
-
-            # BAN確認
-            if await db.is_player_banned(user_id):
-                embed = discord.Embed(
-                    title="❌ BOT利用禁止",
-                    description="あなたはBOT利用禁止処分を受けています。\n\n運営チームにお問い合わせください。",
-                    color=discord.Color.red()
-                )
-                await ctx.send(embed=embed)
-                return
-
-            return await func(ctx, *args, **kwargs)
-        return wrapper
-    return decorator
-
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
-    
-    # Setup anti-cheat admin commands
-    admin_anti_cheat.setup_admin_commands(bot)
-    print("✅ Anti-cheat admin commands loaded")
-
-
-#スタート×チュートリアル開始
-@bot.command(name="start")
-@check_ban()
-async def start(ctx: commands.Context):
-    user = ctx.author
-    user_id = str(user.id)
-
-    # 処理中チェック
-    if user_processing.get(user.id):
-        await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
-        return
-
-    user_processing[user.id] = True
-    try:
-        # DBからプレイヤー取得
-        player = await get_player(user_id)
-        if player and player.get("name"):
-            await ctx.send("⚠️ あなたはすでにゲームを開始しています！", delete_after=10)
-            user_processing[user.id] = False
-            return
-
-        # プレイヤーデータが存在しない場合は作成
-        if not player:
-            await db.create_player(user.id)
-
-        # カテゴリ検索 or 作成
-        guild = ctx.guild
-        category = discord.utils.get(guild.categories, name="RPG")
-        if not category:
-            category = await guild.create_category("RPG")
-
-        # 【重要】ユーザーIDベースで既存チャンネルをチェック
-        # トピックにユーザーIDを保存して検索
-        existing_channel = None
-        for ch in category.channels:
-            if ch.topic and str(user.id) in ch.topic:
-                existing_channel = ch
-                break
-        
-        if existing_channel:
-            await ctx.send(f"⚠️ すでにチャンネルが存在します: {existing_channel.mention}", delete_after=10)
-            user_processing[user.id] = False
-            return
-
-        # チャンネル名を作成（表示名を使うが、IDで管理）
-        channel_name = f"{user.name}-冒険"
-
-        # パーミッション設定
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
-        }
-        
-        # 【重要】トピックにユーザーIDを保存
-        channel = await guild.create_text_channel(
-            channel_name, 
-            category=category, 
-            overwrites=overwrites,
-            topic=f"UserID:{user.id}"  # ← ここでユーザーIDを保存
-        )
-
-        await ctx.send(f"✅ 冒険チャンネルを作成しました！ {channel.mention}", delete_after=10)
-
-        # チャンネルにウェルカムメッセージ
-        await channel.send(
-            f"{user.mention} さん！ようこそ 🎉\nここはあなた専用の冒険チャンネルです。"
-        )
-
-        # 名前入力モーダルを表示
-        embed = discord.Embed(
-            title="📝 名前を入力しよう！",
-            description="これからの冒険で使うキャラクター名を決めてね！",
-            color=discord.Color.blue()
-        )
-        view = NameRequestView(user.id, channel)
-        await channel.send(embed=embed, view=view)
-
-        # 通知チャンネルへメッセージ送信
-        try:
-            notify_channel = bot.get_channel(1424712515396305007)
-            if notify_channel:
-                await notify_channel.send(
-                    f"🎮 {user.mention} が新しい冒険を開始しました！"
-                )
-        except Exception as e:
-            print(f"通知送信エラー: {e}")
-    except Exception as e:
-        print(f"!startコマンドエラー: {e}")
-        await ctx.send(f"⚠️ エラーが発生しました: {e}", delete_after=10)
-    finally:
-        user_processing[user.id] = False
-
-
-
-@bot.command(name="reset", aliases=["r"])
-@check_ban()
-async def reset(ctx: commands.Context):
-    """2段階確認付きでプレイヤーデータと専用チャンネルを削除する"""
-    user = ctx.author
-    user_id = str(user.id)
-
-    # 処理中チェック
-    if user_processing.get(user.id):
-        await ctx.send("⚠️ 別の処理が実行中です。完了するまでお待ちください。", delete_after=5)
-        return
-
-    player = await get_player(user_id)
-
-    if not player:
-        await ctx.send(embed=discord.Embed(title="未登録", description="あなたはまだゲームを開始していません。`!start` を使ってゲームを開始してください。", color=discord.Color.orange()))
-        return
-
-    embed = discord.Embed(
-        title="データを削除しますか？",
-        description="リセットするとプレイヤーデータは完全に削除されます。よろしいですか？\n\n※確認は2段階です。",
-        color=discord.Color.red()
-    )
-    view = ResetConfirmView(user.id, None)
-    await ctx.send(embed=embed, view=view)
-
+    print("✅ Bot is ready")
 
 #move
 @bot.command(name="move", aliases=["m"])
@@ -291,10 +154,6 @@ async def move(ctx: commands.Context):
 
         current_floor = total_distance // 100 + 1
         current_stage = total_distance // 1000 + 1
-        
-        # レイド距離チェック（500m間隔）
-        is_raid_distance = total_distance % 500 == 0 and total_distance > 0
-        current_raid_distance = total_distance if is_raid_distance else 0
 
         # 移動演出
         exploring_msg = await ctx.send(
@@ -304,147 +163,11 @@ async def move(ctx: commands.Context):
         await asyncio.sleep(2.5)
 
         # ==========================
-        # イベント分岐（通過判定方式）
+        # イベント決定（exploration.pyに委譲）
         # ==========================
-
-        # 通過したイベント距離を判定する関数
-        def passed_through(event_distance):
-            """前回の距離から今回の距離の間にevent_distanceを通過したか"""
-            return previous_distance < event_distance <= total_distance
-
-        # 優先度1: ボス戦（1000m毎）- 最優先
-        boss_distances = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
-        for boss_distance in boss_distances:
-            if passed_through(boss_distance):
-                boss_stage = boss_distance // 1000
-
-                # ボス未撃破の場合のみ処理
-                if not await db.is_boss_defeated(user.id, boss_stage):
-                    # boss_preストーリーチェック（未表示の場合のみ表示）
-                    story_id = f"boss_pre_{boss_stage}"
-                    if not await db.get_story_flag(user.id, story_id):
-                        # ラスボス判定（10000m）
-                        if boss_stage == 10:
-                            embed = discord.Embed(
-                                title="📖 運命の時",
-                                description="強大な気配を感じる…なにが来るんだ？",
-                                color=discord.Color.purple()
-                            )
-                        else:
-                            embed = discord.Embed(
-                                title="📖 試練の予兆",
-                                description="強大な存在の気配を感じる…気を引き締めて……",
-                                color=discord.Color.purple()
-                            )
-
-                        await exploring_msg.edit(content=None, embed=embed)
-                        await asyncio.sleep(2)
-
-                        # ストーリー完了後にボス戦を開始するコールバックを設定
-                        view = StoryView(user.id, story_id, user_processing, 
-                                        callback_data={
-                                            'type': 'boss_battle',
-                                            'boss_stage': boss_stage,
-                                            'ctx': ctx
-                                        })
-                        await view.send_story(ctx)
-                        view_delegated = True
-                        return
-
-                    # ストーリー表示済みの場合、ボス戦に進む
-                    boss = game.get_boss(boss_stage)
-                    if boss:
-                        player_data = {
-                            "hp": player.get("hp", 50),
-                            "mp": player.get("mp", 20),
-                            "attack": player.get("atk", 5),
-                            "defense": player.get("def", 2),
-                            "inventory": player.get("inventory", []),
-                            "distance": total_distance,
-                            "user_id": user.id
-                        }
-
-                        # ラスボス判定（10000m）
-                        if boss_stage == 10:
-                            embed = discord.Embed(
-                                title="⚔️ ラスボス出現！",
-                                description=f"**{boss['name']}** が最後の戦いに臨む！\n\nこれが最終決戦だ…！",
-                                color=discord.Color.dark_gold()
-                            )
-                            await exploring_msg.edit(content=None, embed=embed)
-                            await asyncio.sleep(3)
-
-                            view = await FinalBossBattleView.create(ctx, player_data, boss, user_processing, boss_stage)
-                            await view.send_initial_embed()
-                            view_delegated = True
-                            return
-                        else:
-                            embed = discord.Embed(
-                                title="⚠️ ボス出現！",
-                                description=f"**{boss['name']}** が目の前に立ちはだかる！",
-                                color=discord.Color.dark_red()
-                            )
-                            await exploring_msg.edit(content=None, embed=embed)
-                            await asyncio.sleep(2)
-
-                            view = await BossBattleView.create(ctx, player_data, boss, user_processing, boss_stage)
-                            await view.send_initial_embed()
-                            view_delegated = True
-                            return
-
-        # 優先度2: 500m毎の特殊イベント（鍛冶屋・商人・レイドボス・ストーリー）
-        special_distances = [500, 1500, 2500, 3500, 4500, 5500, 6500, 7500, 8500, 9500]
-        for special_distance in special_distances:
-            if passed_through(special_distance):
-                embed = discord.Embed(
-                    title="✨ 特殊な場所を発見！",
-                    description="500m地点に到達した！\n何か特別なことが起こりそうだ…",
-                    color=discord.Color.gold()
-                )
-                await exploring_msg.edit(content=None, embed=embed)
-                await asyncio.sleep(2)
-                
-                special_embed = discord.Embed(
-                    title="🏛️ 特殊イベント",
-                    description="この場所では様々な選択肢がある。\n何をしますか？",
-                    color=discord.Color.blue()
-                )
-                special_embed.set_footer(text=f"📏 現在の距離: {special_distance}m")
-                
-                view = SpecialEventView(user.id, user_processing, special_distance)
-                await exploring_msg.edit(content=None, embed=special_embed, view=view)
-                view_delegated = True
-                return
-
-        # 優先度3: 距離ベースストーリー（250m, 750m, 1250m, etc.）
-        story_distances = [250, 750, 1250, 1750, 2250, 2750, 3250, 3750, 4250, 4750, 5250, 5750, 6250, 6750, 7250, 7750, 8250, 8750, 9250, 9750]
-        for story_distance in story_distances:
-            if passed_through(story_distance):
-                # 周回数に応じたストーリーIDを生成
-                story_id = f"story_{story_distance}"
-                if loop_count >= 2:
-                    loop_story_id = f"story_{story_distance}_loop{loop_count}"
-                    # 周回専用ストーリーが存在するかチェック
-                    if not await db.get_story_flag(user.id, loop_story_id):
-                        story_id = loop_story_id
-
-                if not await db.get_story_flag(user.id, story_id):
-                    embed = discord.Embed(
-                        title="📖 探索中に何かを見つけた",
-                        description="不思議な出来事が起こる予感…",
-                        color=discord.Color.purple()
-                    )
-                    await exploring_msg.edit(content=None, embed=embed)
-                    await asyncio.sleep(2)
-
-                    view = StoryView(user.id, story_id, user_processing)
-                    await view.send_story(ctx)
-                    view_delegated = True
-                    return
-
-        # 優先度4: 超低確率で選択肢分岐ストーリー（3%）
-        choice_story_roll = random.random() * 100
-        if choice_story_roll < 0.1:
+        try:
+            import exploration
+            
             # 選択肢ストーリーのリスト
             choice_story_ids = [
                 "choice_mysterious_door",
@@ -456,100 +179,211 @@ async def move(ctx: commands.Context):
                 "choice_time_traveler",
                 "choice_fairy_spring"
             ]
-
+            
             # 未体験の選択肢ストーリーをフィルタリング
-            available_stories = []
+            available_choice_stories = []
             for sid in choice_story_ids:
                 if not await db.get_story_flag(user.id, sid):
-                    available_stories.append(sid)
-
-            # 未体験のストーリーがある場合、ランダムに選択
-            if available_stories:
-                selected_story_id = random.choice(available_stories)
-
-                embed = discord.Embed(
-                    title="✨ イベント発生！",
-                    description="運命の分岐点が現れた…",
-                    color=discord.Color.gold()
-                )
-                await exploring_msg.edit(content=None, embed=embed)
-                await asyncio.sleep(2)
-
-                view = StoryView(user.id, selected_story_id, user_processing)
-                await view.send_story(ctx)
-                view_delegated = True
-                return
-
-        # 優先度5: 通常イベント抽選（60%何もなし/30%敵/9%宝箱/1%トラップ宝箱）
-        event_roll = random.random() * 100
-
-        # 1% トラップ宝箱
-        if event_roll < 1:
+                    available_choice_stories.append(sid)
+            
+            # ストーリーフラグを収集
+            story_flags = {}
+            # ボス前ストーリー
+            for stage in range(1, 11):
+                story_id = f"boss_pre_{stage}"
+                story_flags[story_id] = await db.get_story_flag(user.id, story_id)
+            
+            # イベントを決定
+            event = await exploration.determine_event(
+                current_distance=total_distance,
+                previous_distance=previous_distance,
+                loop_count=loop_count,
+                story_flags=story_flags,
+                available_choice_stories=available_choice_stories
+            )
+        except Exception as e:
+            # イベント決定に失敗した場合は、安全に「何もなし」にフォールバック
+            print(f"⚠️ イベント決定エラー: {e}")
+            import traceback
+            traceback.print_exc()
+            embed = discord.Embed(
+                title="📜 探索結果",
+                description=f"→ {distance}m進んだ！\n何も見つからなかったようだ。",
+                color=discord.Color.dark_grey()
+            )
+            embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
+            await exploring_msg.edit(content=None, embed=embed)
+            return
+        
+        # ==========================
+        # イベント実行（type別の分岐処理）
+        # ==========================
+        player_data = {
+            "hp": player.get("hp", 50),
+            "mp": player.get("mp", 20),
+            "attack": player.get("atk", 5),
+            "defense": player.get("def", 2),
+            "inventory": player.get("inventory", []),
+            "distance": total_distance,
+            "user_id": user.id
+        }
+        
+        if event.type == "BOSS":
+            boss_stage = event.data["boss_stage"]
+            
+            # ボス未撃破の場合のみ処理
+            if not await db.is_boss_defeated(user.id, boss_stage):
+                story_id = event.data["story_id"]
+                
+                if not event.data["story_shown"]:
+                    # ラスボス判定（10000m）
+                    if boss_stage == 10:
+                        embed = discord.Embed(
+                            title="📖 運命の時",
+                            description="強大な気配を感じる…なにが来るんだ？",
+                            color=discord.Color.purple()
+                        )
+                    else:
+                        embed = discord.Embed(
+                            title="📖 試練の予兆",
+                            description="強大な存在の気配を感じる…気を引き締めて……",
+                            color=discord.Color.purple()
+                        )
+                    
+                    await exploring_msg.edit(content=None, embed=embed)
+                    await asyncio.sleep(2)
+                    
+                    view = StoryView(user.id, story_id, user_processing, 
+                                    callback_data={
+                                        'type': 'boss_battle',
+                                        'boss_stage': boss_stage,
+                                        'ctx': ctx
+                                    })
+                    await view.send_story(ctx)
+                    view_delegated = True
+                    return
+                
+                # ストーリー表示済みの場合、ボス戦に進む
+                boss = game.get_boss(boss_stage)
+                if boss:
+                    if boss_stage == 10:
+                        embed = discord.Embed(
+                            title="⚔️ ラスボス出現！",
+                            description=f"**{boss['name']}** が最後の戦いに臨む！\n\nこれが最終決戦だ…！",
+                            color=discord.Color.dark_gold()
+                        )
+                        await exploring_msg.edit(content=None, embed=embed)
+                        await asyncio.sleep(3)
+                        
+                        view = await FinalBossBattleView.create(ctx, player_data, boss, user_processing, boss_stage)
+                        await view.send_initial_embed()
+                        view_delegated = True
+                        return
+                    else:
+                        embed = discord.Embed(
+                            title="⚠️ ボス出現！",
+                            description=f"**{boss['name']}** が目の前に立ちはだかる！",
+                            color=discord.Color.dark_red()
+                        )
+                        await exploring_msg.edit(content=None, embed=embed)
+                        await asyncio.sleep(2)
+                        
+                        view = await BossBattleView.create(ctx, player_data, boss, user_processing, boss_stage)
+                        await view.send_initial_embed()
+                        view_delegated = True
+                        return
+        
+        elif event.type == "SPECIAL":
+            special_distance = event.data["special_distance"]
+            embed = discord.Embed(
+                title="✨ 特殊な場所を発見！",
+                description="500m地点に到達した！\n何か特別なことが起こりそうだ…",
+                color=discord.Color.gold()
+            )
+            await exploring_msg.edit(content=None, embed=embed)
+            await asyncio.sleep(2)
+            
+            special_embed = discord.Embed(
+                title="🏛️ 特殊イベント",
+                description="この場所では様々な選択肢がある。\n何をしますか？",
+                color=discord.Color.blue()
+            )
+            special_embed.set_footer(text=f"📏 現在の距離: {special_distance}m")
+            
+            view = SpecialEventView(user.id, user_processing, special_distance)
+            await exploring_msg.edit(content=None, embed=special_embed, view=view)
+            view_delegated = True
+            return
+        
+        elif event.type == "STORY":
+            story_id = event.data["story_id"]
+            embed = discord.Embed(
+                title="📖 探索中に何かを見つけた",
+                description="不思議な出来事が起こる予感…",
+                color=discord.Color.purple()
+            )
+            await exploring_msg.edit(content=None, embed=embed)
+            await asyncio.sleep(2)
+            
+            view = StoryView(user.id, story_id, user_processing)
+            await view.send_story(ctx)
+            view_delegated = True
+            return
+        
+        elif event.type == "CHOICE_STORY":
+            story_id = event.data["story_id"]
+            embed = discord.Embed(
+                title="✨ イベント発生！",
+                description="運命の分岐点が現れた…",
+                color=discord.Color.gold()
+            )
+            await exploring_msg.edit(content=None, embed=embed)
+            await asyncio.sleep(2)
+            
+            view = StoryView(user.id, story_id, user_processing)
+            await view.send_story(ctx)
+            view_delegated = True
+            return
+        
+        elif event.type == "TRAP_CHEST":
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
                 color=discord.Color.gold()
             )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-            view = TrapChestView(user.id, user_processing, player, False, 0, ctx)
+            view = TrapChestView(user.id, user_processing, player)
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
-
-        # 9% 宝箱（1～10%）
-        elif event_roll < 10:
+        
+        elif event.type == "CHEST":
             embed = discord.Embed(
                 title="⚠️ 宝箱を見つけた！",
                 description="何か罠が仕掛けられているような気がする…\nどうする？",
                 color=discord.Color.gold()
             )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
-            view = TreasureView(user.id, user_processing, False, 0, ctx)
+            view = TreasureView(user.id, user_processing)
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
-        # 30% 敵との遭遇（10～40%）
-        elif event_roll < 40:
-            # game.pyから距離に応じた敵を取得
+        
+        elif event.type == "BATTLE":
             enemy = game.get_random_enemy(total_distance)
-
-            player_data = {
-                "hp": player.get("hp", 50),
-                "mp": player.get("mp", 20),
-                "attack": player.get("atk", 5),
-                "defense": player.get("def", 2),
-                "inventory": player.get("inventory", []),
-                "distance": total_distance,
-                "user_id": user.id
-            }
-
-            # 戦闘Embed呼び出し
             await exploring_msg.edit(content="⚔️ 敵が現れた！ 戦闘開始！")
             view = await BattleView.create(ctx, player_data, enemy, user_processing)
             await view.send_initial_embed()
             view_delegated = True
             return
-
-        # 3. 何もなし
-        embed = discord.Embed(
-            title="📜 探索結果",
-            description=f"→ {distance}m進んだ！\n何も見つからなかったようだ。",
-            color=discord.Color.dark_grey()
-        )
-        embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
         
-        # 500m地点の場合、レイドボスオプションボタンを追加
-        if is_raid_distance:
-            boss_data = raid_system.get_current_raid_boss()
-            embed.add_field(
-                name=f"\n{boss_data['emoji']} レイドボス出現！",
-                value=f"**{boss_data['name']}** が近くにいる気配を感じる…\nレイドボスに挑戦しますか？",
-                inline=False
+        else:  # "NONE"
+            embed = discord.Embed(
+                title="📜 探索結果",
+                description=f"→ {distance}m進んだ！\n何も見つからなかったようだ。",
+                color=discord.Color.dark_grey()
             )
-            raid_view = views.RaidOptionButton(ctx, user_processing, current_raid_distance)
-            await exploring_msg.edit(content=None, embed=embed, view=raid_view)
-            view_delegated = True
-        else:
+            embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
             await exploring_msg.edit(content=None, embed=embed)
     finally:
         # Viewに委譲していない場合のみクリア（View自身がクリアする責任を持つ）
@@ -754,23 +588,6 @@ async def buy_upgrade(ctx, upgrade_type: int):
         await db.spend_upgrade_points(ctx.author.id, cost)
         await ctx.send("✅ 防御力初期値をアップグレードしました！ DEF +1")
 
-# デバッグコマンドの読み込み（削除可能）
-# デバッグコマンドのインポートと設定
-try:
-    from debug_commands import setup_debug_commands, error_log_manager, snapshot_manager
-    
-    # Botにuser_processingを属性として追加（デバッグコマンドからアクセス可能にする）
-    bot.user_processing = user_processing
-    bot.error_log_manager = error_log_manager
-    bot.snapshot_manager = snapshot_manager
-    
-    setup_debug_commands(bot)
-    print("✅ デバッグコマンドを読み込みました")
-except ImportError:
-    print("ℹ️ デバッグコマンドは利用できません（debug_commands.py が見つかりません）")
-except Exception as e:
-    print(f"⚠️ デバッグコマンドの読み込みエラー: {e}")
-
 import asyncio
 from aiohttp import web
 
@@ -783,9 +600,23 @@ async def run_health_server():
     app.router.add_get('/', health_check)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8000)
-    await site.start()
-    print("✅ ヘルスチェックサーバーを起動しました (ポート 8000)")
+    host = os.getenv("HEALTH_HOST", "0.0.0.0")
+    port_str = os.getenv("HEALTH_PORT") or os.getenv("PORT") or "8000"
+    try:
+        port = int(port_str)
+    except ValueError:
+        raise ValueError(f"❌ HEALTH_PORT/PORT が不正です: {port_str!r}")
+
+    try:
+        site = web.TCPSite(runner, host, port)
+        await site.start()
+        print(f"✅ ヘルスチェックサーバーを起動しました ({host}:{port})")
+    except OSError as e:
+        # Windows: WinError 10048 = ポート使用中
+        if getattr(e, "winerror", None) == 10048 or getattr(e, "errno", None) == 10048:
+            print(f"⚠️ ヘルスチェックサーバーを起動できませんでした（ポート使用中: {host}:{port}）。BOT起動は継続します")
+            return
+        raise
 
 async def main():
     token = os.getenv("DISCORD_BOT_TOKEN")
@@ -793,8 +624,27 @@ async def main():
         print("❌ エラー: DISCORD_BOT_TOKEN 環境変数が設定されていません")
         exit(1)
 
-    # Health server を起動してから Bot を起動
-    await run_health_server()
+    # extensions(cogs) を自動ロード（今後のcog追加で main.py を触らなくて済むように）
+    cogs_dir = Path(__file__).resolve().parent / "cogs"
+    if cogs_dir.exists():
+        for file in sorted(cogs_dir.glob("*.py")):
+            if file.name.startswith("_") or file.name == "__init__.py":
+                continue
+            ext = f"cogs.{file.stem}"
+            try:
+                await bot.load_extension(ext)
+                print(f"✅ Extension loaded: {ext}")
+            except Exception as e:
+                print(f"⚠️ Extension load failed: {ext} | {e}")
+    else:
+        print("ℹ️ cogs/ ディレクトリが見つかりません。extensionロードをスキップします")
+
+    # Health server を起動してから Bot を起動（開発時に不要なら無効化可）
+    enable_health = (os.getenv("ENABLE_HEALTH_SERVER", "1").strip() not in {"0", "false", "False", "no", "NO"})
+    if enable_health:
+        await run_health_server()
+    else:
+        print("ℹ️ ヘルスチェックサーバーは無効化されています (ENABLE_HEALTH_SERVER=0)")
 
     print("🤖 Discord BOTを起動します...")
     async with bot:
@@ -806,7 +656,7 @@ async def show_servers(ctx: commands.Context):
     """BOTが参加しているサーバー一覧を表示(開発者用・ページネーション付き)"""
 
     # 開発者のみ実行可能にする
-    DEVELOPER_ID = "1301416493401243694"  # あなたのDiscord ID
+    from runtime_settings import DEVELOPER_ID_STR as DEVELOPER_ID  # あなたのDiscord ID
 
     if str(ctx.author.id) != DEVELOPER_ID:
         await ctx.send("❌ このコマンドは開発者のみ実行できます")
@@ -1113,316 +963,6 @@ async def unequip_title(ctx: commands.Context):
     )
     await ctx.send(embed=embed)
 
-# ==============================
-# レイドボスコマンド
-# ==============================
-
-@bot.command(name="raid_info", aliases=["ri"])
-@check_ban()
-async def raid_info(ctx: commands.Context):
-    """現在のレイドボス情報を表示"""
-    from datetime import datetime, timezone, timedelta
-    
-    # 現在の曜日別レイドボスを取得
-    boss_data = raid_system.get_current_raid_boss()
-    
-    # 日本時間で今日の日付を取得
-    jst = timezone(timedelta(hours=9))
-    today = datetime.now(jst).date().isoformat()
-    weekday_names = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日", "土曜日", "日曜日"]
-    current_weekday = weekday_names[datetime.now(jst).weekday()]
-    
-    # レイドボスの状態を取得
-    raid_boss_db = await db.get_or_create_raid_boss(
-        boss_data["id"],
-        boss_data["max_hp"],
-        today
-    )
-    
-    current_hp = raid_boss_db.get("current_hp", boss_data["max_hp"])
-    total_damage = raid_boss_db.get("total_damage", 0)
-    is_defeated = raid_boss_db.get("is_defeated", False)
-    
-    # トップ貢献者を取得
-    top_contributors = await db.get_raid_contributions(boss_data["id"], limit=10)
-    
-    # Embed作成
-    embed = raid_system.format_raid_info_embed(
-        boss_data,
-        current_hp,
-        total_damage,
-        top_contributors
-    )
-    
-    embed.add_field(
-        name="📅 本日のレイドボス",
-        value=f"{current_weekday} - **{boss_data['name']}**",
-        inline=False
-    )
-    
-    if is_defeated:
-        embed.add_field(
-            name="✅ 討伐完了",
-            value="このレイドボスは既に討伐されています！\n明日、新しいレイドボスが出現します。",
-            inline=False
-        )
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name="raid_upgrade", aliases=["ru"])
-@check_ban()
-async def raid_upgrade(ctx: commands.Context):
-    """レイド専用ステータスのアップグレード"""
-    user = ctx.author
-    player = await get_player(user.id)
-    
-    if not player:
-        await ctx.send("!start で冒険を始めてみてね。")
-        return
-    
-    # レイド専用ステータスを取得
-    raid_stats = await db.get_or_create_player_raid_stats(user.id)
-    upgrade_points = player.get("upgrade_points", 0)
-    
-    # 現在のステータス表示
-    embed = discord.Embed(
-        title="⚔️ レイドアップグレードメニュー",
-        description="レイドボス戦専用のステータスを強化できます。",
-        color=discord.Color.blue()
-    )
-    
-    embed.add_field(
-        name="💎 所持アップグレードポイント",
-        value=f"**{upgrade_points}** ポイント",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="⚔️ 現在のレイドステータス",
-        value=f"❤️ HP: {raid_stats.get('raid_hp')}/{raid_stats.get('raid_max_hp')}\n"
-              f"⚔️ 攻撃力: {raid_stats.get('raid_atk')}\n"
-              f"🛡️ 防御力: {raid_stats.get('raid_def')}\n"
-              f"💚 6時間回復: {raid_stats.get('raid_hp_recovery_rate', 10)} HP",
-        inline=True
-    )
-    
-    embed.add_field(
-        name="📈 アップグレード履歴",
-        value=f"⚔️ 攻撃力: Lv.{raid_stats.get('raid_atk_upgrade', 0)}\n"
-              f"🛡️ 防御力: Lv.{raid_stats.get('raid_def_upgrade', 0)}\n"
-              f"❤️ 最大HP: Lv.{raid_stats.get('raid_hp_upgrade', 0)}\n"
-              f"💚 回復速度: Lv.{raid_stats.get('raid_hp_recovery_upgrade', 0)}",
-        inline=True
-    )
-    
-    vault_gold = await db.get_vault_gold(ctx.author.id)
-    
-    # コスト計算
-    atk_cost = await db.get_raid_upgrade_cost("atk", ctx.author.id)
-    def_cost = await db.get_raid_upgrade_cost("def", ctx.author.id)
-    hp_cost = await db.get_raid_upgrade_cost("hp", ctx.author.id)
-    recovery_cost = await db.get_raid_upgrade_cost("recovery", ctx.author.id)
-    
-    embed.add_field(
-        name="💰 倉庫ゴールド",
-        value=f"**{vault_gold:,}** G\n倉庫ゴールドはラスボス撃破時に手持ちゴールド全額が自動送金されます",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="🔧 アップグレードコマンド（倉庫ゴールド使用）",
-        value=f"• `!raid_atk` - 攻撃力+5 (コスト: {atk_cost:,}G)\n"
-              f"• `!raid_def` - 防御力+3 (コスト: {def_cost:,}G)\n"
-              f"• `!raid_hp` - 最大HP+50 (コスト: {hp_cost:,}G)\n"
-              f"• `!raid_recovery` - 6時間ごとの回復量+5 (コスト: {recovery_cost:,}G)\n"
-              "• `!raid_heal` - HP全回復 (コスト: 1PT)",
-        inline=False
-    )
-    
-    embed.set_footer(text="レイドボス戦で強敵に挑もう！")
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name="raid_atk", aliases=["ra"])
-@check_ban()
-async def raid_atk(ctx: commands.Context):
-    """レイド攻撃力をアップグレード（倉庫ゴールド使用）"""
-    user = ctx.author
-    player = await get_player(user.id)
-    
-    if not player:
-        await ctx.send("!start で冒険を始めてみてね。")
-        return
-    
-    vault_gold = await db.get_vault_gold(user.id)
-    cost = await db.get_raid_upgrade_cost("atk", user.id)
-    
-    if vault_gold < cost:
-        await ctx.send(f"⚠️ 倉庫ゴールドが不足しています。（必要: {cost:,}G / 所持: {vault_gold:,}G）")
-        return
-    
-    # アップグレード実行
-    success = await db.spend_vault_gold(user.id, cost)
-    if not success:
-        await ctx.send("❌ アップグレードに失敗しました。")
-        return
-    
-    await db.upgrade_raid_atk(user.id)
-    
-    raid_stats = await db.get_or_create_player_raid_stats(user.id)
-    remaining_gold = await db.get_vault_gold(user.id)
-    
-    embed = discord.Embed(
-        title="✅ レイド攻撃力アップグレード！",
-        description=f"レイド攻撃力が **{raid_stats.get('raid_atk')}** になりました！\n\n残り倉庫ゴールド: {remaining_gold:,}G",
-        color=discord.Color.green()
-    )
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name="raid_def", aliases=["rd"])
-@check_ban()
-async def raid_def(ctx: commands.Context):
-    """レイド防御力をアップグレード（倉庫ゴールド使用）"""
-    user = ctx.author
-    player = await get_player(user.id)
-    
-    if not player:
-        await ctx.send("!start で冒険を始めてみてね。")
-        return
-    
-    vault_gold = await db.get_vault_gold(user.id)
-    cost = await db.get_raid_upgrade_cost("def", user.id)
-    
-    if vault_gold < cost:
-        await ctx.send(f"⚠️ 倉庫ゴールドが不足しています。（必要: {cost:,}G / 所持: {vault_gold:,}G）")
-        return
-    
-    # アップグレード実行
-    success = await db.spend_vault_gold(user.id, cost)
-    if not success:
-        await ctx.send("❌ アップグレードに失敗しました。")
-        return
-    
-    await db.upgrade_raid_def(user.id)
-    
-    raid_stats = await db.get_or_create_player_raid_stats(user.id)
-    remaining_gold = await db.get_vault_gold(user.id)
-    
-    embed = discord.Embed(
-        title="✅ レイド防御力アップグレード！",
-        description=f"レイド防御力が **{raid_stats.get('raid_def')}** になりました！\n\n残り倉庫ゴールド: {remaining_gold:,}G",
-        color=discord.Color.green()
-    )
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name="raid_hp", aliases=["rh"])
-@check_ban()
-async def raid_hp(ctx: commands.Context):
-    """レイド最大HPをアップグレード（倉庫ゴールド使用）"""
-    user = ctx.author
-    player = await get_player(user.id)
-    
-    if not player:
-        await ctx.send("!start で冒険を始めてみてね。")
-        return
-    
-    vault_gold = await db.get_vault_gold(user.id)
-    cost = await db.get_raid_upgrade_cost("hp", user.id)
-    
-    if vault_gold < cost:
-        await ctx.send(f"⚠️ 倉庫ゴールドが不足しています。（必要: {cost:,}G / 所持: {vault_gold:,}G）")
-        return
-    
-    # アップグレード実行
-    success = await db.spend_vault_gold(user.id, cost)
-    if not success:
-        await ctx.send("❌ アップグレードに失敗しました。")
-        return
-    
-    await db.upgrade_raid_hp(user.id)
-    
-    raid_stats = await db.get_or_create_player_raid_stats(user.id)
-    remaining_gold = await db.get_vault_gold(user.id)
-    
-    embed = discord.Embed(
-        title="✅ レイド最大HPアップグレード！",
-        description=f"レイド最大HPが **{raid_stats.get('raid_max_hp')}** になりました！\n\n残り倉庫ゴールド: {remaining_gold:,}G",
-        color=discord.Color.green()
-    )
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name="raid_heal", aliases=["rhe"])
-@check_ban()
-async def raid_heal(ctx: commands.Context):
-    """レイドHPを全回復"""
-    user = ctx.author
-    player = await get_player(user.id)
-    
-    if not player:
-        await ctx.send("!start で冒険を始めてみてね。")
-        return
-    
-    upgrade_points = player.get("upgrade_points", 0)
-    cost = 1
-    
-    if upgrade_points < cost:
-        await ctx.send(f"⚠️ アップグレードポイントが不足しています。（必要: {cost}PT / 所持: {upgrade_points}PT）")
-        return
-    
-    # HP回復実行
-    await db.spend_upgrade_points(user.id, cost)
-    await db.restore_raid_hp(user.id)
-    
-    raid_stats = await db.get_or_create_player_raid_stats(user.id)
-    
-    embed = discord.Embed(
-        title="✅ レイドHP全回復！",
-        description=f"レイドHPを **{raid_stats.get('raid_max_hp')}** まで回復しました！\n\n残りポイント: {upgrade_points - cost}PT",
-        color=discord.Color.green()
-    )
-    
-    await ctx.send(embed=embed)
-
-@bot.command(name="raid_recovery", aliases=["rr"])
-@check_ban()
-async def raid_recovery(ctx: commands.Context):
-    """レイドHP回復速度をアップグレード（倉庫ゴールド使用）"""
-    user = ctx.author
-    player = await get_player(user.id)
-    
-    if not player:
-        await ctx.send("!start で冒険を始めてみてね。")
-        return
-    
-    vault_gold = await db.get_vault_gold(user.id)
-    cost = await db.get_raid_upgrade_cost("recovery", user.id)
-    
-    if vault_gold < cost:
-        await ctx.send(f"⚠️ 倉庫ゴールドが不足しています。（必要: {cost:,}G / 所持: {vault_gold:,}G）")
-        return
-    
-    # アップグレード実行
-    success = await db.spend_vault_gold(user.id, cost)
-    if not success:
-        await ctx.send("❌ アップグレードに失敗しました。")
-        return
-    
-    await db.upgrade_raid_hp_recovery(user.id)
-    
-    raid_stats = await db.get_or_create_player_raid_stats(user.id)
-    remaining_gold = await db.get_vault_gold(user.id)
-    
-    embed = discord.Embed(
-        title="✅ レイドHP回復速度アップグレード！",
-        description=f"6時間ごとの回復量が **{raid_stats.get('raid_hp_recovery_rate')} HP** になりました！\n\n残り倉庫ゴールド: {remaining_gold:,}G",
-        color=discord.Color.green()
-    )
-    
-    await ctx.send(embed=embed)
-
 @bot.command(name="vault_gold", aliases=["vg", "vault"])
 @check_ban()
 async def vault_gold(ctx: commands.Context):
@@ -1442,7 +982,7 @@ async def vault_gold(ctx: commands.Context):
     
     embed = discord.Embed(
         title="💰 倉庫ゴールド情報",
-        description="倉庫ゴールドはラスボス撃破時に手持ちゴールド全額が自動送金されます。\n倉庫ゴールドはレイドステータス強化専用で、取り出すことはできません。",
+        description="倉庫ゴールドはラスボス撃破時に手持ちゴールド全額が自動送金されます。\n倉庫ゴールドは取り出すことはできません。",
         color=discord.Color.gold()
     )
     
@@ -1456,16 +996,6 @@ async def vault_gold(ctx: commands.Context):
         name="📊 統計情報",
         value=f"📥 累計入金: {total_deposited:,} G\n"
               f"📤 累計出金: {total_withdrawn:,} G",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="🔧 使用方法",
-        value="• `!raid_status` - レイドステータスとアップグレードコストを確認\n"
-              "• `!raid_atk` - レイド攻撃力強化\n"
-              "• `!raid_def` - レイド防御力強化\n"
-              "• `!raid_hp` - レイド最大HP強化\n"
-              "• `!raid_recovery` - HP回復速度強化",
         inline=False
     )
     

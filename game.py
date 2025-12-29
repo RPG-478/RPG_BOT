@@ -1,6 +1,107 @@
 import random
 import copy
 
+# 戦闘計算（ATK/DEF）を views 側の直書きから共通化するためのヘルパー
+# ※既存挙動は config.DAMAGE_MODEL = "legacy" をデフォルトに維持
+try:
+    import config  # config は Supabase 必須のため、実行環境では常に存在する想定
+except Exception:  # pragma: no cover
+    config = None
+
+
+def _get_damage_model() -> str:
+    model = getattr(config, "DAMAGE_MODEL", None) if config else None
+    model = (model or "legacy").strip().lower()
+    return model
+
+
+def _get_attack_scale() -> float:
+    value = getattr(config, "ATTACK_SCALE", 1.0) if config else 1.0
+    try:
+        return float(value)
+    except Exception:
+        return 1.0
+
+
+def _get_defense_scale() -> float:
+    value = getattr(config, "DEFENSE_SCALE", 1.0) if config else 1.0
+    try:
+        return float(value)
+    except Exception:
+        return 1.0
+
+
+def _get_poe_armour_factor() -> float:
+    value = getattr(config, "POE_ARMOUR_FACTOR", 5.0) if config else 5.0
+    try:
+        return float(value)
+    except Exception:
+        return 5.0
+
+
+def _clamp_non_negative_int(value) -> int:
+    try:
+        value = int(value)
+    except Exception:
+        return 0
+    return value if value > 0 else 0
+
+
+def calculate_raw_physical_hit(attack: int, rand_min: int, rand_max: int, *, attack_scale: float | None = None) -> int:
+    """防御の影響を入れない生ヒットダメージ（乱数込み）。"""
+    if attack_scale is None:
+        attack_scale = _get_attack_scale()
+
+    scaled_attack = float(attack) * float(attack_scale)
+    raw = scaled_attack + random.randint(int(rand_min), int(rand_max))
+    return _clamp_non_negative_int(raw)
+
+
+def mitigate_physical_damage(raw_damage: int, defense: int, *, model: str | None = None, defense_scale: float | None = None, poe_armour_factor: float | None = None) -> int:
+    """生ダメージ(raw_damage)に対して、防御(defense)で軽減した最終ダメージを返す。"""
+    raw_damage = _clamp_non_negative_int(raw_damage)
+    if raw_damage <= 0:
+        return 0
+
+    if model is None:
+        model = _get_damage_model()
+    model = (model or "legacy").strip().lower()
+
+    if defense_scale is None:
+        defense_scale = _get_defense_scale()
+
+    scaled_def = max(0.0, float(defense) * float(defense_scale))
+
+    if model == "legacy":
+        return _clamp_non_negative_int(raw_damage - int(scaled_def))
+
+    if model == "lol":
+        # LoL: post = raw / (1 + armor/100)  (armor>=0 を想定)
+        denom = 1.0 + (scaled_def / 100.0)
+        if denom <= 0:
+            return raw_damage
+        return _clamp_non_negative_int(raw_damage / denom)
+
+    if model == "poe":
+        # PoE: DR = A / (A + k*D), net = D*(1-DR) = k*D^2 / (A + k*D)
+        if poe_armour_factor is None:
+            poe_armour_factor = _get_poe_armour_factor()
+        k = float(poe_armour_factor)
+        denom = scaled_def + (k * float(raw_damage))
+        if denom <= 0:
+            return raw_damage
+        net = (k * float(raw_damage) * float(raw_damage)) / denom
+        return _clamp_non_negative_int(net)
+
+    # 不明なモデルは安全側で legacy
+    return _clamp_non_negative_int(raw_damage - int(scaled_def))
+
+
+def calculate_physical_damage(attack: int, defense: int, rand_min: int, rand_max: int, *, model: str | None = None) -> int:
+    """攻撃ATKと防御DEFから物理ダメージを算出（乱数込み、モデル切替）。"""
+    raw = calculate_raw_physical_hit(attack, rand_min, rand_max)
+    return mitigate_physical_damage(raw, defense, model=model)
+
 ITEMS_DATABASE = {
     "none": {
     },

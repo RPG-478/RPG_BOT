@@ -6,6 +6,7 @@ import inspect
 import threading
 from typing import Optional, Dict, List, Any
 import json
+from typing import Callable
 
 logger = logging.getLogger("rpgbot")
 
@@ -20,6 +21,32 @@ def _get_headers() -> Dict[str, str]:
         "Content-Type": "application/json",
         "Prefer": "return=representation"  # INSERT/UPDATEでデータを返す
     }
+
+
+def _format_httpx_error(exc: Exception) -> str:
+    """httpx の例外からレスポンス本文を安全に取り出してログ用に整形。"""
+    if isinstance(exc, httpx.HTTPStatusError):
+        resp = exc.response
+        try:
+            body = resp.text
+        except Exception:
+            body = "<failed to read response body>"
+        body = (body or "").strip()
+        if len(body) > 800:
+            body = body[:800] + "..."
+        return f"{exc} | status={resp.status_code} body={body!r}"
+    return str(exc)
+
+
+def _extract_postgrest_error(exc: Exception) -> Optional[dict]:
+    """PostgREST のエラーレスポンス(JSON)を取得できるなら返す。"""
+    if not isinstance(exc, httpx.HTTPStatusError):
+        return None
+    try:
+        data = exc.response.json()
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
 
 async def get_client() -> httpx.AsyncClient:
     """非同期HTTPクライアントを取得（シングルトンパターン）"""
@@ -90,6 +117,124 @@ async def delete_player(user_id):
     
     response = await client.delete(url, headers=_get_headers(), params=params)
     response.raise_for_status()
+
+
+# ==============================
+# Guild settings (server-scoped)
+# ==============================
+
+async def get_guild_settings(guild_id: int) -> Optional[dict]:
+    """ギルド（サーバー）単位の設定を取得。
+
+    注意: Supabase側に `guild_settings` テーブルが無い場合でもBOTが落ちないように None を返す。
+    """
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/guild_settings"
+    params = {"guild_id": f"eq.{str(guild_id)}", "select": "*"}
+
+    try:
+        response = await client.get(url, headers=_get_headers(), params=params)
+        if response.status_code >= 400:
+            logger.warning(f"get_guild_settings failed: {response.status_code} {response.text}")
+            return None
+        data = response.json()
+        return data[0] if data else None
+    except Exception as e:
+        logger.warning(f"get_guild_settings exception: {e}")
+        return None
+
+
+async def set_guild_adventure_parent_channel(guild_id: int, channel_id: int) -> bool:
+    """ギルド単位で、冒険スレッドを作る親チャンネルを保存（UPSERT）。"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/guild_settings"
+
+    payload = {
+        "guild_id": str(guild_id),
+        "adventure_parent_channel_id": str(channel_id),
+    }
+
+    # upsert
+    headers = _get_headers().copy()
+    headers["Prefer"] = "return=representation,resolution=merge-duplicates"
+
+    try:
+        response = await client.post(
+            url,
+            headers=headers,
+            params={"on_conflict": "guild_id"},
+            json=payload,
+        )
+        if response.status_code >= 400:
+            logger.warning(f"set_guild_adventure_parent_channel failed: {response.status_code} {response.text}")
+            return False
+        return True
+    except Exception as e:
+        logger.warning(f"set_guild_adventure_parent_channel exception: {e}")
+        return False
+
+
+async def clear_guild_settings(guild_id: int) -> bool:
+    """ギルド設定を削除（`!set off` 用）。"""
+    client = await get_client()
+    url = f"{config.SUPABASE_URL}/rest/v1/guild_settings"
+    params = {"guild_id": f"eq.{str(guild_id)}"}
+    try:
+        response = await client.delete(url, headers=_get_headers(), params=params)
+        if response.status_code >= 400:
+            logger.warning(f"clear_guild_settings failed: {response.status_code} {response.text}")
+            return False
+        return True
+    except Exception as e:
+        logger.warning(f"clear_guild_settings exception: {e}")
+        return False
+
+
+# ==============================
+# Adventure thread id (player-scoped)
+# ==============================
+
+_ADVENTURE_THREAD_KEY = "_adventure_thread_id"
+_ADVENTURE_GUILD_KEY = "_adventure_guild_id"
+
+
+async def get_adventure_thread_id(user_id: int) -> Optional[int]:
+    """プレイヤーに紐づく冒険スレッドIDを取得（保存先は milestone_flags を利用）。"""
+    player = await get_player(user_id)
+    if not player:
+        return None
+    flags = player.get("milestone_flags", {}) or {}
+    raw = flags.get(_ADVENTURE_THREAD_KEY)
+    try:
+        return int(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+async def set_adventure_thread(user_id: int, thread_id: int, guild_id: int) -> None:
+    """冒険スレッドIDを保存（milestone_flags）。"""
+    player = await get_player(user_id)
+    flags = (player.get("milestone_flags", {}) if player else {}) or {}
+    flags[_ADVENTURE_THREAD_KEY] = str(thread_id)
+    flags[_ADVENTURE_GUILD_KEY] = str(guild_id)
+    await update_player(user_id, milestone_flags=flags)
+
+
+async def clear_adventure_thread(user_id: int) -> None:
+    """冒険スレッドIDを削除（milestone_flags）。"""
+    player = await get_player(user_id)
+    if not player:
+        return
+    flags = player.get("milestone_flags", {}) or {}
+    changed = False
+    if _ADVENTURE_THREAD_KEY in flags:
+        flags.pop(_ADVENTURE_THREAD_KEY, None)
+        changed = True
+    if _ADVENTURE_GUILD_KEY in flags:
+        flags.pop(_ADVENTURE_GUILD_KEY, None)
+        changed = True
+    if changed:
+        await update_player(user_id, milestone_flags=flags)
 
 async def add_item_to_inventory(user_id, item_name):
     """インベントリにアイテムを追加"""
@@ -1075,362 +1220,6 @@ async def restore_player_snapshot(user_id, snapshot_data: dict):
         logger.warning(f"No valid data to restore for user {user_id}")
 
 # ==============================
-# レイドボス関連関数
-# ==============================
-
-async def get_or_create_raid_boss(boss_id, max_hp, reset_date):
-    """レイドボスを取得または作成"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
-    params = {"boss_id": f"eq.{boss_id}", "select": "*"}
-    
-    try:
-        response = await client.get(url, headers=_get_headers(), params=params)
-        response.raise_for_status()
-        data = response.json()
-        
-        if data and len(data) > 0:
-            boss = data[0]
-            # リセット日が違う、または討伐済みの場合は新しいレイドボスを作成
-            if boss.get("reset_date") != reset_date or boss.get("is_defeated"):
-                await reset_raid_boss(boss_id, max_hp, reset_date)
-                return await get_or_create_raid_boss(boss_id, max_hp, reset_date)
-            return boss
-        else:
-            # 新規作成
-            boss_data = {
-                "boss_id": boss_id,
-                "current_hp": max_hp,
-                "max_hp": max_hp,
-                "total_damage": 0,
-                "is_defeated": False,
-                "reset_date": reset_date
-            }
-            response = await client.post(url, headers=_get_headers(), json=boss_data)
-            response.raise_for_status()
-            return response.json()[0] if response.json() else None
-    except Exception as e:
-        logger.error(f"Error getting/creating raid boss: {e}")
-        return None
-
-async def reset_raid_boss(boss_id, max_hp, reset_date):
-    """レイドボスをリセット"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
-    params = {"boss_id": f"eq.{boss_id}"}
-    
-    update_data = {
-        "current_hp": max_hp,
-        "max_hp": max_hp,
-        "total_damage": 0,
-        "is_defeated": False,
-        "defeated_at": None,
-        "reset_date": reset_date
-    }
-    
-    try:
-        response = await client.patch(url, headers=_get_headers(), params=params, json=update_data)
-        response.raise_for_status()
-        
-        # 貢献度もクリア
-        await clear_raid_contributions(boss_id)
-        
-        return True
-    except Exception as e:
-        logger.error(f"Error resetting raid boss: {e}")
-        return False
-
-async def update_raid_boss_hp(boss_id, damage):
-    """レイドボスのHPを更新"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_bosses"
-    params = {"boss_id": f"eq.{boss_id}", "select": "*"}
-    
-    try:
-        # 現在の状態を取得
-        response = await client.get(url, headers=_get_headers(), params=params)
-        response.raise_for_status()
-        data = response.json()
-        
-        if not data or len(data) == 0:
-            logger.error(f"Raid boss {boss_id} not found")
-            return None
-        
-        boss = data[0]
-        current_hp = boss.get("current_hp", 0)
-        total_damage = boss.get("total_damage", 0)
-        
-        # HP計算
-        new_hp = max(0, current_hp - damage)
-        new_total_damage = total_damage + damage
-        is_defeated = new_hp <= 0
-        
-        # 更新
-        update_data = {
-            "current_hp": new_hp,
-            "total_damage": new_total_damage,
-            "is_defeated": is_defeated
-        }
-        
-        if is_defeated:
-            from datetime import datetime, timezone
-            update_data["defeated_at"] = datetime.now(timezone.utc).isoformat()
-        
-        params = {"boss_id": f"eq.{boss_id}"}
-        response = await client.patch(url, headers=_get_headers(), params=params, json=update_data)
-        response.raise_for_status()
-        
-        return {
-            "current_hp": new_hp,
-            "total_damage": new_total_damage,
-            "is_defeated": is_defeated
-        }
-    except Exception as e:
-        logger.error(f"Error updating raid boss HP: {e}")
-        return None
-
-async def record_raid_contribution(boss_id, user_id, damage):
-    """レイド貢献度を記録"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
-    
-    # 既存の貢献度を取得
-    params = {"boss_id": f"eq.{boss_id}", "user_id": f"eq.{str(user_id)}", "select": "*"}
-    
-    try:
-        response = await client.get(url, headers=_get_headers(), params=params)
-        response.raise_for_status()
-        data = response.json()
-        
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc).isoformat()
-        
-        if data and len(data) > 0:
-            # 既存の貢献度を更新
-            contrib = data[0]
-            new_damage = contrib.get("damage_dealt", 0) + damage
-            new_attacks = contrib.get("attacks_count", 0) + 1
-            
-            update_data = {
-                "damage_dealt": new_damage,
-                "attacks_count": new_attacks,
-                "last_attack": now
-            }
-            
-            params = {"boss_id": f"eq.{boss_id}", "user_id": f"eq.{str(user_id)}"}
-            response = await client.patch(url, headers=_get_headers(), params=params, json=update_data)
-            response.raise_for_status()
-        else:
-            # 新規作成
-            contrib_data = {
-                "boss_id": boss_id,
-                "user_id": str(user_id),
-                "damage_dealt": damage,
-                "attacks_count": 1,
-                "last_attack": now
-            }
-            response = await client.post(url, headers=_get_headers(), json=contrib_data)
-            response.raise_for_status()
-        
-        return True
-    except Exception as e:
-        logger.error(f"Error recording raid contribution: {e}")
-        return False
-
-async def get_raid_contributions(boss_id, limit=10):
-    """レイドの貢献度ランキングを取得"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
-    params = {
-        "boss_id": f"eq.{boss_id}",
-        "select": "*",
-        "order": "damage_dealt.desc",
-        "limit": limit
-    }
-    
-    try:
-        response = await client.get(url, headers=_get_headers(), params=params)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        logger.error(f"Error getting raid contributions: {e}")
-        return []
-
-async def clear_raid_contributions(boss_id):
-    """レイドの貢献度をクリア"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
-    params = {"boss_id": f"eq.{boss_id}"}
-    
-    try:
-        response = await client.delete(url, headers=_get_headers(), params=params)
-        response.raise_for_status()
-        return True
-    except Exception as e:
-        logger.error(f"Error clearing raid contributions: {e}")
-        return False
-
-async def get_player_contribution(boss_id, user_id):
-    """プレイヤーのレイド貢献度を取得"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/raid_contributions"
-    params = {"boss_id": f"eq.{boss_id}", "user_id": f"eq.{str(user_id)}", "select": "*"}
-    
-    try:
-        response = await client.get(url, headers=_get_headers(), params=params)
-        response.raise_for_status()
-        data = response.json()
-        return data[0] if data and len(data) > 0 else None
-    except Exception as e:
-        logger.error(f"Error getting player contribution: {e}")
-        return None
-
-# ==============================
-# プレイヤーレイド専用ステータス関数
-# ==============================
-
-async def get_or_create_player_raid_stats(user_id):
-    """プレイヤーのレイド専用ステータスを取得または作成"""
-    from datetime import datetime, timezone
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/player_raid_stats"
-    params = {"user_id": f"eq.{str(user_id)}", "select": "*"}
-    
-    try:
-        response = await client.get(url, headers=_get_headers(), params=params)
-        response.raise_for_status()
-        data = response.json()
-        
-        if data and len(data) > 0:
-            stats = data[0]
-            await check_and_apply_hp_recovery(user_id, stats)
-            updated_response = await client.get(url, headers=_get_headers(), params=params)
-            updated_response.raise_for_status()
-            updated_data = updated_response.json()
-            return updated_data[0] if updated_data else stats
-        else:
-            # 新規作成
-            raid_stats = {
-                "user_id": str(user_id),
-                "raid_atk": 10,
-                "raid_def": 5,
-                "raid_max_hp": 100,
-                "raid_hp": 100,
-                "raid_atk_upgrade": 0,
-                "raid_def_upgrade": 0,
-                "raid_hp_upgrade": 0,
-                "raid_hp_recovery_rate": 10,
-                "raid_hp_recovery_upgrade": 0,
-                "last_hp_recovery": datetime.now(timezone.utc).isoformat()
-            }
-            response = await client.post(url, headers=_get_headers(), json=raid_stats)
-            response.raise_for_status()
-            return response.json()[0] if response.json() else None
-    except Exception as e:
-        logger.error(f"Error getting/creating player raid stats: {e}")
-        return None
-
-async def update_player_raid_stats(user_id, **kwargs):
-    """プレイヤーのレイド専用ステータスを更新"""
-    client = await get_client()
-    url = f"{config.SUPABASE_URL}/rest/v1/player_raid_stats"
-    params = {"user_id": f"eq.{str(user_id)}"}
-    
-    try:
-        response = await client.patch(url, headers=_get_headers(), params=params, json=kwargs)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        logger.error(f"Error updating player raid stats: {e}")
-        return None
-
-async def upgrade_raid_atk(user_id):
-    """レイド攻撃力をアップグレード"""
-    stats = await get_or_create_player_raid_stats(user_id)
-    if stats:
-        new_atk = stats.get("raid_atk", 10) + 5
-        new_upgrade = stats.get("raid_atk_upgrade", 0) + 1
-        await update_player_raid_stats(user_id, raid_atk=new_atk, raid_atk_upgrade=new_upgrade)
-        return True
-    return False
-
-async def upgrade_raid_def(user_id):
-    """レイド防御力をアップグレード"""
-    stats = await get_or_create_player_raid_stats(user_id)
-    if stats:
-        new_def = stats.get("raid_def", 5) + 3
-        new_upgrade = stats.get("raid_def_upgrade", 0) + 1
-        await update_player_raid_stats(user_id, raid_def=new_def, raid_def_upgrade=new_upgrade)
-        return True
-    return False
-
-async def upgrade_raid_hp(user_id):
-    """レイド最大HPをアップグレード"""
-    stats = await get_or_create_player_raid_stats(user_id)
-    if stats:
-        new_max_hp = stats.get("raid_max_hp", 100) + 50
-        new_hp = stats.get("raid_hp", 100) + 50
-        new_upgrade = stats.get("raid_hp_upgrade", 0) + 1
-        await update_player_raid_stats(user_id, raid_max_hp=new_max_hp, raid_hp=new_hp, raid_hp_upgrade=new_upgrade)
-        return True
-    return False
-
-async def restore_raid_hp(user_id):
-    """レイドHPを全回復"""
-    stats = await get_or_create_player_raid_stats(user_id)
-    if stats:
-        max_hp = stats.get("raid_max_hp", 100)
-        await update_player_raid_stats(user_id, raid_hp=max_hp)
-        return True
-    return False
-
-async def upgrade_raid_hp_recovery(user_id):
-    """レイドHP回復速度をアップグレード"""
-    stats = await get_or_create_player_raid_stats(user_id)
-    if stats:
-        new_recovery_rate = stats.get("raid_hp_recovery_rate", 10) + 5
-        new_upgrade = stats.get("raid_hp_recovery_upgrade", 0) + 1
-        await update_player_raid_stats(user_id, raid_hp_recovery_rate=new_recovery_rate, raid_hp_recovery_upgrade=new_upgrade)
-        return True
-    return False
-
-async def check_and_apply_hp_recovery(user_id, stats):
-    """6時間ごとのHP自動回復をチェックして適用"""
-    from datetime import datetime, timezone, timedelta
-    
-    try:
-        last_recovery = stats.get("last_hp_recovery")
-        if not last_recovery:
-            await update_player_raid_stats(user_id, last_hp_recovery=datetime.now(timezone.utc).isoformat())
-            return
-        
-        last_recovery_time = datetime.fromisoformat(last_recovery.replace('Z', '+00:00'))
-        now = datetime.now(timezone.utc)
-        time_diff = now - last_recovery_time
-        
-        hours_passed = time_diff.total_seconds() / 3600
-        if hours_passed >= 6:
-            recovery_cycles = int(hours_passed // 6)
-            recovery_rate = stats.get("raid_hp_recovery_rate", 10)
-            total_recovery = recovery_rate * recovery_cycles
-            
-            current_hp = stats.get("raid_hp", 100)
-            max_hp = stats.get("raid_max_hp", 100)
-            new_hp = min(max_hp, current_hp + total_recovery)
-            
-            new_last_recovery = last_recovery_time + timedelta(hours=6 * recovery_cycles)
-            
-            await update_player_raid_stats(
-                user_id,
-                raid_hp=new_hp,
-                last_hp_recovery=new_last_recovery.isoformat()
-            )
-            
-            logger.info(f"Applied HP recovery for {user_id}: +{total_recovery} HP ({recovery_cycles} cycles)")
-    except Exception as e:
-        logger.error(f"Error in HP recovery check: {e}")
-
-# ==============================
 # 倉庫ゴールドシステム関数
 # ==============================
 
@@ -1505,7 +1294,7 @@ async def add_vault_gold(user_id, amount):
     return False
 
 async def spend_vault_gold(user_id, amount):
-    """倉庫ゴールドを消費（レイドステータス強化用）"""
+    """倉庫ゴールドを消費"""
     from datetime import datetime, timezone
     client = await get_client()
     
@@ -1543,30 +1332,6 @@ async def spend_vault_gold(user_id, amount):
             return False
     return False
 
-async def get_raid_upgrade_cost(upgrade_type, user_id):
-    """レイドステータスアップグレードのコストを計算
-    
-    コスト = 基本コスト + (現在レベル × 増加値)
-    """
-    stats = await get_or_create_player_raid_stats(user_id)
-    if not stats:
-        return 500
-    
-    if upgrade_type == "atk":
-        current_level = stats.get("raid_atk_upgrade", 0)
-        return 500 + (current_level * 100)
-    elif upgrade_type == "def":
-        current_level = stats.get("raid_def_upgrade", 0)
-        return 500 + (current_level * 100)
-    elif upgrade_type == "hp":
-        current_level = stats.get("raid_hp_upgrade", 0)
-        return 1000 + (current_level * 200)
-    elif upgrade_type == "recovery":
-        current_level = stats.get("raid_hp_recovery_upgrade", 0)
-        return 1500 + (current_level * 300)
-    
-    return 500
-
 # ==============================
 # Anti-Cheat System
 # ==============================
@@ -1577,19 +1342,39 @@ async def log_command(user_id: int, command: str, success: bool = True, metadata
     client = await get_client()
     url = f"{config.SUPABASE_URL}/rest/v1/command_logs"
     
+    log_data = {
+        "user_id": str(user_id),
+        "command": command,
+        "success": success,
+        "metadata": metadata or {},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
     try:
-        log_data = {
-            "user_id": str(user_id),
-            "command": command,
-            "success": success,
-            "metadata": metadata or {},
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
         response = await client.post(url, headers=_get_headers(), json=log_data)
         response.raise_for_status()
         return True
     except Exception as e:
-        logger.error(f"Error logging command: {e}")
+        # 旧スキーマ互換: command_name が NOT NULL の場合がある
+        pg = _extract_postgrest_error(e)
+        details = (pg or {}).get("details") if isinstance(pg, dict) else ""
+        message = (pg or {}).get("message") if isinstance(pg, dict) else ""
+        code = (pg or {}).get("code") if isinstance(pg, dict) else None
+        haystack = f"{message} {details}"
+
+        if code == "23502" and "command_name" in haystack:
+            legacy_payload = dict(log_data)
+            legacy_payload["command_name"] = command
+            try:
+                response2 = await client.post(url, headers=_get_headers(), json=legacy_payload)
+                response2.raise_for_status()
+                logger.warning("command_logs: fell back to legacy column command_name")
+                return True
+            except Exception as e2:
+                logger.error(f"Error logging command (legacy retry): {_format_httpx_error(e2)}")
+                return False
+
+        logger.error(f"Error logging command: {_format_httpx_error(e)}")
         return False
 
 async def get_recent_command_logs(user_id: int, limit: int = 100) -> List[Dict]:
@@ -1642,20 +1427,46 @@ async def log_anti_cheat_event(user_id: int, event_type: str, severity: str, sco
     client = await get_client()
     url = f"{config.SUPABASE_URL}/rest/v1/anti_cheat_logs"
     
+    event_data = {
+        "user_id": str(user_id),
+        "event_type": event_type,
+        "severity": severity,
+        "anomaly_score": score,
+        "details": details or {},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
     try:
-        event_data = {
-            "user_id": str(user_id),
-            "event_type": event_type,
-            "severity": severity,
-            "anomaly_score": score,
-            "details": details or {},
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
         response = await client.post(url, headers=_get_headers(), json=event_data)
         response.raise_for_status()
         return True
     except Exception as e:
-        logger.error(f"Error logging anti-cheat event: {e}")
+        # 旧スキーマ互換: detection_type/score が NOT NULL の場合がある
+        pg = _extract_postgrest_error(e)
+        details_text = (pg or {}).get("details") if isinstance(pg, dict) else ""
+        message = (pg or {}).get("message") if isinstance(pg, dict) else ""
+        code = (pg or {}).get("code") if isinstance(pg, dict) else None
+        haystack = f"{message} {details_text}"
+
+        if code == "23502":
+            needs_detection_type = "detection_type" in haystack
+            needs_score = "score" in haystack
+            if needs_detection_type or needs_score:
+                legacy_payload = dict(event_data)
+                if needs_detection_type:
+                    legacy_payload["detection_type"] = event_type
+                if needs_score:
+                    legacy_payload["score"] = score
+                try:
+                    response2 = await client.post(url, headers=_get_headers(), json=legacy_payload)
+                    response2.raise_for_status()
+                    logger.warning("anti_cheat_logs: fell back to legacy columns")
+                    return True
+                except Exception as e2:
+                    logger.error(f"Error logging anti-cheat event (legacy retry): {_format_httpx_error(e2)}")
+                    return False
+
+        logger.error(f"Error logging anti-cheat event: {_format_httpx_error(e)}")
         return False
 
 async def get_recent_anti_cheat_logs(user_id: int, limit: int = 10) -> List[Dict]:
@@ -1683,8 +1494,6 @@ async def update_behavior_stats(user_id: int):
     client = await get_client()
     
     try:
-        # 既存の統計を取得
-        stats = await get_user_behavior_stats(user_id)
         player = await get_player(user_id)
         
         if not player:
@@ -1718,7 +1527,7 @@ async def update_behavior_stats(user_id: int):
         else:
             session_hours = 0
         
-        # 統計データを更新
+        # 統計データをUPSERT（SELECTが空でも既存行があるケース対策）
         url = f"{config.SUPABASE_URL}/rest/v1/user_behavior_stats"
         
         stats_data = {
@@ -1730,19 +1539,19 @@ async def update_behavior_stats(user_id: int):
             "last_active": now.isoformat(),
             "last_updated": now.isoformat()
         }
-        
-        if stats:
-            # 更新
-            params = {"user_id": f"eq.{str(user_id)}"}
-            response = await client.patch(url, headers=_get_headers(), params=params, json=stats_data)
-        else:
-            # 新規作成
-            response = await client.post(url, headers=_get_headers(), json=stats_data)
-        
+
+        headers = _get_headers().copy()
+        headers["Prefer"] = "return=representation,resolution=merge-duplicates"
+        response = await client.post(
+            url,
+            headers=headers,
+            params={"on_conflict": "user_id"},
+            json=stats_data,
+        )
         response.raise_for_status()
         return True
     except Exception as e:
-        logger.error(f"Error updating behavior stats: {e}")
+        logger.error(f"Error updating behavior stats: {_format_httpx_error(e)}")
         return False
 
 async def get_user_behavior_stats(user_id: int) -> Optional[Dict]:
