@@ -14,6 +14,7 @@ from runtime_settings import (
     VIEW_TIMEOUT_LONG,
     VIEW_TIMEOUT_SHORT,
 )
+from ui.common import finalize_view_on_timeout
 
 logger = logging.getLogger("rpgbot")
 class SpecialEventView(View):
@@ -150,9 +151,7 @@ class SpecialEventView(View):
             self.user_processing[self.user_id] = False
 
     async def on_timeout(self):
-        """タイムアウト時にuser_processingをクリア"""
-        if self.user_id in self.user_processing:
-            self.user_processing[self.user_id] = False
+        await finalize_view_on_timeout(self, user_processing=self.user_processing, user_id=self.user_id)
 
 
 # ==============================
@@ -275,7 +274,7 @@ class FinalBossClearView(discord.ui.View):
                 )
                 await notification_channel.send(embed=notify_embed)
         except Exception as e:
-            print(f"通知チャンネルへの送信エラー: {e}")
+            logger.warning("通知チャンネルへの送信エラー: %s", e, exc_info=True)
 
         # boss_postストーリー表示
         story_id = f"boss_post_{self.boss_stage}"

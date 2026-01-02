@@ -9,6 +9,7 @@ from db import get_player, update_player, delete_player
 import death_system
 from titles import get_title_rarity_emoji, get_title_rarity_color
 from runtime_settings import DESC_TRIM_LONG, SELECT_MAX_OPTIONS, VIEW_TIMEOUT_SHORT
+from ui.common import finalize_view_on_timeout
 
 logger = logging.getLogger("rpgbot")
 class BlacksmithView(discord.ui.View):
@@ -151,9 +152,7 @@ class BlacksmithView(discord.ui.View):
             self.user_processing[self.user_id] = False
 
     async def on_timeout(self):
-        """タイムアウト時にuser_processingをクリア"""
-        if self.user_id in self.user_processing:
-            self.user_processing[self.user_id] = False
+        await finalize_view_on_timeout(self, user_processing=self.user_processing, user_id=self.user_id)
 
 class MaterialMerchantView(discord.ui.View):
     """素材商人View - 素材を売却"""
@@ -263,5 +262,8 @@ class MaterialMerchantView(discord.ui.View):
 
         if self.user_id in self.user_processing:
             self.user_processing[self.user_id] = False
+
+    async def on_timeout(self):
+        await finalize_view_on_timeout(self, user_processing=self.user_processing, user_id=self.user_id)
 
 # 死亡処理 + トリガーチェック 共通ヘルパー

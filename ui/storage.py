@@ -9,11 +9,13 @@ from db import get_player, update_player, delete_player
 import death_system
 from titles import get_title_rarity_emoji, get_title_rarity_color
 from runtime_settings import SELECT_MAX_OPTIONS, VIEW_TIMEOUT_LONG
+from story import StoryView
 
 logger = logging.getLogger("rpgbot")
 class StorageSelectView(discord.ui.View):
     def __init__(self, user_id: int, channel: discord.TextChannel, storage_items: list):
-        super().__init__(timeout=VIEW_TIMEOUT_LONG)
+        # 倉庫は選択に時間がかかることがあるため、View側のタイムアウトを無効化。
+        super().__init__(timeout=None)
         self.user_id = user_id
         self.channel = channel
         self.storage_items = storage_items
@@ -69,17 +71,16 @@ class StorageSelectView(discord.ui.View):
         selected_value = interaction.data['values'][0]
 
         if selected_value == "skip":
-            # 取り出さない場合
+            # 取り出さない場合も、まずは相方ストーリー（みはり）を開始
             embed = discord.Embed(
-                title="📦 倉庫をスキップ 第1節 ~冒険の始まり~",
-                description="倉庫からアイテムを取り出さずに冒険を開始します。\n\nあなたはこのダンジョンを踏破しに来た者。\n目を覚ますと、見知らぬ洞窟の中だった。\nなにも身につけていない。そしてどこかで誰かの声がする――。\n\n『ようこそ、挑戦者よ。ここは終わりなき迷宮。』\n\n『最初の一歩を踏み出す準備はできているか？』",
+                title="📦 倉庫をスキップ",
+                description="倉庫からアイテムを取り出さずに冒険を開始します。",
                 color=discord.Color.grey()
             )
             await interaction.response.edit_message(embed=embed, view=None)
 
-            # チュートリアル開始
-            tutorial_view = TutorialView(self.user_id)
-            await self.channel.send(embed=tutorial_view.pages[0], view=tutorial_view)
+            view = StoryView(self.user_id, "start_mihari", user_processing={})
+            await view.send_story(interaction)
             return
 
         # アイテムを取り出す
@@ -106,9 +107,8 @@ class StorageSelectView(discord.ui.View):
             )
             await interaction.response.edit_message(embed=embed, view=None)
 
-            # チュートリアル開始
-            tutorial_view = TutorialView(self.user_id)
-            await self.channel.send(embed=tutorial_view.pages[0], view=tutorial_view)
+            view = StoryView(self.user_id, "start_mihari", user_processing={})
+            await view.send_story(interaction)
         else:
             await interaction.response.send_message("⚠️ アイテムの取り出しに失敗しました。", ephemeral=True)
 

@@ -43,3 +43,62 @@ async def handle_death_with_triggers(ctx, user_id, user_processing, enemy_name=N
 
     return death_result
 
+
+async def finalize_view_on_timeout(
+    view: discord.ui.View,
+    *,
+    user_processing: dict | None = None,
+    user_id: int | None = None,
+    message: discord.Message | None = None,
+) -> None:
+    """Viewのタイムアウト時に、最低限の後片付けを行う。
+
+    - 子要素（Button/Select）を無効化
+    - message が分かるなら view を更新
+    - user_processing を解除
+
+    注意: on_timeout は Interaction を持たないため、できる範囲で best-effort に行う。
+    """
+
+    # user_id の推測（battle系など）
+    inferred_user_id = user_id
+    if inferred_user_id is None:
+        try:
+            inferred_user_id = int(getattr(view, "user_id"))  # type: ignore[arg-type]
+        except Exception:
+            inferred_user_id = None
+    if inferred_user_id is None:
+        try:
+            ctx = getattr(view, "ctx", None)
+            inferred_user_id = int(getattr(getattr(ctx, "author", None), "id", None))
+        except Exception:
+            inferred_user_id = None
+
+    if user_processing is not None and inferred_user_id is not None:
+        if inferred_user_id in user_processing:
+            user_processing[inferred_user_id] = False
+
+    # ボタン等の無効化
+    try:
+        for child in list(getattr(view, "children", [])):
+            if hasattr(child, "disabled"):
+                child.disabled = True
+    except Exception:
+        pass
+
+    # message は呼び出し側で渡すのが確実。無ければ view.message を試す。
+    msg = message
+    if msg is None:
+        try:
+            m = getattr(view, "message", None)
+            msg = m if isinstance(m, discord.Message) else None
+        except Exception:
+            msg = None
+
+    if msg is not None:
+        try:
+            await msg.edit(view=view)
+        except Exception:
+            # 既に削除/権限/古いメッセージなど
+            pass
+

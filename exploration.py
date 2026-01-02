@@ -58,7 +58,6 @@ def passed_through(previous_distance: int, current_distance: int, event_distance
 async def determine_event(
     current_distance: int,
     previous_distance: int,
-    loop_count: int,
     story_flags: Dict[str, bool],
     available_choice_stories: List[str]
 ) -> EventResult:
@@ -68,7 +67,6 @@ async def determine_event(
     Args:
         current_distance: 現在の総移動距離
         previous_distance: 前回の総移動距離
-        loop_count: 現在の周回数
         story_flags: 既読ストーリーのフラグ辞書
         available_choice_stories: 未体験の選択肢ストーリーIDリスト
     
@@ -113,13 +111,7 @@ async def determine_event(
                       5250, 5750, 6250, 6750, 7250, 7750, 8250, 8750, 9250, 9750]
     for story_distance in story_distances:
         if passed_through(previous_distance, current_distance, story_distance):
-            # 周回数に応じたストーリーIDを生成
             story_id = f"story_{story_distance}"
-            if loop_count >= 2:
-                loop_story_id = f"story_{story_distance}_loop{loop_count}"
-                # 周回専用ストーリーが存在するかチェック（フラグが未設定なら新規）
-                if loop_story_id not in story_flags:
-                    story_id = loop_story_id
             
             # 既読チェック
             if story_id not in story_flags:

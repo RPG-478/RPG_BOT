@@ -145,9 +145,10 @@ async def detect_no_equipment_grinding(user_id: int, stats: Dict) -> bool:
     
     equipped_weapon = player.get("equipped_weapon")
     equipped_armor = player.get("equipped_armor")
+    equipped_shield = player.get("equipped_shield")
     
     # If no equipment and long session, suspicious
-    if not equipped_weapon and not equipped_armor:
+    if not equipped_weapon and not equipped_armor and not equipped_shield:
         return True
     
     return False
@@ -387,6 +388,7 @@ async def manual_review_player(user_id: int) -> Dict:
             "upgrade_points": player.get("upgrade_points", 0) if player else 0,
             "equipped_weapon": player.get("equipped_weapon") if player else None,
             "equipped_armor": player.get("equipped_armor") if player else None,
+            "equipped_shield": player.get("equipped_shield") if player else None,
         },
         "behavior_stats": stats,
         "recent_events": recent_logs

@@ -67,11 +67,14 @@ DEVELOPER_ID: Optional[int] = _safe_int_env("DEVELOPER_ID", None)
 # -------------------------
 # すべて挙動互換のため、現状の数値をそのまま定数化。
 
-VIEW_TIMEOUT_TREASURE: int = int(os.getenv("VIEW_TIMEOUT_TREASURE") or 30)
-VIEW_TIMEOUT_SHORT: int = int(os.getenv("VIEW_TIMEOUT_SHORT") or 60)
-VIEW_TIMEOUT_MEDIUM: int = int(os.getenv("VIEW_TIMEOUT_MEDIUM") or 120)
-VIEW_TIMEOUT_LONG: int = int(os.getenv("VIEW_TIMEOUT_LONG") or 300)
-VIEW_TIMEOUT_TUTORIAL: int = int(os.getenv("VIEW_TIMEOUT_TUTORIAL") or 600)
+# NOTE:
+# - 既定値が短すぎると「放置したらボタン/モーダルが死ぬ」体験になりやすい。
+# - ここは“デフォルト”なので、運用で環境変数で上書き可能。
+VIEW_TIMEOUT_TREASURE: int = int(os.getenv("VIEW_TIMEOUT_TREASURE") or 180)   # 3分
+VIEW_TIMEOUT_SHORT: int = int(os.getenv("VIEW_TIMEOUT_SHORT") or 900)        # 15分
+VIEW_TIMEOUT_MEDIUM: int = int(os.getenv("VIEW_TIMEOUT_MEDIUM") or 1800)     # 30分
+VIEW_TIMEOUT_LONG: int = int(os.getenv("VIEW_TIMEOUT_LONG") or 86400)        # 24時間
+VIEW_TIMEOUT_TUTORIAL: int = int(os.getenv("VIEW_TIMEOUT_TUTORIAL") or 1800) # 30分
 
 # Discord select / option limits
 SELECT_MAX_OPTIONS: int = int(os.getenv("SELECT_MAX_OPTIONS") or 25)

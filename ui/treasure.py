@@ -10,6 +10,7 @@ import death_system
 from titles import get_title_rarity_emoji, get_title_rarity_color
 from runtime_settings import NOTIFY_CHANNEL_ID, VIEW_TIMEOUT_TREASURE
 from settings.balance import TREASURE_COIN_MAX, TREASURE_COIN_MIN, TREASURE_RARE_CHANCE
+from ui.common import finalize_view_on_timeout
 
 logger = logging.getLogger("rpgbot")
 class TreasureView(View):
@@ -118,7 +119,7 @@ class TreasureView(View):
                             f"サーバー: {interaction.guild.name}"
                         )
                 except Exception as e:
-                    print(f"グローバルログ通知エラー: {e}")
+                    logger.warning("グローバルログ通知エラー: %s", e, exc_info=True)
         
         # シークレット武器が出た場合はそのEmbedを表示
         if secret_weapon_hit and embed:
@@ -204,9 +205,7 @@ class TreasureView(View):
             await msg.edit(embed=embed, view=None)
 
     async def on_timeout(self):
-        """タイムアウト時にuser_processingをクリア"""
-        if self.user_id in self.user_processing:
-            self.user_processing[self.user_id] = False
+        await finalize_view_on_timeout(self, user_processing=self.user_processing, user_id=self.user_id)
 
 # ==============================
 # トラップ宝箱View
@@ -217,6 +216,7 @@ class TrapChestView(View):
         self.user_id = user_id
         self.user_processing = user_processing
         self.player = player
+        self.message = None
 
     @button(label="開ける", style=discord.ButtonStyle.danger)
     async def open_trap_chest(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -257,6 +257,9 @@ class TrapChestView(View):
         # 処理完了フラグをクリア
         if self.user_id in self.user_processing:
             self.user_processing[self.user_id] = False
+
+    async def on_timeout(self):
+        await finalize_view_on_timeout(self, user_processing=self.user_processing, user_id=self.user_id)
 
     async def handle_trap(self, interaction: discord.Interaction, trap_type: str):
         player = await get_player(interaction.user.id)
@@ -317,7 +320,7 @@ class TrapChestView(View):
                 view = await BattleView.create(fake_ctx, player_data, enemy, self.user_processing)
                 await view.send_initial_embed()
             except Exception as e:
-                print(f"[Error] BattleView transition failed: {e}")
+                logger.exception("[Error] BattleView transition failed: %s", e)
 
     async def on_timeout(self):
         """タイムアウト時にuser_processingをクリア"""

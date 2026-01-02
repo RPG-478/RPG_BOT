@@ -10,6 +10,10 @@ from typing import Callable
 
 logger = logging.getLogger("rpgbot")
 
+# command_logs のスキーマ差分を一度検出したらキャッシュして無駄な失敗/警告を出さない
+# None: 未判定 / "new": command でOK / "legacy": command_name が必須
+_COMMAND_LOGS_SCHEMA_MODE: Optional[str] = None
+
 _http_client: Optional[httpx.AsyncClient] = None
 _client_lock = asyncio.Lock()
 
@@ -73,12 +77,19 @@ async def get_player(user_id):
     client = await get_client()
     url = f"{config.SUPABASE_URL}/rest/v1/players"
     params = {"user_id": f"eq.{str(user_id)}", "select": "*"}
-    
-    response = await client.get(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
-    
-    data = response.json()
-    return data[0] if data else None
+
+    if config.VERBOSE_DEBUG:
+        logger.debug("db.get_player: user_id=%s", user_id)
+    try:
+        response = await client.get(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        data = response.json()
+        if config.VERBOSE_DEBUG:
+            logger.debug("db.get_player: user_id=%s found=%s", user_id, bool(data))
+        return data[0] if data else None
+    except Exception as e:
+        logger.warning("db.get_player failed: user_id=%s err=%s", user_id, _format_httpx_error(e))
+        raise
 
 async def create_player(user_id: int):
     """新規プレイヤーを作成（デフォルト値を明示的に設定）"""
@@ -95,19 +106,35 @@ async def create_player(user_id: int):
         "def": 2
     }
     
-    response = await client.post(url, headers=_get_headers(), json=player_data)
-    response.raise_for_status()
-    return response.json()
+    if config.VERBOSE_DEBUG:
+        logger.debug("db.create_player: user_id=%s", user_id)
+    try:
+        response = await client.post(url, headers=_get_headers(), json=player_data)
+        response.raise_for_status()
+        if config.VERBOSE_DEBUG:
+            logger.debug("db.create_player: user_id=%s ok", user_id)
+        return response.json()
+    except Exception as e:
+        logger.warning("db.create_player failed: user_id=%s err=%s", user_id, _format_httpx_error(e))
+        raise
 
 async def update_player(user_id, **kwargs):
     """プレイヤーデータを更新"""
     client = await get_client()
     url = f"{config.SUPABASE_URL}/rest/v1/players"
     params = {"user_id": f"eq.{str(user_id)}"}
-    
-    response = await client.patch(url, headers=_get_headers(), params=params, json=kwargs)
-    response.raise_for_status()
-    return response.json()
+
+    if config.VERBOSE_DEBUG:
+        logger.debug("db.update_player: user_id=%s keys=%s", user_id, sorted(kwargs.keys()))
+    try:
+        response = await client.patch(url, headers=_get_headers(), params=params, json=kwargs)
+        response.raise_for_status()
+        if config.VERBOSE_DEBUG:
+            logger.debug("db.update_player: user_id=%s ok", user_id)
+        return response.json()
+    except Exception as e:
+        logger.warning("db.update_player failed: user_id=%s err=%s", user_id, _format_httpx_error(e))
+        raise
 
 async def delete_player(user_id):
     """プレイヤーデータを削除（レイドステータスは保持）"""
@@ -115,8 +142,16 @@ async def delete_player(user_id):
     url = f"{config.SUPABASE_URL}/rest/v1/players"
     params = {"user_id": f"eq.{str(user_id)}"}
     
-    response = await client.delete(url, headers=_get_headers(), params=params)
-    response.raise_for_status()
+    if config.VERBOSE_DEBUG:
+        logger.debug("db.delete_player: user_id=%s", user_id)
+    try:
+        response = await client.delete(url, headers=_get_headers(), params=params)
+        response.raise_for_status()
+        if config.VERBOSE_DEBUG:
+            logger.debug("db.delete_player: user_id=%s ok", user_id)
+    except Exception as e:
+        logger.warning("db.delete_player failed: user_id=%s err=%s", user_id, _format_httpx_error(e))
+        raise
 
 
 # ==============================
@@ -132,15 +167,19 @@ async def get_guild_settings(guild_id: int) -> Optional[dict]:
     url = f"{config.SUPABASE_URL}/rest/v1/guild_settings"
     params = {"guild_id": f"eq.{str(guild_id)}", "select": "*"}
 
+    if config.VERBOSE_DEBUG:
+        logger.debug("db.get_guild_settings: guild_id=%s", guild_id)
     try:
         response = await client.get(url, headers=_get_headers(), params=params)
         if response.status_code >= 400:
-            logger.warning(f"get_guild_settings failed: {response.status_code} {response.text}")
+            logger.warning("db.get_guild_settings failed: guild_id=%s status=%s body=%r", guild_id, response.status_code, (response.text or "")[:800])
             return None
         data = response.json()
+        if config.VERBOSE_DEBUG:
+            logger.debug("db.get_guild_settings: guild_id=%s found=%s", guild_id, bool(data))
         return data[0] if data else None
     except Exception as e:
-        logger.warning(f"get_guild_settings exception: {e}")
+        logger.warning("db.get_guild_settings exception: guild_id=%s err=%s", guild_id, _format_httpx_error(e))
         return None
 
 
@@ -158,6 +197,8 @@ async def set_guild_adventure_parent_channel(guild_id: int, channel_id: int) -> 
     headers = _get_headers().copy()
     headers["Prefer"] = "return=representation,resolution=merge-duplicates"
 
+    if config.VERBOSE_DEBUG:
+        logger.debug("db.set_guild_adventure_parent_channel: guild_id=%s channel_id=%s", guild_id, channel_id)
     try:
         response = await client.post(
             url,
@@ -166,11 +207,19 @@ async def set_guild_adventure_parent_channel(guild_id: int, channel_id: int) -> 
             json=payload,
         )
         if response.status_code >= 400:
-            logger.warning(f"set_guild_adventure_parent_channel failed: {response.status_code} {response.text}")
+            logger.warning(
+                "db.set_guild_adventure_parent_channel failed: guild_id=%s channel_id=%s status=%s body=%r",
+                guild_id,
+                channel_id,
+                response.status_code,
+                (response.text or "")[:800],
+            )
             return False
+        if config.VERBOSE_DEBUG:
+            logger.debug("db.set_guild_adventure_parent_channel: guild_id=%s ok", guild_id)
         return True
     except Exception as e:
-        logger.warning(f"set_guild_adventure_parent_channel exception: {e}")
+        logger.warning("db.set_guild_adventure_parent_channel exception: guild_id=%s err=%s", guild_id, _format_httpx_error(e))
         return False
 
 
@@ -179,14 +228,23 @@ async def clear_guild_settings(guild_id: int) -> bool:
     client = await get_client()
     url = f"{config.SUPABASE_URL}/rest/v1/guild_settings"
     params = {"guild_id": f"eq.{str(guild_id)}"}
+    if config.VERBOSE_DEBUG:
+        logger.debug("db.clear_guild_settings: guild_id=%s", guild_id)
     try:
         response = await client.delete(url, headers=_get_headers(), params=params)
         if response.status_code >= 400:
-            logger.warning(f"clear_guild_settings failed: {response.status_code} {response.text}")
+            logger.warning(
+                "db.clear_guild_settings failed: guild_id=%s status=%s body=%r",
+                guild_id,
+                response.status_code,
+                (response.text or "")[:800],
+            )
             return False
+        if config.VERBOSE_DEBUG:
+            logger.debug("db.clear_guild_settings: guild_id=%s ok", guild_id)
         return True
     except Exception as e:
-        logger.warning(f"clear_guild_settings exception: {e}")
+        logger.warning("db.clear_guild_settings exception: guild_id=%s err=%s", guild_id, _format_httpx_error(e))
         return False
 
 
@@ -362,10 +420,6 @@ async def add_secret_weapon(user_id, weapon_id):
             return True
     return False
 
-async def get_loop_count(user_id):
-    """周回数を取得（互換性のため残す。death_countを返す）"""
-    return await get_death_count(user_id)
-
 async def get_death_count(user_id):
     """死亡回数を取得"""
     player = await get_player(user_id)
@@ -379,15 +433,30 @@ async def equip_armor(user_id, armor_name):
     """防具を装備"""
     await update_player(user_id, equipped_armor=armor_name)
 
+async def equip_shield(user_id, shield_name):
+    """盾を装備"""
+    await update_player(user_id, equipped_shield=shield_name)
+
 async def get_equipped_items(user_id):
     """装備中のアイテムを取得"""
     player = await get_player(user_id)
     if player:
-        return {
-            "weapon": player.get("equipped_weapon"),
-            "armor": player.get("equipped_armor")
-        }
-    return {"weapon": None, "armor": None}
+        weapon = player.get("equipped_weapon")
+        armor = player.get("equipped_armor")
+        shield = player.get("equipped_shield")
+
+        # 互換: 以前は盾が防具枠(equipped_armor)で保存されていた
+        if (not shield) and isinstance(armor, str) and "盾" in armor:
+            shield = armor
+            armor = None
+            try:
+                await update_player(user_id, equipped_shield=shield, equipped_armor=None)
+            except Exception:
+                # 取得時の互換は維持しつつ、更新失敗は握りつぶす
+                pass
+
+        return {"weapon": weapon, "armor": armor, "shield": shield}
+    return {"weapon": None, "armor": None, "shield": None}
 
 async def add_upgrade_points(user_id, points):
     """アップグレードポイントを追加"""
@@ -523,18 +592,27 @@ async def handle_player_death(user_id, killed_by_enemy_name=None, enemy_type="no
         if killed_by_enemy_name:
             await record_death_history(user_id, killed_by_enemy_name, distance, floor, stage, enemy_type)
 
-        # 死亡時リセット：全アイテム消失、装備解除、ゴールドリセット、フラグクリア、ゲームクリア状態リセット
+        # 死亡時リセット：基本は全アイテム消失。
+        # ただしストーリー要件により、特定アイテムは死亡で消えない（例: 魔法のランタン）。
+        persistent_items_on_death = {"魔法のランタン"}
+        current_inventory = player.get("inventory", []) if isinstance(player.get("inventory", []), list) else []
+        preserved_inventory = [i for i in current_inventory if i in persistent_items_on_death]
+
+        # 死亡時リセット：装備解除、ゴールドリセット、ゲームクリア状態リセット
+        # 重要: ストーリー既読フラグは死亡でリセットしない。
+        current_story_flags = player.get("story_flags", {}) if isinstance(player.get("story_flags", {}), dict) else {}
         await update_player(user_id, 
                       hp=player.get("max_hp", 50),
                       mp=player.get("max_mp", 50),
                       distance=0, 
                       current_floor=0, 
                       current_stage=0,
-                      inventory=[],
+                  inventory=preserved_inventory,
                       equipped_weapon=None,
                       equipped_armor=None,
+                      equipped_shield=None,
                       gold=0,
-                      story_flags={},
+                      story_flags=current_story_flags,
                       boss_defeated_flags={},
                       mp_stunned=False,
                       game_cleared=False)
@@ -591,7 +669,7 @@ async def set_story_flag(user_id, story_id):
         await update_player(user_id, story_flags=flags)
 
 async def clear_story_flags(user_id):
-    """ストーリーフラグをクリア（周回リセット用）"""
+    """ストーリーフラグをクリア"""
     player = await get_player(user_id)
     if player:
         await update_player(user_id, story_flags={})
@@ -636,7 +714,7 @@ async def increment_global_weapon_count(weapon_id):
 
         return True
     except Exception as e:
-        print(f"Error incrementing weapon count: {e}")
+        logger.exception("Error incrementing weapon count: %s", e)
         return False
 
 async def get_available_secret_weapons():
@@ -817,7 +895,7 @@ async def add_to_storage(user_id, item_name, item_type):
         response.raise_for_status()
         return True
     except Exception as e:
-        print(f"Error adding to storage: {e}")
+        logger.exception("Error adding to storage: %s", e)
         return False
 
 async def get_storage_items(user_id, include_taken=False):
@@ -839,7 +917,7 @@ async def get_storage_items(user_id, include_taken=False):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Error getting storage items: {e}")
+        logger.exception("Error getting storage items: %s", e)
         return []
 
 async def take_from_storage(user_id, storage_id):
@@ -858,7 +936,7 @@ async def take_from_storage(user_id, storage_id):
         response.raise_for_status()
         return True
     except Exception as e:
-        print(f"Error taking from storage: {e}")
+        logger.exception("Error taking from storage: %s", e)
         return False
 
 async def get_storage_item_by_id(storage_id):
@@ -873,7 +951,7 @@ async def get_storage_item_by_id(storage_id):
         data = response.json()
         return data[0] if data else None
     except Exception as e:
-        print(f"Error getting storage item: {e}")
+        logger.exception("Error getting storage item: %s", e)
         return None
 
 # ==============================
@@ -934,7 +1012,7 @@ async def record_death_history(user_id, enemy_name, distance=0, floor=0, stage=0
 
         return True
     except Exception as e:
-        print(f"Error recording death history: {e}")
+        logger.exception("Error recording death history: %s", e)
         return False
 
 async def get_death_history(user_id, limit=100):
@@ -953,7 +1031,7 @@ async def get_death_history(user_id, limit=100):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Error getting death history: {e}")
+        logger.exception("Error getting death history: %s", e)
         return []
 
 async def get_death_count_by_enemy(user_id, enemy_name):
@@ -979,7 +1057,7 @@ async def get_death_count_by_enemy(user_id, enemy_name):
             return int(count_str) if count_str != "*" else 0
         return 0
     except Exception as e:
-        print(f"Error getting death count: {e}")
+        logger.exception("Error getting death count: %s", e)
         return 0
 
 async def get_death_stats(user_id):
@@ -999,7 +1077,7 @@ async def get_death_stats(user_id):
         sorted_stats = dict(sorted(stats.items(), key=lambda x: x[1], reverse=True))
         return sorted_stats
     except Exception as e:
-        print(f"Error getting death stats: {e}")
+        logger.exception("Error getting death stats: %s", e)
         return {}
 
 async def get_recent_deaths(user_id, limit=5):
@@ -1022,7 +1100,7 @@ async def check_death_pattern(user_id, pattern):
 
         return True
     except Exception as e:
-        print(f"Error checking death pattern: {e}")
+        logger.exception("Error checking death pattern: %s", e)
         return False
 
 # 称号システム
@@ -1045,7 +1123,7 @@ async def add_title(user_id, title_id, title_name):
         # UNIQUE制約違反（既に持っている）は無視
         if "duplicate key" in str(e).lower() or "409" in str(e):
             return False
-        print(f"Error adding title: {e}")
+        logger.exception("Error adding title: %s", e)
         return False
 
 async def get_player_titles(user_id):
@@ -1063,7 +1141,7 @@ async def get_player_titles(user_id):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Error getting titles: {e}")
+        logger.exception("Error getting titles: %s", e)
         return []
 
 async def has_title(user_id, title_id):
@@ -1082,7 +1160,7 @@ async def has_title(user_id, title_id):
         data = response.json()
         return len(data) > 0
     except Exception as e:
-        print(f"Error checking title: {e}")
+        logger.exception("Error checking title: %s", e)
         return False
 
 async def set_active_title(user_id, title_id):
@@ -1114,7 +1192,7 @@ async def unequip_title(user_id):
 
 
 _original_update_player = globals().get("update_player")
-if _original_update_player and not getattr(_original_update_player, "_is_wrapped_logger", False):
+if config.VERBOSE_DEBUG and _original_update_player and not getattr(_original_update_player, "_is_wrapped_logger", False):
 
     # スレッドローカルで再入制御
     _wrapper_state = threading.local()
@@ -1142,8 +1220,14 @@ if _original_update_player and not getattr(_original_update_player, "_is_wrapped
             except Exception:
                 callers = "stack-unavailable"
 
-            logger.debug("db.update_player called user=%s args=%s kwargs=%s callers=%s",
-                         user_id, args, kwargs, callers)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    "db.update_player called user=%s args=%s kwargs=%s callers=%s",
+                    user_id,
+                    args,
+                    kwargs,
+                    callers,
+                )
 
             return _original_update_player(*args, **kwargs)
         finally:
@@ -1156,7 +1240,8 @@ if _original_update_player and not getattr(_original_update_player, "_is_wrapped
     globals()["update_player"] = update_player
 
 else:
-    logger.debug("db.update_player wrapper: original_update_player not found or already wrapped.")
+    if config.VERBOSE_DEBUG:
+        logger.debug("db.update_player wrapper: original_update_player not found or already wrapped.")
 
 # ==============================
 # デバッグコマンド用関数
@@ -1208,6 +1293,7 @@ async def restore_player_snapshot(user_id, snapshot_data: dict):
         "inventory": snapshot_data.get("inventory"),
         "equipped_weapon": snapshot_data.get("equipped_weapon"),
         "equipped_armor": snapshot_data.get("equipped_armor"),
+        "equipped_shield": snapshot_data.get("equipped_shield"),
     }
     
     # Noneでないフィールドのみを更新
@@ -1341,6 +1427,8 @@ async def log_command(user_id: int, command: str, success: bool = True, metadata
     from datetime import datetime, timezone
     client = await get_client()
     url = f"{config.SUPABASE_URL}/rest/v1/command_logs"
+
+    global _COMMAND_LOGS_SCHEMA_MODE
     
     log_data = {
         "user_id": str(user_id),
@@ -1350,9 +1438,18 @@ async def log_command(user_id: int, command: str, success: bool = True, metadata
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
+    # legacy (command_name NOT NULL) の場合は最初から合わせる
+    if _COMMAND_LOGS_SCHEMA_MODE == "legacy":
+        payload = dict(log_data)
+        payload["command_name"] = command
+    else:
+        payload = log_data
+
     try:
-        response = await client.post(url, headers=_get_headers(), json=log_data)
+        response = await client.post(url, headers=_get_headers(), json=payload)
         response.raise_for_status()
+        if _COMMAND_LOGS_SCHEMA_MODE is None:
+            _COMMAND_LOGS_SCHEMA_MODE = "new"
         return True
     except Exception as e:
         # 旧スキーマ互換: command_name が NOT NULL の場合がある
@@ -1363,12 +1460,14 @@ async def log_command(user_id: int, command: str, success: bool = True, metadata
         haystack = f"{message} {details}"
 
         if code == "23502" and "command_name" in haystack:
+            _COMMAND_LOGS_SCHEMA_MODE = "legacy"
             legacy_payload = dict(log_data)
             legacy_payload["command_name"] = command
             try:
                 response2 = await client.post(url, headers=_get_headers(), json=legacy_payload)
                 response2.raise_for_status()
-                logger.warning("command_logs: fell back to legacy column command_name")
+                if config.VERBOSE_DEBUG:
+                    logger.debug("command_logs: using legacy schema (command_name)")
                 return True
             except Exception as e2:
                 logger.error(f"Error logging command (legacy retry): {_format_httpx_error(e2)}")

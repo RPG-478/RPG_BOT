@@ -1,0 +1,63 @@
+{
+  "stories": {
+    "route_example": {
+      "title": "分岐例（外部JSON）",
+      "start_node": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            {"speaker": "???", "text": "条件で選択肢が変わる"}
+          ],
+          "choices": [
+            {
+              "label": "ATKが10以上なら見える",
+              "conditions": [{"type": "stat.atk.gte", "amount": 10}],
+              "result": {
+                "title": "力を示した",
+                "lines": [{"speaker": "あなた", "text": "任せろ"}]
+              },
+              "effects": [{"type": "flag.set", "key": "route.power"}],
+              "next": {"node": "after"}
+            },
+            {
+              "label": "別ルート",
+              "result": {
+                "title": "静かに進む",
+                "lines": [{"speaker": "あなた", "text": "今はやめておこう"}]
+              },
+              "effects": [{"type": "flag.set", "key": "route.silent"}],
+              "next": {"node": "after"}
+            }
+          ]
+        },
+        "after": {
+          "lines": [
+            {"speaker": "ナレーション", "text": "ここから先は route.power / route.silent のフラグで分岐可能"}
+          ],
+          "choices": [
+            {
+              "label": "エンディングA（powerのみ）",
+              "conditions": [{"type": "flag.has", "key": "route.power"}],
+              "result": {
+                "title": "Ending A",
+                "lines": [{"speaker": "システム", "text": "Aエンド"}]
+              },
+              "effects": [{"type": "flag.set", "key": "ending.A"}],
+              "next": {"end": true}
+            },
+            {
+              "label": "エンディングB（silentのみ）",
+              "conditions": [{"type": "flag.has", "key": "route.silent"}],
+              "result": {
+                "title": "Ending B",
+                "lines": [{"speaker": "システム", "text": "Bエンド"}]
+              },
+              "effects": [{"type": "flag.set", "key": "ending.B"}],
+              "next": {"end": true}
+            }
+          ]
+        }
+      }
+    }
+  }
+}

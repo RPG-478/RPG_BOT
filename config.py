@@ -41,6 +41,15 @@ DEFENSE_SCALE = _safe_float_env("DEFENSE_SCALE", 1.0)
 # PoE式で使う係数（標準は 5.0）
 POE_ARMOUR_FACTOR = _safe_float_env("POE_ARMOUR_FACTOR", 5.0)
 
+def _safe_bool_env(name: str, default: bool = False) -> bool:
+    raw = (os.getenv(name) or "").strip().lower()
+    if not raw:
+        return default
+    return raw in ("1", "true", "yes", "y", "on")
+
+# デバッグをさらに詳細化したい場合のスイッチ（ログが非常に多くなります）
+VERBOSE_DEBUG = _safe_bool_env("VERBOSE_DEBUG", False)
+
 if SUPABASE_URL and not SUPABASE_URL.startswith(("http://", "https://")):
     # 例: your-project.supabase.co を https://your-project.supabase.co に正規化
     SUPABASE_URL = "https://" + SUPABASE_URL.lstrip("/")

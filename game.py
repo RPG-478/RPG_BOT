@@ -1,5 +1,6 @@
 import random
 import copy
+import logging
 
 # 戦闘計算（ATK/DEF）を views 側の直書きから共通化するためのヘルパー
 # ※既存挙動は config.DAMAGE_MODEL = "legacy" をデフォルトに維持
@@ -7,6 +8,15 @@ try:
     import config  # config は Supabase 必須のため、実行環境では常に存在する想定
 except Exception:  # pragma: no cover
     config = None
+
+logger = logging.getLogger("rpgbot")
+
+
+def _verbose_debug_enabled() -> bool:
+    try:
+        return bool(getattr(config, "VERBOSE_DEBUG", False)) if config else False
+    except Exception:
+        return False
 
 
 def _get_damage_model() -> str:
@@ -53,7 +63,18 @@ def calculate_raw_physical_hit(attack: int, rand_min: int, rand_max: int, *, att
         attack_scale = _get_attack_scale()
 
     scaled_attack = float(attack) * float(attack_scale)
-    raw = scaled_attack + random.randint(int(rand_min), int(rand_max))
+    roll = random.randint(int(rand_min), int(rand_max))
+    raw = scaled_attack + roll
+    if _verbose_debug_enabled():
+        logger.debug(
+            "combat.raw_hit: atk=%s atk_scale=%s rand=[%s,%s] roll=%s raw=%s",
+            attack,
+            attack_scale,
+            rand_min,
+            rand_max,
+            roll,
+            raw,
+        )
     return _clamp_non_negative_int(raw)
 
 
@@ -72,15 +93,31 @@ def mitigate_physical_damage(raw_damage: int, defense: int, *, model: str | None
 
     scaled_def = max(0.0, float(defense) * float(defense_scale))
 
+    if _verbose_debug_enabled():
+        logger.debug(
+            "combat.mitigate.in: model=%s raw=%s def=%s def_scale=%s scaled_def=%s",
+            model,
+            raw_damage,
+            defense,
+            defense_scale,
+            scaled_def,
+        )
+
     if model == "legacy":
-        return _clamp_non_negative_int(raw_damage - int(scaled_def))
+        out = _clamp_non_negative_int(raw_damage - int(scaled_def))
+        if _verbose_debug_enabled():
+            logger.debug("combat.mitigate.out: model=legacy out=%s", out)
+        return out
 
     if model == "lol":
         # LoL: post = raw / (1 + armor/100)  (armor>=0 を想定)
         denom = 1.0 + (scaled_def / 100.0)
         if denom <= 0:
             return raw_damage
-        return _clamp_non_negative_int(raw_damage / denom)
+        out = _clamp_non_negative_int(raw_damage / denom)
+        if _verbose_debug_enabled():
+            logger.debug("combat.mitigate.out: model=lol denom=%s out=%s", denom, out)
+        return out
 
     if model == "poe":
         # PoE: DR = A / (A + k*D), net = D*(1-DR) = k*D^2 / (A + k*D)
@@ -91,7 +128,16 @@ def mitigate_physical_damage(raw_damage: int, defense: int, *, model: str | None
         if denom <= 0:
             return raw_damage
         net = (k * float(raw_damage) * float(raw_damage)) / denom
-        return _clamp_non_negative_int(net)
+        out = _clamp_non_negative_int(net)
+        if _verbose_debug_enabled():
+            logger.debug(
+                "combat.mitigate.out: model=poe k=%s denom=%s net=%s out=%s",
+                k,
+                denom,
+                net,
+                out,
+            )
+        return out
 
     # 不明なモデルは安全側で legacy
     return _clamp_non_negative_int(raw_damage - int(scaled_def))
@@ -100,7 +146,19 @@ def mitigate_physical_damage(raw_damage: int, defense: int, *, model: str | None
 def calculate_physical_damage(attack: int, defense: int, rand_min: int, rand_max: int, *, model: str | None = None) -> int:
     """攻撃ATKと防御DEFから物理ダメージを算出（乱数込み、モデル切替）。"""
     raw = calculate_raw_physical_hit(attack, rand_min, rand_max)
-    return mitigate_physical_damage(raw, defense, model=model)
+    out = mitigate_physical_damage(raw, defense, model=model)
+    if _verbose_debug_enabled():
+        logger.debug(
+            "combat.damage: model=%s atk=%s def=%s rand=[%s,%s] raw=%s out=%s",
+            model or _get_damage_model(),
+            attack,
+            defense,
+            rand_min,
+            rand_max,
+            raw,
+            out,
+        )
+    return out
 
 ITEMS_DATABASE = {
     "none": {
@@ -1455,7 +1513,7 @@ def get_enemy_drop(enemy_name, distance):
 
 
 def get_treasure_box_equipment(distance):
-    """宝箱から出る装備（武器・防具）のリストを返す"""
+    """宝箱から出る装備（武器・鎧・盾）のリストを返す"""
     zone = get_zone_from_distance(distance)
     enemies = ENEMY_ZONES[zone]["enemies"]
     
@@ -1467,8 +1525,8 @@ def get_treasure_box_equipment(distance):
         for drop in drops:
             item_name = drop.get("item")
             if item_name and item_name != "none" and item_name != "coins" and item_name != "毒の短剣" and item_name != "魔法の杖" and item_name != "幽霊の布" and item_name != "竜の鱗" and item_name != "死の鎧" and item_name != "血の剣" and item_name != "暗黒の弓" and item_name != "巨人の鎧" and item_name != "カオスブレード" and item_name != "神の盾" and item_name != "深淵の剣":
-                item_info = ITEMS_DATABASE.get(item_name)
-                if item_info and item_info.get("type") in ["weapon", "armor"]:
+                item_info = get_item_info(item_name)
+                if item_info and item_info.get("type") in ["weapon", "armor", "shield"]:
                     if item_name not in equipment_list:
                         equipment_list.append(item_name)
     
@@ -1487,7 +1545,7 @@ def get_treasure_box_weapons(distance):
         for drop in drops:
             item_name = drop.get("item")
             if item_name and item_name != "none" and item_name != "coins":
-                item_info = ITEMS_DATABASE.get(item_name)
+                item_info = get_item_info(item_name)
                 if item_info and item_info.get("type") == "weapon":
                     if item_name not in weapon_list:
                         weapon_list.append(item_name)
@@ -1496,7 +1554,15 @@ def get_treasure_box_weapons(distance):
 
 
 def get_item_info(item_name):
-    return ITEMS_DATABASE.get(item_name, None)
+    info = ITEMS_DATABASE.get(item_name, None)
+    if not info:
+        return None
+    # 互換: 盾アイテムは従来 armor 扱いだったため、名前で shield に分類する
+    if info.get("type") == "armor" and isinstance(item_name, str) and "盾" in item_name:
+        copied = info.copy()
+        copied["type"] = "shield"
+        return copied
+    return info
 
 
 def get_enemy_gold_drop(enemy_name, distance):
@@ -1883,6 +1949,7 @@ async def calculate_equipment_bonus(user_id):
 
     weapon_ability = ""
     armor_ability = ""
+    shield_ability = ""
 
     if equipped.get('weapon'):
         weapon_info = get_item_info(equipped['weapon'])
@@ -1896,17 +1963,27 @@ async def calculate_equipment_bonus(user_id):
     if equipped.get('armor'):
         armor_info = get_item_info(equipped['armor'])
         if armor_info:
-            defense_bonus = armor_info.get('defense', 0)
+            defense_bonus += armor_info.get('defense', 0)
             armor_ability = armor_info.get('ability', '')
             armor_bonuses = parse_ability_bonuses(armor_ability)
             for key in total_bonuses:
                 total_bonuses[key] += armor_bonuses[key]
+
+    if equipped.get('shield'):
+        shield_info = get_item_info(equipped['shield'])
+        if shield_info:
+            defense_bonus += shield_info.get('defense', 0)
+            shield_ability = shield_info.get('ability', '')
+            shield_bonuses = parse_ability_bonuses(shield_ability)
+            for key in total_bonuses:
+                total_bonuses[key] += shield_bonuses[key]
 
     return {
         'attack_bonus': attack_bonus,
         'defense_bonus': defense_bonus,
         'weapon_ability': weapon_ability,
         'armor_ability': armor_ability,
+        'shield_ability': shield_ability,
         **total_bonuses
     }
 
@@ -2439,8 +2516,6 @@ async def check_story_trigger(previous_distance, current_distance, user_id):
     if not player:
         return None
 
-    loop_count = player.get("loop_count", 0)
-
     for trigger in STORY_TRIGGERS:
         trigger_distance = trigger["distance"]
         story_id = trigger["story_id"]
@@ -2457,16 +2532,8 @@ async def check_story_trigger(previous_distance, current_distance, user_id):
             if not story:
                 continue
 
-            loop_requirement = story.get("loop_requirement")
-
-            if loop_requirement is None:
+            if not await db.get_story_flag(user_id, story_id):
                 return story_id
-            elif loop_requirement == 0 and loop_count == 0:
-                if not await db.get_story_flag(user_id, story_id):
-                    return story_id
-            elif loop_requirement > 0 and loop_count >= loop_requirement:
-                if not await db.get_story_flag(user_id, story_id):
-                    return story_id
 
     return None
 

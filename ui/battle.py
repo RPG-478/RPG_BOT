@@ -3,6 +3,7 @@ import db
 import random
 import asyncio
 import game
+import config
 import logging
 from discord.ui import View, button, Select
 from db import get_player, update_player, delete_player
@@ -18,7 +19,7 @@ from runtime_settings import (
 from settings import balance as balance_settings
 
 logger = logging.getLogger("rpgbot")
-from ui.common import handle_death_with_triggers
+from ui.common import handle_death_with_triggers, finalize_view_on_timeout
 
 class FinalBossBattleView(View):
     def __init__(self, ctx, player, boss, user_processing: dict, boss_stage: int):
@@ -147,7 +148,15 @@ class FinalBossBattleView(View):
                     equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
                     self.player["attack"] = base_atk + equipment_bonus["attack_bonus"]
                     self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
-                    print(f"[DEBUG] use_skill - プレイヤーデータ最新化: HP={self.player['hp']}, MP={self.player['mp']}, ATK={base_atk}+{equipment_bonus['attack_bonus']}={self.player['attack']}")
+                    if config.VERBOSE_DEBUG:
+                        logger.debug(
+                            "use_skill player refreshed: hp=%s mp=%s atk=%s+%s=%s",
+                            self.player["hp"],
+                            self.player["mp"],
+                            base_atk,
+                            equipment_bonus["attack_bonus"],
+                            self.player["attack"],
+                        )
 
                 if await db.is_mp_stunned(interaction.user.id):
                     await db.set_mp_stunned(interaction.user.id, False)
@@ -231,7 +240,7 @@ class FinalBossBattleView(View):
                             enemy_type='boss' if hasattr(self, 'boss') else 'normal'
                         )
                         if death_result:
-                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
+                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
                         else:
                             await self.update_embed(text + "\n💀 あなたは倒れた…")
                         self.disable_all_items()
@@ -258,9 +267,7 @@ class FinalBossBattleView(View):
                 await interaction.response.defer()
             
             except Exception as e:
-                print(f"[BattleView] use_skill error: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.exception("[BattleView] use_skill error: %s", e)
                 # エラー時もボタンを再有効化
                 for child in self.children:
                     child.disabled = False
@@ -390,11 +397,13 @@ class FinalBossBattleView(View):
         # ラスボス反撃
         enemy_base_dmg = game.calculate_physical_damage(self.boss["atk"], self.player["defense"], -3, 3)
 
-        # 防具効果を適用
+        # 鎧/盾の効果を適用（盾は防御系アビリティ枠として合算）
         armor_ability = equipment_bonus.get("armor_ability", "")
+        shield_ability = equipment_bonus.get("shield_ability", "")
+        combined_def_ability = "\n".join([a for a in [armor_ability, shield_ability] if a])
         armor_result = game.apply_armor_effects(
             enemy_base_dmg, 
-            armor_ability, 
+            combined_def_ability, 
             self.player["hp"], 
             self.player.get("max_hp", 50),
             enemy_base_dmg,
@@ -516,7 +525,7 @@ class FinalBossBattleView(View):
                                 f"到達距離: {distance}m"
                             )
                     except Exception as e:
-                        print(f"通知送信エラー: {e}")
+                        logger.warning("通知送信エラー: %s", e, exc_info=True)
 
                     if death_result:
                         await self.update_embed(
@@ -575,7 +584,7 @@ class FinalBossBattleView(View):
                         f"到達距離: {distance}m"
                     )
             except Exception as e:
-                print(f"通知送信エラー: {e}")
+                logger.warning("通知送信エラー: %s", e, exc_info=True)
 
             if death_result:
                 await self.update_embed(
@@ -600,9 +609,7 @@ class FinalBossBattleView(View):
             item.disabled = True
 
     async def on_timeout(self):
-        """タイムアウト時にuser_processingをクリア"""
-        if self.ctx.author.id in self.user_processing:
-            self.user_processing[self.ctx.author.id] = False
+        await finalize_view_on_timeout(self, user_processing=self.user_processing, user_id=getattr(self.ctx.author, "id", None))
 
 # ==============================
 # ボス戦View
@@ -630,7 +637,14 @@ class BossBattleView(View):
         fresh_boss = game.get_boss(self.boss_stage)
         if fresh_boss:
             self.boss = fresh_boss
-            print(f"[DEBUG] ボス初期化 - {self.boss['name']}: HP={self.boss['hp']}, ATK={self.boss['atk']}, DEF={self.boss['def']}")
+            if config.VERBOSE_DEBUG:
+                logger.debug(
+                    "boss init name=%s hp=%s atk=%s def=%s",
+                    self.boss.get("name"),
+                    self.boss.get("hp"),
+                    self.boss.get("atk"),
+                    self.boss.get("def"),
+                )
         
         if "user_id" in self.player:
             fresh_player = await db.get_player(self.player["user_id"])
@@ -739,7 +753,15 @@ class BossBattleView(View):
                     equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
                     self.player["attack"] = base_atk + equipment_bonus["attack_bonus"]
                     self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
-                    print(f"[DEBUG] use_skill - プレイヤーデータ最新化: HP={self.player['hp']}, MP={self.player['mp']}, ATK={base_atk}+{equipment_bonus['attack_bonus']}={self.player['attack']}")
+                    if config.VERBOSE_DEBUG:
+                        logger.debug(
+                            "use_skill player refreshed: hp=%s mp=%s atk=%s+%s=%s",
+                            self.player["hp"],
+                            self.player["mp"],
+                            base_atk,
+                            equipment_bonus["attack_bonus"],
+                            self.player["attack"],
+                        )
 
                 if await db.is_mp_stunned(interaction.user.id):
                     await db.set_mp_stunned(interaction.user.id, False)
@@ -823,7 +845,7 @@ class BossBattleView(View):
                             enemy_type='boss' if hasattr(self, 'boss') else 'normal'
                         )
                         if death_result:
-                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
+                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
                         else:
                             await self.update_embed(text + "\n💀 あなたは倒れた…")
                         self.disable_all_items()
@@ -850,9 +872,7 @@ class BossBattleView(View):
                 await interaction.response.defer()
             
             except Exception as e:
-                print(f"[BattleView] use_skill error: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.exception("[BattleView] use_skill error: %s", e)
                 # エラー時もボタンを再有効化
                 for child in self.children:
                     child.disabled = False
@@ -928,7 +948,7 @@ class BossBattleView(View):
                         f"⚔️ {interaction.user.mention} がステージ{self.boss_stage}のボス「{self.boss['name']}」を撃破した！"
                     )
             except Exception as e:
-                print(f"通知送信エラー: {e}")
+                logger.warning("通知送信エラー: %s", e, exc_info=True)
 
             await self.update_embed(text + f"\n\n🏆 ボスを倒した！\n💰 {reward_gold}ゴールドを手に入れた！")
             self.disable_all_items()
@@ -994,11 +1014,13 @@ class BossBattleView(View):
         # ボス反撃
         enemy_base_dmg = game.calculate_physical_damage(self.boss["atk"], self.player["defense"], -3, 3)
 
-        # 防具効果を適用
+        # 鎧/盾の効果を適用（盾は防御系アビリティ枠として合算）
         armor_ability = equipment_bonus.get("armor_ability", "")
+        shield_ability = equipment_bonus.get("shield_ability", "")
+        combined_def_ability = "\n".join([a for a in [armor_ability, shield_ability] if a])
         armor_result = game.apply_armor_effects(
             enemy_base_dmg, 
-            armor_ability, 
+            combined_def_ability, 
             self.player["hp"], 
             self.player.get("max_hp", 50),
             enemy_base_dmg,
@@ -1101,7 +1123,7 @@ class BossBattleView(View):
                             f"到達距離: {distance}m"
                         )
                 except Exception as e:
-                    print(f"通知送信エラー: {e}")
+                    logger.warning("通知送信エラー: %s", e, exc_info=True)
 
                 if death_result:
                     await self.update_embed(
@@ -1168,9 +1190,7 @@ class BossBattleView(View):
             item.disabled = True
 
     async def on_timeout(self):
-        """タイムアウト時にuser_processingをクリア"""
-        if self.ctx.author.id in self.user_processing:
-            self.user_processing[self.ctx.author.id] = False
+        await finalize_view_on_timeout(self, user_processing=self.user_processing, user_id=getattr(self.ctx.author, "id", None))
 
 #戦闘Embed
 import discord
@@ -1178,7 +1198,7 @@ from discord.ui import View, button, Select
 import random
 
 class BattleView(View):
-    def __init__(self, ctx, player, enemy, user_processing: dict):
+    def __init__(self, ctx, player, enemy, user_processing: dict, post_battle_hook=None, enemy_max_hp: int | None = None, allow_flee: bool = True):
         super().__init__(timeout=None)
         self.ctx = ctx
         self.player = player  # { "hp": int, "attack": int, "defense": int, "inventory": [ ... ] }
@@ -1186,13 +1206,41 @@ class BattleView(View):
         self.message = None
         self.user_processing = user_processing
         self._battle_lock = asyncio.Lock()  # アトミックなロック機構
+        self._post_battle_hook = post_battle_hook
+        self._enemy_max_hp = int(enemy_max_hp) if enemy_max_hp is not None else int(enemy.get("hp", 0) or 0)
+        self._allow_flee = bool(allow_flee)
+
+        if not self._allow_flee:
+            for child in list(self.children):
+                if isinstance(child, discord.ui.Button) and (
+                    getattr(child.callback, "__name__", "") == "run" or str(getattr(child, "label", "")) == "逃げる"
+                ):
+                    self.remove_item(child)
 
     @classmethod
-    async def create(cls, ctx, player, enemy, user_processing: dict):
+    async def create(cls, ctx, player, enemy, user_processing: dict, post_battle_hook=None, enemy_max_hp: int | None = None, allow_flee: bool = True):
         """Async factory method to create and initialize BattleView"""
-        instance = cls(ctx, player, enemy, user_processing)
+        instance = cls(ctx, player, enemy, user_processing, post_battle_hook=post_battle_hook, enemy_max_hp=enemy_max_hp, allow_flee=allow_flee)
         await instance._async_init()
         return instance
+
+    async def _maybe_finish_story_battle(self, outcome: str) -> bool:
+        """ストーリー駆動の戦闘なら、勝敗に応じてフックを呼ぶ。"""
+        if not self._post_battle_hook:
+            return False
+
+        try:
+            await self._post_battle_hook(
+                outcome=outcome,
+                enemy_hp=int(self.enemy.get("hp", 0) or 0),
+                enemy_max_hp=int(self._enemy_max_hp or 0),
+            )
+        except Exception as e:
+            try:
+                await self.ctx.send(f"⚠️ 戦闘後処理に失敗しました: {e}")
+            except Exception:
+                pass
+        return True
 
     async def _async_init(self):
         """Async initialization logic"""
@@ -1292,7 +1340,15 @@ class BattleView(View):
                     equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
                     self.player["attack"] = base_atk + equipment_bonus["attack_bonus"]
                     self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
-                    print(f"[DEBUG] use_skill - プレイヤーデータ最新化: HP={self.player['hp']}, MP={self.player['mp']}, ATK={base_atk}+{equipment_bonus['attack_bonus']}={self.player['attack']}")
+                    if config.VERBOSE_DEBUG:
+                        logger.debug(
+                            "use_skill player refreshed: hp=%s mp=%s atk=%s+%s=%s",
+                            self.player["hp"],
+                            self.player["mp"],
+                            base_atk,
+                            equipment_bonus["attack_bonus"],
+                            self.player["attack"],
+                        )
 
                 if await db.is_mp_stunned(interaction.user.id):
                     await db.set_mp_stunned(interaction.user.id, False)
@@ -1341,6 +1397,14 @@ class BattleView(View):
                     text += f"⚔️ {skill_damage} のダメージを与えた！"
 
                     if self.enemy["hp"] <= 0:
+                        if await self._maybe_finish_story_battle("win"):
+                            self.disable_all_items()
+                            await self.message.edit(view=self)
+                            if self.ctx.author.id in self.user_processing:
+                                self.user_processing[self.ctx.author.id] = False
+                            await interaction.response.defer()
+                            return
+
                         await db.update_player(interaction.user.id, hp=self.player["hp"])
                         distance = self.player.get("distance", 0)
                         drop_result = game.get_enemy_drop(self.enemy["name"], distance)
@@ -1368,6 +1432,14 @@ class BattleView(View):
                     text += f"\n敵の反撃！ {enemy_dmg} のダメージを受けた！"
 
                     if self.player["hp"] <= 0:
+                        if await self._maybe_finish_story_battle("lose"):
+                            self.disable_all_items()
+                            await self.message.edit(view=self)
+                            if self.ctx.author.id in self.user_processing:
+                                self.user_processing[self.ctx.author.id] = False
+                            await interaction.response.defer()
+                            return
+
                         death_result = await handle_death_with_triggers(
                             self.ctx if hasattr(self, 'ctx') else interaction.channel,
                             interaction.user.id, 
@@ -1376,7 +1448,7 @@ class BattleView(View):
                             enemy_type='boss' if hasattr(self, 'boss') else 'normal'
                         )
                         if death_result:
-                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
+                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
                         else:
                             await self.update_embed(text + "\n💀 あなたは倒れた…")
                         self.disable_all_items()
@@ -1403,9 +1475,7 @@ class BattleView(View):
                 await interaction.response.defer()
             
             except Exception as e:
-                print(f"[BattleView] use_skill error: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.exception("[BattleView] use_skill error: %s", e)
                 # エラー時もボタンを再有効化
                 for child in self.children:
                     child.disabled = False
@@ -1451,7 +1521,17 @@ class BattleView(View):
                     equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
                     self.player["attack"] = base_atk + equipment_bonus["attack_bonus"]
                     self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
-                    print(f"[DEBUG] fight - プレイヤーデータ最新化: HP={self.player['hp']}, ATK={base_atk}+{equipment_bonus['attack_bonus']}={self.player['attack']}, DEF={base_def}+{equipment_bonus['defense_bonus']}={self.player['defense']}")
+                    if config.VERBOSE_DEBUG:
+                        logger.debug(
+                            "fight player refreshed: hp=%s atk=%s+%s=%s def=%s+%s=%s",
+                            self.player["hp"],
+                            base_atk,
+                            equipment_bonus["attack_bonus"],
+                            self.player["attack"],
+                            base_def,
+                            equipment_bonus["defense_bonus"],
+                            self.player["defense"],
+                        )
 
                 # MP枯渇チェック
                 if await db.is_mp_stunned(interaction.user.id):
@@ -1500,6 +1580,13 @@ class BattleView(View):
 
                 # 勝利チェック
                 if self.enemy["hp"] <= 0:
+                    if await self._maybe_finish_story_battle("win"):
+                        self.disable_all_items()
+                        await self.message.edit(view=self)
+                        if self.ctx.author.id in self.user_processing:
+                            self.user_processing[self.ctx.author.id] = False
+                        return
+
                     # HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
 
@@ -1574,11 +1661,13 @@ class BattleView(View):
                 # 敵反撃
                 enemy_base_dmg = game.calculate_physical_damage(self.enemy["atk"], self.player["defense"], -2, 2)
 
-                # 防具効果を適用
+                # 鎧/盾の効果を適用（盾は防御系アビリティ枠として合算）
                 armor_ability = equipment_bonus.get("armor_ability", "")
+                shield_ability = equipment_bonus.get("shield_ability", "")
+                combined_def_ability = "\n".join([a for a in [armor_ability, shield_ability] if a])
                 armor_result = game.apply_armor_effects(
                     enemy_base_dmg, 
-                    armor_ability, 
+                    combined_def_ability, 
                     self.player["hp"], 
                     self.player.get("max_hp", 50),
                     enemy_base_dmg,
@@ -1635,6 +1724,13 @@ class BattleView(View):
                         self.player["hp"] = 1
                         text += "\n蘇生効果で生き残った！\n『死んだかと思った……どんなシステムなんだろう』"
                     else:
+                        if await self._maybe_finish_story_battle("lose"):
+                            self.disable_all_items()
+                            await self.message.edit(view=self)
+                            if self.ctx.author.id in self.user_processing:
+                                self.user_processing[self.ctx.author.id] = False
+                            return
+
                         # 死亡処理（HPリセット、距離リセット、アップグレードポイント付与）
                         death_result = await handle_death_with_triggers(
                             self.ctx if hasattr(self, 'ctx') else interaction.channel,
@@ -1644,7 +1740,7 @@ class BattleView(View):
                             enemy_type='boss' if hasattr(self, 'boss') else 'normal'
                         )
                         if death_result:
-                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
+                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
                         else:
                             await self.update_embed(text + "\n💀 あなたは倒れた…")
                         self.disable_all_items()
@@ -1663,9 +1759,7 @@ class BattleView(View):
                 await self.message.edit(view=self)
             
             except Exception as e:
-                print(f"[BattleView] fight error: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.exception("[BattleView] fight error: %s", e)
                 # エラー時もボタンを再有効化
                 for child in self.children:
                     child.disabled = False
@@ -1705,7 +1799,14 @@ class BattleView(View):
                     base_def = fresh_player_data.get("def", 2)
                     equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
                     self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
-                    print(f"[DEBUG] defend - プレイヤーデータ最新化: HP={self.player['hp']}, DEF={base_def}+{equipment_bonus['defense_bonus']}={self.player['defense']}")
+                    if config.VERBOSE_DEBUG:
+                        logger.debug(
+                            "defend player refreshed: hp=%s def=%s+%s=%s",
+                            self.player["hp"],
+                            base_def,
+                            equipment_bonus["defense_bonus"],
+                            self.player["defense"],
+                        )
 
                 reduction = random.randint(
                     balance_settings.DAMAGE_REDUCTION_LOW_MIN,
@@ -1719,6 +1820,13 @@ class BattleView(View):
                 text = f"防御した！ ダメージを {reduction}% 軽減！\n敵の攻撃で {enemy_dmg} のダメージを受けた！"
 
                 if self.player["hp"] <= 0:
+                    if await self._maybe_finish_story_battle("lose"):
+                        self.disable_all_items()
+                        await self.message.edit(view=self)
+                        if self.ctx.author.id in self.user_processing:
+                            self.user_processing[self.ctx.author.id] = False
+                        return
+
                     # 死亡処理
                     death_result = await handle_death_with_triggers(
                         self.ctx if hasattr(self, 'ctx') else interaction.channel,
@@ -1728,7 +1836,7 @@ class BattleView(View):
                         enemy_type='boss' if hasattr(self, 'boss') else 'normal'
                     )
                     if death_result:
-                        await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
+                        await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
                     else:
                         await self.update_embed(text + "\n💀 あなたは倒れた…")
                     self.disable_all_items()
@@ -1746,9 +1854,7 @@ class BattleView(View):
                 await self.message.edit(view=self)
             
             except Exception as e:
-                print(f"[BattleView] defend error: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.exception("[BattleView] defend error: %s", e)
                 # エラー時もボタンを再有効化
                 for child in self.children:
                     child.disabled = False
@@ -1788,7 +1894,13 @@ class BattleView(View):
                     base_def = fresh_player_data.get("def", 2)
                     equipment_bonus = await game.calculate_equipment_bonus(interaction.user.id)
                     self.player["defense"] = base_def + equipment_bonus["defense_bonus"]
-                    print(f"[DEBUG] run - プレイヤーデータ最新化: HP={self.player['hp']}, DEF={base_def}+{equipment_bonus['defense_bonus']}={self.player['defense']}")
+                    logger.debug(
+                        "battle.run: refresh hp=%s def=%s+%s=%s",
+                        self.player["hp"],
+                        base_def,
+                        equipment_bonus["defense_bonus"],
+                        self.player["defense"],
+                    )
 
                 # 逃走確率
                 if random.randint(1, 100) <= balance_settings.FLEE_CHANCE_PERCENT:
@@ -1801,7 +1913,8 @@ class BattleView(View):
                     if self.ctx.author.id in self.user_processing:
                         self.user_processing[self.ctx.author.id] = False
                 else:
-                    enemy_dmg = max(0, self.enemy["atk"] - self.player["defense"])
+                    # 逃走失敗時の反撃も、戦闘モデル（legacy/lol/poe）に統一
+                    enemy_dmg = game.calculate_physical_damage(self.enemy["atk"], self.player["defense"], -2, 2)
                     self.player["hp"] -= enemy_dmg
                     self.player["hp"] = max(0, self.player["hp"])
                     
@@ -1816,7 +1929,7 @@ class BattleView(View):
                             enemy_type='boss' if hasattr(self, 'boss') else 'normal'
                         )
                         if death_result:
-                            text = f"逃げられなかった！ 敵の攻撃で {enemy_dmg} のダメージ！\n💀 あなたは倒れた…\n\n🔄 周回リスタート\n📍 アップグレードポイント: +{death_result['points']}pt"
+                            text = f"逃げられなかった！ 敵の攻撃で {enemy_dmg} のダメージ！\n💀 あなたは倒れた…\n\n🔄 リスタート\n📍 アップグレードポイント: +{death_result['points']}pt"
                         else:
                             text = f"逃げられなかった！ 敵の攻撃で {enemy_dmg} のダメージ！\n💀 あなたは倒れた…"
                         self.disable_all_items()
@@ -1835,9 +1948,7 @@ class BattleView(View):
                         await self.message.edit(view=self)
             
             except Exception as e:
-                print(f"[BattleView] run error: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.exception("battle.run error: %s", e)
                 # エラー時もボタンを再有効化
                 for child in self.children:
                     child.disabled = False
@@ -1943,7 +2054,12 @@ class BattleView(View):
             self.player["max_hp"] = fresh_player_data.get("max_hp", self.player.get("max_hp", 50))
             self.player["max_mp"] = fresh_player_data.get("max_mp", self.player.get("max_mp", 20))
             self.player["inventory"] = fresh_player_data.get("inventory", [])
-            print(f"[DEBUG] item_select_callback - プレイヤーデータ再取得: HP={self.player['hp']}, インベントリ={len(self.player['inventory'])}個")
+            if config.VERBOSE_DEBUG:
+                logger.debug(
+                    "item_select_callback player refreshed: hp=%s inventory_count=%s",
+                    self.player["hp"],
+                    len(self.player["inventory"]),
+                )
 
             selected_value = select_interaction.data['values'][0]
             parts = selected_value.split("_", 2)  # 例: "hp_0_小さい回復薬"
@@ -1953,7 +2069,8 @@ class BattleView(View):
 
             # ✅ アイテム所持確認
             if item_name not in self.player["inventory"]:
-                print(f"[DEBUG] item_select_callback - アイテム未所持: {item_name}")
+                if config.VERBOSE_DEBUG:
+                    logger.debug("item_select_callback missing item: %s", item_name)
                 return await select_interaction.response.send_message(f"⚠️ {item_name} を所持していません。", ephemeral=True)
 
             item_info = game.get_item_info(item_name)
@@ -2051,9 +2168,7 @@ class BattleView(View):
             item.disabled = True
 
     async def on_timeout(self):
-        """タイムアウト時にuser_processingをクリア"""
-        if self.ctx.author.id in self.user_processing:
-            self.user_processing[self.ctx.author.id] = False
+        await finalize_view_on_timeout(self, user_processing=self.user_processing, user_id=getattr(self.ctx.author, "id", None))
 
 
 #ステータスEmbed

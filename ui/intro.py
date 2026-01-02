@@ -9,11 +9,15 @@ from db import get_player, update_player, delete_player
 import death_system
 from titles import get_title_rarity_emoji, get_title_rarity_color
 from runtime_settings import VIEW_TIMEOUT_LONG
+from ui.storage import StorageSelectView
+from story import StoryView
 
 logger = logging.getLogger("rpgbot")
 class NameRequestView(discord.ui.View):
     def __init__(self, user_id: int, channel: discord.abc.Messageable):
-        super().__init__(timeout=VIEW_TIMEOUT_LONG)
+        # 名前入力は放置されがちなので、View側のタイムアウトを無効化しておく。
+        # （Botが生きている限りボタンは押せる）
+        super().__init__(timeout=None)
         self.user_id = user_id
         self.channel = channel
 
@@ -42,6 +46,13 @@ class NameModal(discord.ui.Modal):
         self.add_item(self.name_input)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # 先にInteractionをACK（DB処理で"This interaction failed"になりがちなので）
+        try:
+            await interaction.response.send_message("✅ うけつけたよ", ephemeral=True)
+        except Exception:
+            # 既に応答済み等
+            pass
+
         player_name = self.name_input.value.strip()
 
         # DB更新（名前登録）
@@ -70,18 +81,9 @@ class NameModal(discord.ui.Modal):
             storage_view = StorageSelectView(self.user_id, self.channel, storage_items)
             await self.channel.send(embed=embed, view=storage_view)
         else:
-            # 倉庫が空の場合は通常通りチュートリアル開始
-            await self.channel.send(
-                embed=discord.Embed(
-                    title="第1節 ~冒険の始まり~",
-                    description="あなたはこのダンジョンに迷い込んだ者。\n目を覚ますと、見知らぬ洞窟の中だった。\n体にはなにも身につけていない。そしてどこかで誰かの声がする――。\n\n『ようこそ、挑戦者よ。ここは終わりなき迷宮。』\n\n『最初の一歩を踏み出す準備はできているか？』",
-                    color=discord.Color.purple()
-                )
-            )
-
-            # チュートリアル開始
-            tutorial_view = TutorialView(self.user_id)
-            await self.channel.send(embed=tutorial_view.pages[0], view=tutorial_view)
+            # 倉庫が空の場合：まずは相方ストーリー（みはり）を開始
+            view = StoryView(self.user_id, "start_mihari", user_processing={})
+            await view.send_story(interaction)
 
 
 # -------------------------

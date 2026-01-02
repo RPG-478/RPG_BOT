@@ -39,5 +39,6 @@ def setup_player_commands(bot: commands.Bot):
             description="リセットするとプレイヤーデータは完全に削除されます。よろしいですか？\n\n※確認は2段階です。",
             color=discord.Color.red(),
         )
-        view = ResetConfirmView(user.id, None)
+        # reset 実行時点のチャンネルIDを渡しておくと、最終確認ボタン押下時の削除が安定する
+        view = ResetConfirmView(user.id, ctx.channel.id if getattr(ctx, "channel", None) else None)
         await ctx.send(embed=embed, view=view)

@@ -51,6 +51,7 @@ class InventorySelectView(discord.ui.View):
             potions = []
             weapons = []
             armors = []
+            shields = []
             materials = []
             
             for item_name, count in item_counts.items():
@@ -62,6 +63,8 @@ class InventorySelectView(discord.ui.View):
                         weapons.append((item_name, count, item_info))
                     elif item_info['type'] == 'armor':
                         armors.append((item_name, count, item_info))
+                    elif item_info['type'] == 'shield':
+                        shields.append((item_name, count, item_info))
                     else:
                         materials.append((item_name, count, item_info))
             
@@ -107,7 +110,7 @@ class InventorySelectView(discord.ui.View):
                 weapon_select.callback = self.select_callback
                 self.add_item(weapon_select)
             
-            # 防具のプルダウン（最大25個）
+            # 鎧のプルダウン（最大25個）
             if armors:
                 armor_options = []
                 for i, (item_name, count, info) in enumerate(armors[:SELECT_MAX_OPTIONS]):
@@ -121,12 +124,33 @@ class InventorySelectView(discord.ui.View):
                     ))
                 
                 armor_select = discord.ui.Select(
-                    placeholder="🛡️ 防具",
+                    placeholder="🛡️ 鎧",
                     options=armor_options,
                     custom_id="armor_select"
                 )
                 armor_select.callback = self.select_callback
                 self.add_item(armor_select)
+
+            # 盾のプルダウン（最大25個）
+            if shields:
+                shield_options = []
+                for i, (item_name, count, info) in enumerate(shields[:SELECT_MAX_OPTIONS]):
+                    desc = f"防御力:{info.get('defense', 0)} | 所持数:{count}"
+                    label = f"{item_name} ×{count}" if count > 1 else item_name
+                    shield_options.append(discord.SelectOption(
+                        label=label,
+                        description=desc[:DESC_TRIM_LONG],
+                        value=f"shield_{i}_{item_name}",
+                        emoji="🛡️"
+                    ))
+
+                shield_select = discord.ui.Select(
+                    placeholder="🛡️ 盾",
+                    options=shield_options,
+                    custom_id="shield_select"
+                )
+                shield_select.callback = self.select_callback
+                self.add_item(shield_select)
             
             # 素材のプルダウン（最大25個）
             if materials:
@@ -260,6 +284,15 @@ class InventorySelectView(discord.ui.View):
                 ephemeral=True
             )
 
+        elif item_info['type'] == 'shield':
+            defense = item_info.get('defense', 0)
+            ability = item_info.get('ability', 'なし')
+            description = item_info.get('description', '')
+            await interaction.response.send_message(
+                f"🛡️ **{item_name}** (所持数: {item_count})\n防御力: {defense}\n能力: {ability}\n\n{description}\n\n装備するには `!status` コマンドから装備変更してください。",
+                ephemeral=True
+            )
+
         else:
             await interaction.response.send_message(
                 f"📦 {item_name} (所持数: {item_count})\n{item_info.get('description', '')}",
@@ -280,9 +313,10 @@ class EquipmentSelectView(discord.ui.View):
         # アイテムをカウント（集約）
         item_counts = Counter(inventory)
 
-        # 武器リストと防具リスト
+        # 武器リストと鎧リストと盾リスト
         weapons = []
         armors = []
+        shields = []
         
         for item_name, count in item_counts.items():
             item_info = game.get_item_info(item_name)
@@ -291,6 +325,8 @@ class EquipmentSelectView(discord.ui.View):
                     weapons.append((item_name, count, item_info))
                 elif item_info['type'] == 'armor':
                     armors.append((item_name, count, item_info))
+                elif item_info['type'] == 'shield':
+                    shields.append((item_name, count, item_info))
 
         # 武器選択プルダウン1（1〜25個目）
         if weapons:
@@ -334,7 +370,7 @@ class EquipmentSelectView(discord.ui.View):
             weapon_select_2.callback = self.select_callback
             self.add_item(weapon_select_2)
 
-        # 防具選択プルダウン1（1〜25個目）
+        # 鎧選択プルダウン1（1〜25個目）
         if armors:
             armor_options_1 = []
             for i, (armor_name, count, item_info) in enumerate(armors[:SELECT_MAX_OPTIONS]):
@@ -348,14 +384,14 @@ class EquipmentSelectView(discord.ui.View):
                 ))
             
             armor_select_1 = discord.ui.Select(
-                placeholder="🛡️ 防具を選択 (1/2)",
+                placeholder="🛡️ 鎧を選択 (1/2)",
                 options=armor_options_1,
                 custom_id="armor_select_1"
             )
             armor_select_1.callback = self.select_callback
             self.add_item(armor_select_1)
 
-        # 防具選択プルダウン2（26〜50個目）
+        # 鎧選択プルダウン2（26〜50個目）
         if len(armors) > SELECT_MAX_OPTIONS:
             armor_options_2 = []
             for i, (armor_name, count, item_info) in enumerate(armors[SELECT_MAX_OPTIONS:SELECT_MAX_OPTIONS*2], start=SELECT_MAX_OPTIONS):
@@ -369,12 +405,54 @@ class EquipmentSelectView(discord.ui.View):
                 ))
             
             armor_select_2 = discord.ui.Select(
-                placeholder="🛡️ 防具を選択 (2/2)",
+                placeholder="🛡️ 鎧を選択 (2/2)",
                 options=armor_options_2,
                 custom_id="armor_select_2"
             )
             armor_select_2.callback = self.select_callback
             self.add_item(armor_select_2)
+
+        # 盾選択プルダウン1（1〜25個目）
+        if shields:
+            shield_options_1 = []
+            for i, (shield_name, count, item_info) in enumerate(shields[:SELECT_MAX_OPTIONS]):
+                desc = f"防御力: {item_info.get('defense', 0)} | 所持数: {count}"
+                label = f"{shield_name} ×{count}" if count > 1 else shield_name
+                shield_options_1.append(discord.SelectOption(
+                    label=label,
+                    description=desc[:DESC_TRIM_LONG],
+                    value=f"shield_{i}_{shield_name}",
+                    emoji="🛡️"
+                ))
+
+            shield_select_1 = discord.ui.Select(
+                placeholder="🛡️ 盾を選択 (1/2)",
+                options=shield_options_1,
+                custom_id="shield_select_1"
+            )
+            shield_select_1.callback = self.select_callback
+            self.add_item(shield_select_1)
+
+        # 盾選択プルダウン2（26〜50個目）
+        if len(shields) > SELECT_MAX_OPTIONS:
+            shield_options_2 = []
+            for i, (shield_name, count, item_info) in enumerate(shields[SELECT_MAX_OPTIONS:SELECT_MAX_OPTIONS*2], start=SELECT_MAX_OPTIONS):
+                desc = f"防御力: {item_info.get('defense', 0)} | 所持数: {count}"
+                label = f"{shield_name} ×{count}" if count > 1 else shield_name
+                shield_options_2.append(discord.SelectOption(
+                    label=label,
+                    description=desc[:DESC_TRIM_LONG],
+                    value=f"shield_{i}_{shield_name}",
+                    emoji="🛡️"
+                ))
+
+            shield_select_2 = discord.ui.Select(
+                placeholder="🛡️ 盾を選択 (2/2)",
+                options=shield_options_2,
+                custom_id="shield_select_2"
+            )
+            shield_select_2.callback = self.select_callback
+            self.add_item(shield_select_2)
 
     async def select_callback(self, interaction: discord.Interaction):
         if self.player.get("user_id") and interaction.user.id != int(self.player.get("user_id")):
@@ -394,6 +472,9 @@ class EquipmentSelectView(discord.ui.View):
             await interaction.response.send_message(f"⚔️ **{item_name}** を武器として装備した！", ephemeral=True)
         elif equip_type == "armor":
             await db.equip_armor(interaction.user.id, item_name)
-            await interaction.response.send_message(f"🛡️ **{item_name}** を防具として装備した！", ephemeral=True)
+            await interaction.response.send_message(f"🛡️ **{item_name}** を鎧として装備した！", ephemeral=True)
+        elif equip_type == "shield":
+            await db.equip_shield(interaction.user.id, item_name)
+            await interaction.response.send_message(f"🛡️ **{item_name}** を盾として装備した！", ephemeral=True)
 
 

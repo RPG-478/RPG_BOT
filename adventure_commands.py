@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import discord
 from discord.ext import commands
 
@@ -9,6 +10,49 @@ from views import NameRequestView
 
 from runtime_settings import NOTIFY_CHANNEL_ID
 from bot_utils import check_ban, is_guild_admin, try_get_existing_adventure_thread
+
+logger = logging.getLogger("rpgbot")
+
+
+def _get_bot_member(guild: discord.Guild, bot: commands.Bot) -> discord.Member | None:
+    me = getattr(guild, "me", None)
+    if isinstance(me, discord.Member):
+        return me
+    try:
+        return guild.get_member(bot.user.id) if bot.user else None
+    except Exception:
+        return None
+
+
+def _missing_thread_mode_permissions(guild: discord.Guild, channel: discord.TextChannel, bot: commands.Bot) -> tuple[list[str], list[str]]:
+    """スレッド運用に必要/推奨の権限不足を返す。
+
+    returns: (required_missing, recommended_missing)
+    """
+
+    bot_member = _get_bot_member(guild, bot)
+    if bot_member is None:
+        # 取得できない場合は診断不能として required に寄せる
+        return (["BOTメンバー情報の取得"], [])
+
+    perms = channel.permissions_for(bot_member)
+
+    required: list[tuple[str, bool]] = [
+        ("チャンネルを表示 (View Channel)", perms.view_channel),
+        ("メッセージを送信 (Send Messages)", perms.send_messages),
+        ("プライベートスレッドを作成 (Create Private Threads)", perms.create_private_threads),
+        ("スレッドでメッセージを送信 (Send Messages in Threads)", perms.send_messages_in_threads),
+        ("スレッドを管理 (Manage Threads)", perms.manage_threads),
+    ]
+
+    recommended: list[tuple[str, bool]] = [
+        ("メッセージ履歴を読む (Read Message History)", perms.read_message_history),
+        ("チャンネルを管理 (Manage Channels)", perms.manage_channels),
+    ]
+
+    required_missing = [name for name, ok in required if not ok]
+    recommended_missing = [name for name, ok in recommended if not ok]
+    return required_missing, recommended_missing
 
 
 def setup_adventure_commands(bot: commands.Bot):
@@ -43,12 +87,31 @@ def setup_adventure_commands(bot: commands.Bot):
             await ctx.send("❌ `!set` は通常のテキストチャンネルで実行してください")
             return
 
+        required_missing, recommended_missing = _missing_thread_mode_permissions(ctx.guild, ctx.channel, bot)
+        if required_missing:
+            lines = [
+                "⚠️ このチャンネルでスレッド運用に必要なBOT権限が不足しています。",
+                "管理者がBOTロールに以下を付与してから、もう一度 `!set` を実行してください。",
+                "",
+            ]
+            lines += [f"- {name}" for name in required_missing]
+            if recommended_missing:
+                lines += ["", "（推奨）"]
+                lines += [f"- {name}" for name in recommended_missing]
+            await ctx.send("\n".join(lines))
+            return
+
         ok = await db.set_guild_adventure_parent_channel(ctx.guild.id, ctx.channel.id)
         if ok:
-            await ctx.send(
+            msg = (
                 "✅ 設定しました。今後 `!start` はこのチャンネル配下に"
                 "『プライベートスレッド（3日で自動アーカイブ）』を作成します。"
             )
+            if recommended_missing:
+                msg += "\n\n（推奨）BOT権限が一部不足しています:\n" + "\n".join(
+                    [f"- {name}" for name in recommended_missing]
+                )
+            await ctx.send(msg)
         else:
             await ctx.send(
                 "⚠️ 設定の保存に失敗しました。Supabaseに `guild_settings` テーブルが無い可能性があります。\n"
@@ -133,6 +196,29 @@ def setup_adventure_commands(bot: commands.Bot):
                     except (TypeError, ValueError):
                         parent_channel_id = None
 
+            logger.debug(
+                "start: guild=%s channel=%s parent_channel_id=%s",
+                getattr(ctx.guild, "id", None),
+                getattr(ctx.channel, "id", None),
+                parent_channel_id,
+            )
+
+            # スレッド運用が有効な場合は、`!set` した親チャンネル以外からの `!start` を禁止
+            if parent_channel_id and ctx.channel and ctx.channel.id != parent_channel_id:
+                logger.debug(
+                    "start rejected: wrong channel guild=%s user=%s channel=%s expected_parent=%s",
+                    ctx.guild.id,
+                    user.id,
+                    ctx.channel.id,
+                    parent_channel_id,
+                )
+                parent = ctx.guild.get_channel(parent_channel_id)
+                if isinstance(parent, discord.TextChannel):
+                    await ctx.send(f"❌ `!start` は {parent.mention} で実行してください。", delete_after=15)
+                else:
+                    await ctx.send("❌ `!start` の実行チャンネルが不正です。管理者に `!set` をやり直してもらってください。", delete_after=15)
+                return
+
             player = await get_player(user_id)
 
             if player and player.get("name") and parent_channel_id:
@@ -216,7 +302,7 @@ def setup_adventure_commands(bot: commands.Bot):
                             if notify_channel:
                                 await notify_channel.send(f"🎮 {user.mention} が新しい冒険を開始しました！")
                         except Exception as e:
-                            print(f"通知送信エラー: {e}")
+                            logger.warning("通知送信エラー: %s", e, exc_info=True)
 
                         return
                     except discord.Forbidden:
@@ -275,9 +361,9 @@ def setup_adventure_commands(bot: commands.Bot):
                 if notify_channel:
                     await notify_channel.send(f"🎮 {user.mention} が新しい冒険を開始しました！")
             except Exception as e:
-                print(f"通知送信エラー: {e}")
+                logger.warning("通知送信エラー: %s", e, exc_info=True)
         except Exception as e:
-            print(f"!startコマンドエラー: {e}")
+            logger.exception("!startコマンドエラー: %s", e)
             await ctx.send(f"⚠️ エラーが発生しました: {e}", delete_after=10)
         finally:
             user_processing[user.id] = False

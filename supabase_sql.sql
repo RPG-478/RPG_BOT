@@ -1,5 +1,5 @@
 -- RPG_BOT / Supabase schema (clean + executable)
--- Generated: 2025-12-27
+-- Generated: 2026-01-02
 --
 -- Goal
 -- - Your existing schema dump is "context only" and includes mismatched column names.
@@ -65,6 +65,9 @@ alter table if exists public.players
 -- guild_settings (server-scoped config for thread mode)
 -- ============================================================
 -- Used by: !set / !set off / !start
+-- NOTE: `!set` で「親チャンネル固定」を有効化している場合、
+--       BOT側はこのテーブルの adventure_parent_channel_id を参照して
+--       それ以外のチャンネルからの `!start` を拒否します。
 
 create table if not exists public.guild_settings (
   guild_id text primary key,

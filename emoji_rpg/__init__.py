@@ -1,0 +1,1 @@
+"""Emoji RPG minigame package."""

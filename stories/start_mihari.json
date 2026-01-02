@@ -1,0 +1,221 @@
+{
+  "stories": {
+    "start_mihari": {
+      "title": "みはり",
+      "start_node": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            {"speaker": "ナレーション", "text": "ダンジョンの いりぐちに いるひとが はなしかけてきた。"},
+            {"speaker": "みはり", "text": "うわっ！ なんで こんな ダンジョンに いどむ ひとが いるんだよ。もうなえー！"},
+            {"speaker": "みはり", "text": "この ダンジョンは ひきかえす ことが できないため とても きけんなんだ。"},
+            {"speaker": "みはり", "text": "それでも すすみたいなら じこせきにんで たのむよ。"},
+            {"speaker": "ナレーション", "text": "いりぐち には ぶきみな ！マークが かかれた おおきな かんばんが ある"}
+          ],
+          "choices": [
+            {
+              "label": "みはりとたたかう",
+              "result": {
+                "title": "みはりとたたかう",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "あなたは なぜか きゅうに じぶんの ちからを みはりに ためして みたくなった"},
+                  {"speaker": "みはり", "text": "はい...？ ききまちがえ かな？"}
+                ]
+              },
+              "next": {"node": "fight_menu"}
+            },
+            {
+              "label": "ものごいをする",
+              "conditions": [
+                {"type": "flag.missing", "key": "mihari_begged"}
+              ],
+              "result": {
+                "title": "ものごいをする",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "あなたは とつぜん ひっしに ものごいを しはじめた?!"},
+                  {"speaker": "みはり", "text": "えっ... なんなんだ きゅうに..."},
+                  {"speaker": "みはり", "text": "きほんそうび ぐらいなら くれてやる"},
+                  {"speaker": "ナレーション", "text": "あなたは [木の剣] と [木の盾] を てにいれた！"}
+                ]
+              },
+              "effects": [
+                {"type": "flag.set", "key": "mihari_begged"},
+                {"type": "inventory.add", "item": "木の剣", "once": true},
+                {"type": "inventory.add", "item": "木の盾", "once": true}
+              ],
+              "next": {"node": "choice_menu"}
+            },
+            {
+              "label": "もどる",
+              "result": {"title": "もどる", "lines": [{"speaker": "ナレーション", "text": "ほんとうに もどる？"}]},
+              "next": {"node": "back_confirm"}
+            },
+            {
+              "label": "すすむ",
+              "result": {
+                "title": "すすむ",
+                "lines": [
+                  {"speaker": "みはり", "text": "きをつけて ダンジョンを すすんでいけ。"},
+                  {"speaker": "みはり", "text": "あと...　これをもっていくといい。"},
+                  {"speaker": "ナレーション", "text": "あなたは [魔法のランタン] を てにいれた！"},
+                  {"speaker": "みはり", "text": "ダンジョンの まものの そざいで つくられた からなのか しらないが"},
+                  {"speaker": "みはり", "text": "この ランタンは ねんりょうを ひつようとしない。"},
+                  {"speaker": "みはり", "text": "おめーの まわりを ずっと あかるく てらして くれるだろう。"},
+                  {"speaker": "ナレーション", "text": "あなたの たびが いま はじまる!!"}
+                ]
+              },
+              "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}],
+              "next": {"end": true}
+            }
+          ]
+        },
+        "choice_menu": {
+          "lines": [{"speaker": "ナレーション", "text": "どうする？"}],
+          "choices": [
+            {"label": "みはりとたたかう", "result": {"title": "みはりとたたかう", "lines": [{"speaker": "ナレーション", "text": "あなたは なぜか きゅうに じぶんの ちからを みはりに ためして みたくなった"}, {"speaker": "みはり", "text": "はい...？ ききまちがえ かな？"}]}, "next": {"node": "fight_menu"}},
+            {"label": "ものごいをする", "conditions": [{"type": "flag.missing", "key": "mihari_begged"}], "result": {"title": "ものごいをする", "lines": [{"speaker": "ナレーション", "text": "あなたは とつぜん ひっしに ものごいを しはじめた?!"}, {"speaker": "みはり", "text": "えっ... なんなんだ きゅうに..."}, {"speaker": "みはり", "text": "きほんそうび ぐらいなら くれてやる"}, {"speaker": "ナレーション", "text": "あなたは [木の剣] と [木の盾] を てにいれた！"}]}, "effects": [{"type": "flag.set", "key": "mihari_begged"}, {"type": "inventory.add", "item": "木の剣", "once": true}, {"type": "inventory.add", "item": "木の盾", "once": true}], "next": {"node": "choice_menu"}},
+            {"label": "もどる", "result": {"title": "もどる", "lines": [{"speaker": "ナレーション", "text": "ほんとうに もどる？"}]}, "next": {"node": "back_confirm"}},
+            {"label": "すすむ", "result": {"title": "すすむ", "lines": [{"speaker": "みはり", "text": "きをつけて ダンジョンを すすんでいけ。"}, {"speaker": "みはり", "text": "あと...　これをもっていくといい。"}, {"speaker": "ナレーション", "text": "あなたは [魔法のランタン] を てにいれた！"}, {"speaker": "みはり", "text": "ダンジョンの まものの そざいで つくられた からなのか しらないが"}, {"speaker": "みはり", "text": "この ランタンは ねんりょうを ひつようとしない。"}, {"speaker": "みはり", "text": "おめーの まわりを ずっと あかるく てらして くれるだろう。"}, {"speaker": "ナレーション", "text": "あなたの たびが いま はじまる!!"}]}, "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}], "next": {"end": true}}
+          ]
+        },
+        "fight_menu": {
+          "lines": [{"speaker": "ナレーション", "text": "どうする？"}],
+          "choices": [
+            {
+              "label": "たたかう！",
+              "result": {
+                "title": "たたかう！",
+                "lines": [
+                  {"speaker": "みはり", "text": "はぁ～？ もうなえ！ なんでだよ... しかたないから たたかって やるよ。"},
+                  {"speaker": "システム", "text": "[ボス戦]"}
+                ]
+              },
+              "battle": {
+                "type": "enemy",
+                "enemy": {"name": "みはり", "hp": 60, "atk": 8, "def": 3},
+                "story": {
+                  "story_id": "start_mihari",
+                  "on_win_node": "fight_win",
+                  "on_lose_node": "fight_lose_bad",
+                  "on_lose_half_node": "fight_lose_half",
+                  "lose_half_ratio": 0.7,
+                  "heal_on_end": true,
+                  "allow_flee": false
+                }
+              },
+              "next": {"end": true}
+            },
+            {
+              "label": "やめとく！",
+              "result": {
+                "title": "やめとく！",
+                "lines": [
+                  {"speaker": "みはり", "text": "いったい なにを したいんだ...?"},
+                  {"speaker": "ナレーション", "text": "みはりは こんらん している。"}
+                ]
+              },
+              "next": {"node": "confused_menu"}
+            }
+          ]
+        },
+        "confused_menu": {
+          "lines": [{"speaker": "ナレーション", "text": "どうする？"}],
+          "choices": [
+            {
+              "label": "ものごいをする",
+              "conditions": [
+                {"type": "flag.missing", "key": "mihari_begged"}
+              ],
+              "result": {
+                "title": "ものごいをする",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "あなたは とつぜん ひっしに ものごいを しはじめた?!"},
+                  {"speaker": "みはり", "text": "えっ... なんなんだ きゅうに..."},
+                  {"speaker": "みはり", "text": "きほんそうび ぐらいなら くれてやる"},
+                  {"speaker": "ナレーション", "text": "あなたは [木の剣] と [木の盾] を てにいれた！"}
+                ]
+              },
+              "effects": [
+                {"type": "flag.set", "key": "mihari_begged"},
+                {"type": "inventory.add", "item": "木の剣", "once": true},
+                {"type": "inventory.add", "item": "木の盾", "once": true}
+              ],
+              "next": {"node": "confused_menu"}
+            },
+            {"label": "すすむ", "result": {"title": "すすむ", "lines": [{"speaker": "みはり", "text": "きをつけて ダンジョンを すすんでいけ。"}, {"speaker": "みはり", "text": "あと...　これをもっていくといい。"}, {"speaker": "ナレーション", "text": "あなたは [魔法のランタン] を てにいれた！"}, {"speaker": "みはり", "text": "ダンジョンの まものの そざいで つくられた からなのか しらないが"}, {"speaker": "みはり", "text": "この ランタンは ねんりょうを ひつようとしない。"}, {"speaker": "みはり", "text": "おめーの まわりを ずっと あかるく てらして くれるだろう。"}, {"speaker": "ナレーション", "text": "あなたの たびが いま はじまる!!"}]}, "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}], "next": {"end": true}},
+            {"label": "もどる", "result": {"title": "もどる", "lines": [{"speaker": "ナレーション", "text": "ほんとうに もどる？"}]}, "next": {"node": "back_confirm"}}
+          ]
+        },
+        "back_confirm": {
+          "lines": [{"speaker": "ナレーション", "text": "ほんとうに もどる？"}],
+          "choices": [
+            {
+              "label": "まじでもどる！",
+              "result": {
+                "title": "まじでもどる！",
+                "lines": [
+                  {"speaker": "ナレーション", "text": "あなたは みの きけんを かんじて ダンジョンへの ちょうせんを だんねんした。"},
+                  {"speaker": "システム", "text": "[エンディング3]"}
+                ]
+              },
+              "next": {"end": true}
+            },
+            {
+              "label": "やっぱやめとく！",
+              "result": {"title": "やっぱやめとく！", "lines": []},
+              "next": {"node": "choice_menu"}
+            }
+          ]
+        }
+        ,
+        "fight_win": {
+          "lines": [
+            {"speaker": "みはり", "text": "おお... なかなか つよいな！"},
+            {"speaker": "みはり", "text": "もう この くらいで いいだろ？"},
+            {"speaker": "みはり", "text": "この たたかい での きずは なおして おこう。"},
+            {"speaker": "ナレーション", "text": "おたがいの たいりょくが ぜんかいふく した！"},
+            {"speaker": "みはり", "text": "おめー ほどの ちからを もって いるなら もんだい ないだろう。"}
+          ],
+          "choices": [
+            {"label": "すすむ", "result": {"title": "すすむ", "lines": []}, "next": {"node": "proceed_from_fight"}}
+          ]
+        },
+        "fight_lose_half": {
+          "lines": [
+            {"speaker": "みはり", "text": "そこそこの つよさだな。"},
+            {"speaker": "みはり", "text": "この ダンジョンに いどむ には きゅうだいてんと いった ところか？"},
+            {"speaker": "みはり", "text": "この たたかい での きずは なおして おこう。"},
+            {"speaker": "ナレーション", "text": "おたがいの たいりょくが ぜんかいふく した！"}
+          ],
+          "choices": [
+            {"label": "すすむ", "result": {"title": "すすむ", "lines": []}, "next": {"node": "proceed_from_fight"}}
+          ]
+        },
+        "fight_lose_bad": {
+          "lines": [
+            {"speaker": "みはり", "text": "この ていどじゃ ちから ぶそくだ。"},
+            {"speaker": "みはり", "text": "ちからを つけて でなおして こい。"},
+            {"speaker": "システム", "text": "[エンディング3]"}
+          ],
+          "choices": [
+            {"label": "おわり", "result": {"title": "おわり", "lines": []}, "next": {"end": true}}
+          ]
+        },
+        "proceed_from_fight": {
+          "lines": [
+            {"speaker": "みはり", "text": "きをつけて ダンジョンを すすんでいけ。"},
+            {"speaker": "みはり", "text": "あと...　これをもっていくといい。"},
+            {"speaker": "ナレーション", "text": "あなたは [魔法のランタン] を てにいれた！"},
+            {"speaker": "みはり", "text": "ダンジョンの まものの そざいで つくられた からなのか しらないが"},
+            {"speaker": "みはり", "text": "この ランタンは ねんりょうを ひつようとしない。"},
+            {"speaker": "みはり", "text": "おめーの まわりを ずっと あかるく てらして くれるだろう。"},
+            {"speaker": "ナレーション", "text": "あなたの たびが いま はじまる!!"}
+          ],
+          "choices": [
+            {"label": "すすむ", "result": {"title": "すすむ", "lines": []}, "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}], "next": {"end": true}}
+          ]
+        }
+      }
+    }
+  }
+}

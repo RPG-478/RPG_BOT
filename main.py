@@ -1,7 +1,11 @@
+import os
 import logging  # ← 最初
 
+_level_name = (os.getenv("RPG_LOG_LEVEL") or os.getenv("LOG_LEVEL") or "DEBUG").strip().upper()
+_level = getattr(logging, _level_name, logging.DEBUG)
+
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=_level,
     format='%(asctime)s [%(levelname)s] %(name)s - %(funcName)s:%(lineno)d - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[
@@ -10,7 +14,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("rpgbot")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(_level)
 
 logging.getLogger("discord").setLevel(logging.INFO)
 logging.getLogger("discord.http").setLevel(logging.WARNING)
@@ -18,7 +22,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.INFO)
 
-print("✅ ロギング設定完了")
+logger.info("✅ ロギング設定完了")
 
 import discord
 from discord.ext import commands
@@ -77,10 +81,71 @@ def get_user_lock(user_id: int) -> asyncio.Lock:
         user_locks[user_id] = asyncio.Lock()
     return user_locks[user_id]
 
+
+def _ctx_debug_fields(ctx: commands.Context) -> dict:
+    guild_id = getattr(getattr(ctx, "guild", None), "id", None)
+    channel_id = getattr(getattr(ctx, "channel", None), "id", None)
+    message_id = getattr(getattr(ctx, "message", None), "id", None)
+    return {
+        "guild": guild_id,
+        "channel": channel_id,
+        "message": message_id,
+        "user": getattr(getattr(ctx, "author", None), "id", None),
+        "command": getattr(getattr(ctx, "command", None), "qualified_name", None),
+    }
+
+
+@bot.before_invoke
+async def _log_command_start(ctx: commands.Context):
+    fields = _ctx_debug_fields(ctx)
+    content = getattr(getattr(ctx, "message", None), "content", None)
+    if content and len(content) > 400:
+        content = content[:400] + "..."
+    logger.debug(
+        "cmd.start user=%s guild=%s channel=%s message=%s cmd=%s content=%r",
+        fields["user"],
+        fields["guild"],
+        fields["channel"],
+        fields["message"],
+        fields["command"],
+        content,
+    )
+
+
+@bot.after_invoke
+async def _log_command_end(ctx: commands.Context):
+    fields = _ctx_debug_fields(ctx)
+    logger.debug(
+        "cmd.end user=%s guild=%s channel=%s message=%s cmd=%s",
+        fields["user"],
+        fields["guild"],
+        fields["channel"],
+        fields["message"],
+        fields["command"],
+    )
+
+
+@bot.event
+async def on_command_error(ctx: commands.Context, error: Exception):
+    # command not found はノイズになりやすいので抑制
+    if isinstance(error, commands.CommandNotFound):
+        return
+
+    fields = _ctx_debug_fields(ctx)
+    logger.exception(
+        "cmd.error user=%s guild=%s channel=%s message=%s cmd=%s err=%r",
+        fields["user"],
+        fields["guild"],
+        fields["channel"],
+        fields["message"],
+        fields["command"],
+        error,
+    )
+
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
-    print("✅ Bot is ready")
+    logger.info("Logged in as %s", bot.user)
+    logger.info("✅ Bot is ready")
 
 #move
 @bot.command(name="move", aliases=["m"])
@@ -126,14 +191,13 @@ async def move(ctx: commands.Context):
         await snapshot_manager.create_snapshot(user.id, "!move", player)
 
         # intro_2: 1回目の死亡後、最初のmove時に表示
-        loop_count = await db.get_loop_count(user.id)
+        death_count = await db.get_death_count(user.id)
         intro_2_flag = await db.get_story_flag(user.id, "intro_2")
 
-        # デバッグログ（本番環境では削除可能）
-        print(f"[DEBUG] intro_2チェック - User: {user.id}, loop_count: {loop_count}, intro_2_flag: {intro_2_flag}")
+        logger.debug("intro_2 check user=%s death_count=%s intro_2_flag=%s", user.id, death_count, intro_2_flag)
 
-        if loop_count == 1 and not intro_2_flag:
-            print(f"[DEBUG] intro_2を表示します - User: {user.id}")
+        if death_count == 1 and not intro_2_flag:
+            logger.debug("intro_2 show user=%s", user.id)
             embed = discord.Embed(
                 title="📖 既視感",
                 description="不思議な声が聞こえる…\n誰なんだ？この声の正体は……",
@@ -187,8 +251,8 @@ async def move(ctx: commands.Context):
                     available_choice_stories.append(sid)
             
             # ストーリーフラグを収集
-            story_flags = {}
-            # ボス前ストーリー
+            story_flags = player.get("story_flags", {}) if isinstance(player.get("story_flags", {}), dict) else {}
+            # ボス前ストーリー（互換のため明示的に上書き取得）
             for stage in range(1, 11):
                 story_id = f"boss_pre_{stage}"
                 story_flags[story_id] = await db.get_story_flag(user.id, story_id)
@@ -197,15 +261,12 @@ async def move(ctx: commands.Context):
             event = await exploration.determine_event(
                 current_distance=total_distance,
                 previous_distance=previous_distance,
-                loop_count=loop_count,
                 story_flags=story_flags,
                 available_choice_stories=available_choice_stories
             )
         except Exception as e:
             # イベント決定に失敗した場合は、安全に「何もなし」にフォールバック
-            print(f"⚠️ イベント決定エラー: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.exception("⚠️ イベント決定エラー: %s", e)
             embed = discord.Embed(
                 title="📜 探索結果",
                 description=f"→ {distance}m進んだ！\n何も見つからなかったようだ。",
@@ -311,6 +372,7 @@ async def move(ctx: commands.Context):
             special_embed.set_footer(text=f"📏 現在の距離: {special_distance}m")
             
             view = SpecialEventView(user.id, user_processing, special_distance)
+            view.message = exploring_msg
             await exploring_msg.edit(content=None, embed=special_embed, view=view)
             view_delegated = True
             return
@@ -353,6 +415,7 @@ async def move(ctx: commands.Context):
             )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
             view = TrapChestView(user.id, user_processing, player)
+            view.message = exploring_msg
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
@@ -365,6 +428,7 @@ async def move(ctx: commands.Context):
             )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
             view = TreasureView(user.id, user_processing)
+            view.message = exploring_msg
             await exploring_msg.edit(content=None, embed=embed, view=view)
             view_delegated = True
             return
@@ -428,12 +492,13 @@ async def status(ctx):
             return
 
         # 装備情報取得
-        equipped = {"weapon": "なし", "armor": "なし"}
+        equipped = {"weapon": "なし", "armor": "なし", "shield": "なし"}
         if 'db' in globals():
             temp = await db.get_equipped_items(ctx.author.id)
             if isinstance(temp, dict):
                 equipped["weapon"] = str(temp.get("weapon") or "なし")
                 equipped["armor"] = str(temp.get("armor") or "なし")
+            equipped["shield"] = str(temp.get("shield") or "なし")
 
         # 装備ボーナスを計算
         import game
@@ -455,7 +520,8 @@ async def status(ctx):
         embed.add_field(name="防御力", value=f"{total_defense} ({base_defense}+{equipment_bonus.get('defense_bonus', 0)})", inline=True)
         embed.add_field(name="所持金", value=f'{player.get("gold", 0)}G', inline=True)
         embed.add_field(name="装備武器", value=equipped["weapon"], inline=True)
-        embed.add_field(name="装備防具", value=equipped["armor"], inline=True)
+        embed.add_field(name="装備鎧", value=equipped["armor"], inline=True)
+        embed.add_field(name="装備盾", value=equipped["shield"], inline=True)
 
         # 装備変更UIを追加
         player_with_id = player.copy()
@@ -467,7 +533,7 @@ async def status(ctx):
     except Exception as e:
         # エラー時はBotが落ちずに報告
         await ctx.send(f"⚠️ ステータス取得中にエラーが発生しました: {e}")
-        print(f"statusコマンドエラー: {e}")
+        logger.exception("statusコマンドエラー: %s", e)
 
 # アップグレード
 @bot.command(aliases=["up"])
@@ -486,7 +552,7 @@ async def upgrade(ctx):
     if await db.is_game_cleared(ctx.author.id):
         embed = discord.Embed(
             title="⚠️ ダンジョン踏破済",
-            description="あなたはダンジョンをクリアしています！\n`!reset` で'データをリセットして再度冒険を初めてください。\n\n※周回システムは実装予定です。アップデートにご期待ください！",
+            description="あなたはダンジョンをクリアしています！\n`!reset` でデータをリセットして再度冒険を初めてください。",
             color=discord.Color.orange()
         )
         await ctx.send(embed=embed)
@@ -549,7 +615,7 @@ async def buy_upgrade(ctx, upgrade_type: int):
     if await db.is_game_cleared(ctx.author.id):
         embed = discord.Embed(
             title="⚠️ ダンジョン踏破済",
-            description="あなたはダンジョンをクリアしています！\n`!reset` で'データをリセットして再度冒険を初めてください。\n\n※周回システムは実装予定です。アップデートにご期待ください！",
+            description="あなたはダンジョンをクリアしています！\n`!reset` でデータをリセットして再度冒険を初めてください。",
             color=discord.Color.orange()
         )
         await ctx.send(embed=embed)
@@ -610,18 +676,18 @@ async def run_health_server():
     try:
         site = web.TCPSite(runner, host, port)
         await site.start()
-        print(f"✅ ヘルスチェックサーバーを起動しました ({host}:{port})")
+        logger.info("✅ ヘルスチェックサーバーを起動しました (%s:%s)", host, port)
     except OSError as e:
         # Windows: WinError 10048 = ポート使用中
         if getattr(e, "winerror", None) == 10048 or getattr(e, "errno", None) == 10048:
-            print(f"⚠️ ヘルスチェックサーバーを起動できませんでした（ポート使用中: {host}:{port}）。BOT起動は継続します")
+            logger.warning("⚠️ ヘルスチェックサーバーを起動できませんでした（ポート使用中: %s:%s）。BOT起動は継続します", host, port)
             return
         raise
 
 async def main():
     token = os.getenv("DISCORD_BOT_TOKEN")
     if not token:
-        print("❌ エラー: DISCORD_BOT_TOKEN 環境変数が設定されていません")
+        logger.error("❌ エラー: DISCORD_BOT_TOKEN 環境変数が設定されていません")
         exit(1)
 
     # extensions(cogs) を自動ロード（今後のcog追加で main.py を触らなくて済むように）
@@ -633,20 +699,20 @@ async def main():
             ext = f"cogs.{file.stem}"
             try:
                 await bot.load_extension(ext)
-                print(f"✅ Extension loaded: {ext}")
+                logger.info("✅ Extension loaded: %s", ext)
             except Exception as e:
-                print(f"⚠️ Extension load failed: {ext} | {e}")
+                logger.warning("⚠️ Extension load failed: %s | %s", ext, e, exc_info=True)
     else:
-        print("ℹ️ cogs/ ディレクトリが見つかりません。extensionロードをスキップします")
+        logger.info("ℹ️ cogs/ ディレクトリが見つかりません。extensionロードをスキップします")
 
     # Health server を起動してから Bot を起動（開発時に不要なら無効化可）
     enable_health = (os.getenv("ENABLE_HEALTH_SERVER", "1").strip() not in {"0", "false", "False", "no", "NO"})
     if enable_health:
         await run_health_server()
     else:
-        print("ℹ️ ヘルスチェックサーバーは無効化されています (ENABLE_HEALTH_SERVER=0)")
+        logger.info("ℹ️ ヘルスチェックサーバーは無効化されています (ENABLE_HEALTH_SERVER=0)")
 
-    print("🤖 Discord BOTを起動します...")
+    logger.info("🤖 Discord BOTを起動します...")
     async with bot:
         await bot.start(token)
 

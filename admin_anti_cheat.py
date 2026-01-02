@@ -67,7 +67,8 @@ def setup_admin_commands(bot: commands.Bot):
         embed.add_field(
             name="Equipment",
             value=f"Weapon: {player_data['equipped_weapon'] or 'None'}\n"
-                  f"Armor: {player_data['equipped_armor'] or 'None'}",
+                  f"Armor: {player_data['equipped_armor'] or 'None'}\n"
+                  f"Shield: {player_data.get('equipped_shield') or 'None'}",
             inline=True
         )
         
