@@ -1,0 +1,1495 @@
+{
+  "0-1000": {
+    "enemies": [
+      {
+        "name": "スライム",
+        "hp": 20,
+        "atk": 3,
+        "def": 2,
+        "attribute": "none",
+        "weight": 40,
+        "exp": 8,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 60
+          },
+          {
+            "item": "革の盾",
+            "weight": 15
+          },
+          {
+            "item": "木の盾",
+            "weight": 5
+          },
+          {
+            "item": "石の盾",
+            "weight": 2
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 8
+          },
+          {
+            "item": "coins",
+            "amount": [
+              10,
+              30
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "ゴブリン",
+        "hp": 15,
+        "atk": 4,
+        "def": 2,
+        "attribute": "none",
+        "weight": 40,
+        "exp": 12,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 60
+          },
+          {
+            "item": "木の剣",
+            "weight": 15
+          },
+          {
+            "item": "石の剣",
+            "weight": 5
+          },
+          {
+            "item": "鉄の剣",
+            "weight": 2
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 8
+          },
+          {
+            "item": "coins",
+            "amount": [
+              15,
+              30
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "蜘蛛",
+        "hp": 25,
+        "atk": 5,
+        "def": 2,
+        "attribute": "none",
+        "weight": 20,
+        "exp": 20,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 40
+          },
+          {
+            "item": "蜘蛛の糸",
+            "weight": 25
+          },
+          {
+            "item": "毒の短剣",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "coins",
+            "amount": [
+              30,
+              50
+            ],
+            "weight": 20
+          }
+        ]
+      }
+    ]
+  },
+  "1001-2000": {
+    "enemies": [
+      {
+        "name": "スケルトン",
+        "hp": 35,
+        "atk": 7,
+        "def": 4,
+        "attribute": "dark",
+        "weight": 50,
+        "exp": 22,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 60
+          },
+          {
+            "item": "骨の剣",
+            "weight": 5
+          },
+          {
+            "item": "骨の盾",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "coins",
+            "amount": [
+              20,
+              40
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "ゾンビ",
+        "hp": 45,
+        "atk": 8,
+        "def": 3,
+        "attribute": "dark",
+        "weight": 35,
+        "exp": 25,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "腐った肉",
+            "weight": 20
+          },
+          {
+            "item": "呪いの剣",
+            "weight": 10
+          },
+          {
+            "item": "死者の兜",
+            "weight": 5
+          },
+          {
+            "item": "鉄の盾",
+            "weight": 5
+          },
+          {
+            "item": "coins",
+            "amount": [
+              25,
+              40
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "ゴースト",
+        "hp": 40,
+        "atk": 9,
+        "def": 4,
+        "attribute": "dark",
+        "weight": 15,
+        "exp": 40,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 40
+          },
+          {
+            "item": "幽霊の布",
+            "weight": 10
+          },
+          {
+            "item": "魔法の杖",
+            "weight": 10
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "coins",
+            "amount": [
+              50,
+              70
+            ],
+            "weight": 20
+          }
+        ]
+      }
+    ]
+  },
+  "2001-3000": {
+    "enemies": [
+      {
+        "name": "デーモン",
+        "hp": 65,
+        "atk": 10,
+        "def": 6,
+        "attribute": "fire",
+        "weight": 50,
+        "exp": 32,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 45
+          },
+          {
+            "item": "悪魔の角",
+            "weight": 15
+          },
+          {
+            "item": "炎の大剣",
+            "weight": 5
+          },
+          {
+            "item": "地獄の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "coins",
+            "amount": [
+              30,
+              50
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "ダークナイト",
+        "hp": 55,
+        "atk": 11,
+        "def": 7,
+        "attribute": "dark",
+        "weight": 40,
+        "exp": 35,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "黒騎士の剣",
+            "weight": 10
+          },
+          {
+            "item": "黒騎士の盾",
+            "weight": 5
+          },
+          {
+            "item": "黒騎士の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "coins",
+            "amount": [
+              35,
+              50
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "ドラゴン",
+        "hp": 80,
+        "atk": 13,
+        "def": 5,
+        "attribute": "fire",
+        "weight": 10,
+        "exp": 60,
+        "drops": [
+          {
+            "item": "竜の牙",
+            "weight": 40
+          },
+          {
+            "item": "ドラゴンソード",
+            "weight": 20
+          },
+          {
+            "item": "竜の鱗",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 8
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 8
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              60,
+              90
+            ],
+            "weight": 15
+          }
+        ]
+      }
+    ]
+  },
+  "3001-4000": {
+    "enemies": [
+      {
+        "name": "デスナイト",
+        "hp": 80,
+        "atk": 14,
+        "def": 8,
+        "attribute": "dark",
+        "weight": 50,
+        "exp": 48,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "死神の鎌",
+            "weight": 10
+          },
+          {
+            "item": "冥界の盾",
+            "weight": 9
+          },
+          {
+            "item": "死の鎧",
+            "weight": 1
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "coins",
+            "amount": [
+              50,
+              65
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "アークデーモン",
+        "hp": 70,
+        "atk": 15,
+        "def": 8,
+        "attribute": "fire",
+        "weight": 40,
+        "exp": 50,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 45
+          },
+          {
+            "item": "魔界の結晶",
+            "weight": 15
+          },
+          {
+            "item": "炎獄の剣",
+            "weight": 5
+          },
+          {
+            "item": "悪魔の盾",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 10
+          },
+          {
+            "item": "coins",
+            "amount": [
+              40,
+              60
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "エンシェントドラゴン",
+        "hp": 100,
+        "atk": 17,
+        "def": 6,
+        "attribute": "fire",
+        "weight": 10,
+        "exp": 80,
+        "drops": [
+          {
+            "item": "竜王の牙",
+            "weight": 40
+          },
+          {
+            "item": "古竜の心臓",
+            "weight": 10
+          },
+          {
+            "item": "竜の鱗",
+            "weight": 15
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 8
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 8
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              80,
+              100
+            ],
+            "weight": 15
+          }
+        ]
+      }
+    ]
+  },
+  "4001-5000": {
+    "enemies": [
+      {
+        "name": "ヘルハウンド",
+        "hp": 100,
+        "atk": 17,
+        "def": 9,
+        "attribute": "fire",
+        "weight": 40,
+        "exp": 60,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "地獄犬の牙",
+            "weight": 20
+          },
+          {
+            "item": "業火の剣",
+            "weight": 5
+          },
+          {
+            "item": "炎の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 4
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 4
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "coins",
+            "amount": [
+              60,
+              90
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "ヴァンパイアロード",
+        "hp": 90,
+        "atk": 18,
+        "def": 9,
+        "attribute": "dark",
+        "weight": 30,
+        "exp": 65,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "吸血鬼の牙",
+            "weight": 20
+          },
+          {
+            "item": "血の剣",
+            "weight": 2
+          },
+          {
+            "item": "夜の外套",
+            "weight": 10
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "coins",
+            "amount": [
+              70,
+              90
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "リッチ",
+        "hp": 100,
+        "atk": 19,
+        "def": 8,
+        "attribute": "dark",
+        "weight": 30,
+        "exp": 68,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "魔導書の欠片",
+            "weight": 20
+          },
+          {
+            "item": "死霊の杖",
+            "weight": 5
+          },
+          {
+            "item": "不死王の冠",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 4
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 4
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "coins",
+            "amount": [
+              70,
+              100
+            ],
+            "weight": 10
+          }
+        ]
+      }
+    ]
+  },
+  "5001-6000": {
+    "enemies": [
+      {
+        "name": "ダークエルフ",
+        "hp": 120,
+        "atk": 22,
+        "def": 10,
+        "attribute": "dark",
+        "weight": 35,
+        "exp": 75,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "闇の宝石",
+            "weight": 20
+          },
+          {
+            "item": "影の短剣",
+            "weight": 8
+          },
+          {
+            "item": "暗黒の弓",
+            "weight": 2
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              80,
+              120
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "ベヒーモス",
+        "hp": 135,
+        "atk": 24,
+        "def": 9,
+        "attribute": "none",
+        "weight": 35,
+        "exp": 85,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "巨獣の皮",
+            "weight": 20
+          },
+          {
+            "item": "破壊の斧",
+            "weight": 8
+          },
+          {
+            "item": "巨人の鎧",
+            "weight": 2
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              70,
+              135
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "シャドウロード",
+        "hp": 110,
+        "atk": 23,
+        "def": 11,
+        "attribute": "dark",
+        "weight": 30,
+        "exp": 80,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "影の欠片",
+            "weight": 20
+          },
+          {
+            "item": "虚無の剣",
+            "weight": 5
+          },
+          {
+            "item": "幻影の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              80,
+              130
+            ],
+            "weight": 10
+          }
+        ]
+      }
+    ]
+  },
+  "6001-7000": {
+    "enemies": [
+      {
+        "name": "カオスナイト",
+        "hp": 145,
+        "atk": 27,
+        "def": 12,
+        "attribute": "chaos",
+        "weight": 35,
+        "exp": 90,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "混沌の欠片",
+            "weight": 20
+          },
+          {
+            "item": "カオスブレード",
+            "weight": 1
+          },
+          {
+            "item": "混沌の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 5
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              90,
+              120
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "フェニックス",
+        "hp": 160,
+        "atk": 26,
+        "def": 11,
+        "attribute": "fire",
+        "weight": 35,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "不死鳥の羽",
+            "weight": 20
+          },
+          {
+            "item": "炎の剣",
+            "weight": 5
+          },
+          {
+            "item": "再生の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 4
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 4
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "coins",
+            "amount": [
+              100,
+              130
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "デストロイヤー",
+        "hp": 150,
+        "atk": 29,
+        "def": 10,
+        "attribute": "none",
+        "weight": 30,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "破壊の核",
+            "weight": 20
+          },
+          {
+            "item": "滅びの剣",
+            "weight": 5
+          },
+          {
+            "item": "終焉の盾",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 4
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 4
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 1
+          },
+          {
+            "item": "coins",
+            "amount": [
+              100,
+              140
+            ],
+            "weight": 10
+          }
+        ]
+      }
+    ]
+  },
+  "7001-8000": {
+    "enemies": [
+      {
+        "name": "アビスウォーカー",
+        "hp": 160,
+        "atk": 32,
+        "def": 12,
+        "attribute": "dark",
+        "weight": 35,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "深淵の結晶",
+            "weight": 20
+          },
+          {
+            "item": "深淵の剣",
+            "weight": 1
+          },
+          {
+            "item": "虚空の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 5
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              110,
+              140
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "エレメンタルロード",
+        "hp": 150,
+        "atk": 30,
+        "def": 14,
+        "attribute": "holy",
+        "weight": 35,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "元素の核",
+            "weight": 20
+          },
+          {
+            "item": "四元の剣",
+            "weight": 5
+          },
+          {
+            "item": "精霊の盾",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              110,
+              150
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "タイタン",
+        "hp": 200,
+        "atk": 29,
+        "def": 12,
+        "attribute": "holy",
+        "weight": 30,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "神の鉱石",
+            "weight": 20
+          },
+          {
+            "item": "天の槌",
+            "weight": 5
+          },
+          {
+            "item": "神の盾",
+            "weight": 1
+          },
+          {
+            "item": "HP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（小）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              100,
+              160
+            ],
+            "weight": 10
+          }
+        ]
+      }
+    ]
+  },
+  "8001-9000": {
+    "enemies": [
+      {
+        "name": "ダークアーク",
+        "hp": 210,
+        "atk": 36,
+        "def": 13,
+        "attribute": "dark",
+        "weight": 35,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "闇の聖典",
+            "weight": 20
+          },
+          {
+            "item": "暗黒聖剣",
+            "weight": 5
+          },
+          {
+            "item": "堕天の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 4
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 4
+          },
+          {
+            "item": "HP回復薬（大）",
+            "weight": 1
+          },
+          {
+            "item": "MP回復薬（大）",
+            "weight": 1
+          },
+          {
+            "item": "coins",
+            "amount": [
+              120,
+              160
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "リヴァイアサン",
+        "hp": 230,
+        "atk": 33,
+        "def": 13,
+        "attribute": "water",
+        "weight": 35,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "海皇の鱗",
+            "weight": 20
+          },
+          {
+            "item": "水神の槍",
+            "weight": 5
+          },
+          {
+            "item": "深海の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 4
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 4
+          },
+          {
+            "item": "HP回復薬（大）",
+            "weight": 1
+          },
+          {
+            "item": "MP回復薬（大）",
+            "weight": 1
+          },
+          {
+            "item": "coins",
+            "amount": [
+              110,
+              150
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "ケルベロス",
+        "hp": 260,
+        "atk": 32,
+        "def": 12,
+        "attribute": "fire",
+        "weight": 30,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "三首の牙",
+            "weight": 20
+          },
+          {
+            "item": "獄炎の剣",
+            "weight": 5
+          },
+          {
+            "item": "地獄門の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 4
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 4
+          },
+          {
+            "item": "HP回復薬（大）",
+            "weight": 1
+          },
+          {
+            "item": "MP回復薬（大）",
+            "weight": 1
+          },
+          {
+            "item": "coins",
+            "amount": [
+              120,
+              170
+            ],
+            "weight": 10
+          }
+        ]
+      }
+    ]
+  },
+  "9001-10000": {
+    "enemies": [
+      {
+        "name": "ファントムキング",
+        "hp": 300,
+        "atk": 38,
+        "def": 13,
+        "attribute": "dark",
+        "weight": 30,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "幻王の魂",
+            "weight": 20
+          },
+          {
+            "item": "幻影の剣",
+            "weight": 5
+          },
+          {
+            "item": "幻王の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（大）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（大）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              130,
+              180
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "ドラゴンロード",
+        "hp": 250,
+        "atk": 39,
+        "def": 14,
+        "attribute": "fire",
+        "weight": 30,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "竜帝の心臓",
+            "weight": 20
+          },
+          {
+            "item": "竜帝の剣",
+            "weight": 2
+          },
+          {
+            "item": "竜帝の鎧",
+            "weight": 2
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（大）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（大）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              120,
+              190
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "カオスゴッド",
+        "hp": 280,
+        "atk": 40,
+        "def": 13,
+        "attribute": "chaos",
+        "weight": 20,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "神殺しの結晶",
+            "weight": 20
+          },
+          {
+            "item": "混沌神剣",
+            "weight": 5
+          },
+          {
+            "item": "創世の盾",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（大）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（大）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              140,
+              180
+            ],
+            "weight": 10
+          }
+        ]
+      },
+      {
+        "name": "デスエンペラー",
+        "hp": 350,
+        "atk": 41,
+        "def": 13,
+        "attribute": "dark",
+        "weight": 20,
+        "drops": [
+          {
+            "item": "none",
+            "weight": 50
+          },
+          {
+            "item": "死皇の冠",
+            "weight": 20
+          },
+          {
+            "item": "死神の剣",
+            "weight": 5
+          },
+          {
+            "item": "死帝の鎧",
+            "weight": 5
+          },
+          {
+            "item": "HP回復薬（中）",
+            "weight": 3
+          },
+          {
+            "item": "MP回復薬（中）",
+            "weight": 3
+          },
+          {
+            "item": "HP回復薬（大）",
+            "weight": 2
+          },
+          {
+            "item": "MP回復薬（大）",
+            "weight": 2
+          },
+          {
+            "item": "coins",
+            "amount": [
+              150,
+              200
+            ],
+            "weight": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -65,7 +65,7 @@
                 ]
               },
               "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}],
-              "next": {"end": true}
+              "next": {"story_id": "tutorial_commands", "node": "start"}
             }
           ]
         },
@@ -75,7 +75,7 @@
             {"label": "みはりとたたかう", "result": {"title": "みはりとたたかう", "lines": [{"speaker": "ナレーション", "text": "あなたは なぜか きゅうに じぶんの ちからを みはりに ためして みたくなった"}, {"speaker": "みはり", "text": "はい...？ ききまちがえ かな？"}]}, "next": {"node": "fight_menu"}},
             {"label": "ものごいをする", "conditions": [{"type": "flag.missing", "key": "mihari_begged"}], "result": {"title": "ものごいをする", "lines": [{"speaker": "ナレーション", "text": "あなたは とつぜん ひっしに ものごいを しはじめた?!"}, {"speaker": "みはり", "text": "えっ... なんなんだ きゅうに..."}, {"speaker": "みはり", "text": "きほんそうび ぐらいなら くれてやる"}, {"speaker": "ナレーション", "text": "あなたは [木の剣] と [木の盾] を てにいれた！"}]}, "effects": [{"type": "flag.set", "key": "mihari_begged"}, {"type": "inventory.add", "item": "木の剣", "once": true}, {"type": "inventory.add", "item": "木の盾", "once": true}], "next": {"node": "choice_menu"}},
             {"label": "もどる", "result": {"title": "もどる", "lines": [{"speaker": "ナレーション", "text": "ほんとうに もどる？"}]}, "next": {"node": "back_confirm"}},
-            {"label": "すすむ", "result": {"title": "すすむ", "lines": [{"speaker": "みはり", "text": "きをつけて ダンジョンを すすんでいけ。"}, {"speaker": "みはり", "text": "あと...　これをもっていくといい。"}, {"speaker": "ナレーション", "text": "あなたは [魔法のランタン] を てにいれた！"}, {"speaker": "みはり", "text": "ダンジョンの まものの そざいで つくられた からなのか しらないが"}, {"speaker": "みはり", "text": "この ランタンは ねんりょうを ひつようとしない。"}, {"speaker": "みはり", "text": "おめーの まわりを ずっと あかるく てらして くれるだろう。"}, {"speaker": "ナレーション", "text": "あなたの たびが いま はじまる!!"}]}, "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}], "next": {"end": true}}
+            {"label": "すすむ", "result": {"title": "すすむ", "lines": [{"speaker": "みはり", "text": "きをつけて ダンジョンを すすんでいけ。"}, {"speaker": "みはり", "text": "あと...　これをもっていくといい。"}, {"speaker": "ナレーション", "text": "あなたは [魔法のランタン] を てにいれた！"}, {"speaker": "みはり", "text": "ダンジョンの まものの そざいで つくられた からなのか しらないが"}, {"speaker": "みはり", "text": "この ランタンは ねんりょうを ひつようとしない。"}, {"speaker": "みはり", "text": "おめーの まわりを ずっと あかるく てらして くれるだろう。"}, {"speaker": "ナレーション", "text": "あなたの たびが いま はじまる!!"}]}, "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}], "next": {"story_id": "tutorial_commands", "node": "start"}}
           ]
         },
         "fight_menu": {
@@ -86,8 +86,7 @@
               "result": {
                 "title": "たたかう！",
                 "lines": [
-                  {"speaker": "みはり", "text": "はぁ～？ もうなえ！ なんでだよ... しかたないから たたかって やるよ。"},
-                  {"speaker": "システム", "text": "[ボス戦]"}
+                  {"speaker": "みはり", "text": "はぁ～？ もうなえ！ なんでだよ... しかたないから たたかって やるよ。"}
                 ]
               },
               "battle": {
@@ -142,7 +141,7 @@
               ],
               "next": {"node": "confused_menu"}
             },
-            {"label": "すすむ", "result": {"title": "すすむ", "lines": [{"speaker": "みはり", "text": "きをつけて ダンジョンを すすんでいけ。"}, {"speaker": "みはり", "text": "あと...　これをもっていくといい。"}, {"speaker": "ナレーション", "text": "あなたは [魔法のランタン] を てにいれた！"}, {"speaker": "みはり", "text": "ダンジョンの まものの そざいで つくられた からなのか しらないが"}, {"speaker": "みはり", "text": "この ランタンは ねんりょうを ひつようとしない。"}, {"speaker": "みはり", "text": "おめーの まわりを ずっと あかるく てらして くれるだろう。"}, {"speaker": "ナレーション", "text": "あなたの たびが いま はじまる!!"}]}, "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}], "next": {"end": true}},
+            {"label": "すすむ", "result": {"title": "すすむ", "lines": [{"speaker": "みはり", "text": "きをつけて ダンジョンを すすんでいけ。"}, {"speaker": "みはり", "text": "あと...　これをもっていくといい。"}, {"speaker": "ナレーション", "text": "あなたは [魔法のランタン] を てにいれた！"}, {"speaker": "みはり", "text": "ダンジョンの まものの そざいで つくられた からなのか しらないが"}, {"speaker": "みはり", "text": "この ランタンは ねんりょうを ひつようとしない。"}, {"speaker": "みはり", "text": "おめーの まわりを ずっと あかるく てらして くれるだろう。"}, {"speaker": "ナレーション", "text": "あなたの たびが いま はじまる!!"}]}, "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}], "next": {"story_id": "tutorial_commands", "node": "start"}},
             {"label": "もどる", "result": {"title": "もどる", "lines": [{"speaker": "ナレーション", "text": "ほんとうに もどる？"}]}, "next": {"node": "back_confirm"}}
           ]
         },
@@ -212,7 +211,7 @@
             {"speaker": "ナレーション", "text": "あなたの たびが いま はじまる!!"}
           ],
           "choices": [
-            {"label": "すすむ", "result": {"title": "すすむ", "lines": []}, "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}], "next": {"end": true}}
+            {"label": "すすむ", "result": {"title": "すすむ", "lines": []}, "effects": [{"type": "inventory.add", "item": "魔法のランタン", "once": true}], "next": {"story_id": "tutorial_commands", "node": "start"}}
           ]
         }
       }

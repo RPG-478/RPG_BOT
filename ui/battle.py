@@ -17,6 +17,7 @@ from runtime_settings import (
 )
 
 from settings import balance as balance_settings
+from ui.events import FinalBossClearView
 
 logger = logging.getLogger("rpgbot")
 from ui.common import handle_death_with_triggers, finalize_view_on_timeout
@@ -27,6 +28,7 @@ class FinalBossBattleView(View):
         self.ctx = ctx
         self.player = player
         self.boss = boss
+        self._boss_max_hp = int(boss.get("hp", 0) or 0)
         self.message = None
         self.user_processing = user_processing
         self.boss_stage = boss_stage
@@ -83,37 +85,130 @@ class FinalBossBattleView(View):
         self.message = await self.ctx.send(embed=embed, view=self)
 
     async def create_battle_embed(self):
-        embed = discord.Embed(
-            title="⚔️ 最終決戦！",
-            description=f"**{self.boss['name']}** との最後の戦い！\n\nこいつを倒せば……ダンジョン踏破だ――。",
-            color=discord.Color.dark_gold()
-        )
-        embed.add_field(
-            name="💀 ラスボスの情報",
-            value=f"HP：{self.boss['hp']}\n攻撃力：{self.boss['atk']}\n防御力：{self.boss['def']}",
-            inline=False
-        )
+        boss_hp = int(self.boss.get("hp", 0) or 0)
+        boss_max_hp = int(self._boss_max_hp or boss_hp or 0)
+        boss_atk = int(self.boss.get("atk", 0) or 0)
+        boss_def = int(self.boss.get("def", 0) or 0)
 
+        player_hp = int(self.player.get("hp", 0) or 0)
+        player_atk = int(self.player.get("attack", 0) or 0)
+        player_def = int(self.player.get("defense", 0) or 0)
+
+        mp = None
+        max_mp = None
+        max_hp = int(self.player.get("max_hp", player_hp) or player_hp or 0)
         if "user_id" in self.player:
             player_data = await db.get_player(self.player["user_id"])
-            mp = player_data.get("mp", 20) if player_data else 20
-            max_mp = player_data.get("max_mp", 20) if player_data else 20
-            player_info = f"HP：{self.player['hp']}\nMP：{mp}/{max_mp}\n攻撃力：{self.player['attack']}\n防御力：{self.player['defense']}"
-        else:
-            player_info = f"HP：{self.player['hp']}\n攻撃力：{self.player['attack']}\n防御力：{self.player['defense']}"
+            if player_data:
+                mp = int(player_data.get("mp", 20) or 20)
+                max_mp = int(player_data.get("max_mp", 20) or 20)
+                max_hp = int(player_data.get("max_hp", max_hp) or max_hp)
 
-        embed.add_field(
-            name="🧍‍♂️ あなたの情報",
-            value=player_info,
-            inline=False
+        is_critical = (player_hp > 0) and (player_hp <= 5)
+        is_low = (player_hp > 0) and (not is_critical) and (max_hp > 0) and (player_hp <= max(1, int(max_hp * 0.25)))
+
+        if is_critical:
+            color = discord.Color.red()
+            warning_line = "💀 **瀕死です！** 回復を強く推奨"
+        elif is_low:
+            color = discord.Color.orange()
+            warning_line = "⚠️ **HPが少ないです。** 回復を推奨"
+        else:
+            color = discord.Color.dark_gold()
+            warning_line = ""
+
+        boss_is_critical = (boss_hp > 0) and (boss_max_hp > 0) and (boss_hp <= max(1, int(boss_max_hp * 0.15)))
+        boss_is_low = (boss_hp > 0) and (boss_max_hp > 0) and (not boss_is_critical) and (boss_hp <= max(1, int(boss_max_hp * 0.30)))
+
+        boss_name = str(self.boss.get("name", "ラスボス") or "ラスボス")
+        if boss_is_critical:
+            boss_name += "（瀕死）"
+            boss_hp_suffix = " 💀"
+        elif boss_is_low:
+            boss_name += "（弱っている）"
+            boss_hp_suffix = " ⚠️"
+        else:
+            boss_hp_suffix = ""
+
+        enemy_line = (
+            f"👑 **{boss_name}**\n"
+            f"HP **{boss_hp}/{boss_max_hp}**{boss_hp_suffix} / ATK **{boss_atk}** / DEF **{boss_def}**"
         )
-        embed.set_footer(text="全力で戦え！")
+
+        if mp is not None and max_mp is not None:
+            player_line = (
+                "🧍 **あなた**\n"
+                f"HP **{player_hp}/{max_hp}** / MP **{mp}/{max_mp}** / ATK **{player_atk}** / DEF **{player_def}**"
+            )
+        else:
+            player_line = (
+                "🧍 **あなた**\n"
+                f"HP **{player_hp}/{max_hp}** / ATK **{player_atk}** / DEF **{player_def}**"
+            )
+
+        parts = []
+        if warning_line:
+            parts.append(warning_line)
+        parts.append(enemy_line)
+        parts.append(player_line)
+
+        embed = discord.Embed(
+            title="⚔️ 最終決戦！",
+            description="\n\n".join(parts),
+            color=color,
+        )
+        embed.set_footer(text="▶ 行動を選択してください")
         return embed
+
+    def _format_battle_log(self, text: str) -> str:
+        import re
+
+        if not text:
+            return ""
+
+        text = re.sub(
+            r"あなたの攻撃！\s*(\d+)\s*のダメージを与えた！",
+            r"⚔️ あなたの攻撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"敵の反撃！\s*(\d+)\s*のダメージを受けた！",
+            r"💥 敵の反撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"ボスの反撃！\s*(\d+)\s*のダメージを受けた！",
+            r"💥 ボスの反撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"ラスボスの反撃！\s*(\d+)\s*のダメージを受けた！",
+            r"💥 ラスボスの反撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"ラスボスの攻撃で\s*(\d+)\s*のダメージを受けた！",
+            r"💥 ラスボスの攻撃！ **\1** ダメージ",
+            text,
+        )
+
+        text = text.replace("\n💥 ", "\n\n💥 ")
+        return text
+
+    async def _staged_update(self, first_text: str, second_text: str | None = None, first_delay: float = 1.0, second_delay: float = 0.5):
+        if first_delay and first_delay > 0:
+            await asyncio.sleep(first_delay)
+        await self.update_embed(first_text)
+        if second_text is not None:
+            if second_delay and second_delay > 0:
+                await asyncio.sleep(second_delay)
+            await self.update_embed(second_text)
 
     async def update_embed(self, text=""):
         embed = await self.create_battle_embed()
         if text:
-            embed.description += f"\n\n{text}"
+            log_text = self._format_battle_log(text)
+            embed.description += f"\n\n— 戦闘ログ —\n{log_text}"
         await self.message.edit(embed=embed, view=self)
 
     # =====================================
@@ -283,140 +378,272 @@ class FinalBossBattleView(View):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
-        if await db.is_mp_stunned(interaction.user.id):
-            await db.set_mp_stunned(interaction.user.id, False)
-            text = "⚠️ MP枯渇で行動不能…次のターンから行動可能になります。"
-            await self.update_embed(text)
-            await interaction.response.defer()
-            return
+        if self._battle_lock.locked():
+            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
 
-        # プレイヤー攻撃
-        base_damage = game.calculate_physical_damage(self.player["attack"], self.boss["def"], -5, 5)
+        # 先にdeferしてタイムアウトを回避
+        await interaction.response.defer()
 
-        # ability効果を適用
-        enemy_type = "boss"
-        equipment_bonus = await game.calculate_equipment_bonus(self.player["user_id"]) if "user_id" in self.player else {}
-        weapon_ability = equipment_bonus.get("weapon_ability", "")
+        async with self._battle_lock:
+            try:
+                # ボタンを即座に無効化
+                for child in self.children:
+                    child.disabled = True
+                await self.message.edit(view=self)
 
-        ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
+                if await db.is_mp_stunned(interaction.user.id):
+                    await db.set_mp_stunned(interaction.user.id, False)
+                    text = "⚠️ MP枯渇で行動不能…次のターンから行動可能になります。"
+                    await self.update_embed(text)
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+                    return
 
-        player_dmg = ability_result["damage"]
-        self.boss["hp"] -= player_dmg
+                # プレイヤー攻撃
+                base_damage = game.calculate_physical_damage(self.player["attack"], self.boss["def"], -5, 5)
 
-        # HP吸収
-        if ability_result["lifesteal"] > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
+                # ability効果を適用
+                enemy_type = "boss"
+                equipment_bonus = await game.calculate_equipment_bonus(self.player["user_id"]) if "user_id" in self.player else {}
+                weapon_ability = equipment_bonus.get("weapon_ability", "")
 
-        # 召喚回復
-        if ability_result.get("summon_heal", 0) > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
+                ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
 
-        # 自傷ダメージ
-        if ability_result.get("self_damage", 0) > 0:
-            self.player["hp"] -= ability_result["self_damage"]
-            self.player["hp"] = max(0, self.player["hp"])
+                player_dmg = ability_result["damage"]
+                self.boss["hp"] -= player_dmg
 
-        text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
-        if ability_result["effect_text"]:
-            text += f"\n{ability_result['effect_text']}"
+                # HP吸収
+                if ability_result["lifesteal"] > 0:
+                    self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
 
-        # 即死判定（ボス戦では無効）
-        if ability_result["instant_kill"]:
-            text += "\n💀即死効果発動！...しかしボスには効かなかった！"
+                # 召喚回復
+                if ability_result.get("summon_heal", 0) > 0:
+                    self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
 
-        if self.boss["hp"] <= 0:
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await db.set_boss_defeated(interaction.user.id, self.boss_stage)
+                # 自傷ダメージ
+                if ability_result.get("self_damage", 0) > 0:
+                    self.player["hp"] -= ability_result["self_damage"]
+                    self.player["hp"] = max(0, self.player["hp"])
 
-            reward_gold = random.randint(
-                balance_settings.REWARD_GOLD_BOSS_MIN,
-                balance_settings.REWARD_GOLD_BOSS_MAX,
-            )
-            await db.add_gold(interaction.user.id, reward_gold)
+                player_text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
+                if ability_result["effect_text"]:
+                    player_text += f"\n{ability_result['effect_text']}"
 
-            embed = discord.Embed(
-                title="🎉 ダンジョンクリア！",
-                description=f"**{self.boss['name']}** を倒した！\n\n🏆 ダンジョンを踏破した――\n💰 {reward_gold}ゴールドを手に入れた！",
-                color=discord.Color.gold()
-            )
+                # 即死判定（ボス戦では無効）
+                if ability_result["instant_kill"]:
+                    player_text += "\n💀即死効果発動！...しかしボスには効かなかった！"
 
-            self.disable_all_items()
+                if self.boss["hp"] <= 0:
+                    # HPを保存
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await db.set_boss_defeated(interaction.user.id, self.boss_stage)
 
-            # ラスボスクリア時の選択Viewを表示
-            clear_view = await FinalBossClearView.create(interaction.user.id, self.ctx, self.user_processing, self.boss_stage)
-            await interaction.message.edit(embed=embed, view=clear_view)
-            await interaction.response.defer()
-            return
+                    reward_gold = random.randint(
+                        balance_settings.REWARD_GOLD_BOSS_MIN,
+                        balance_settings.REWARD_GOLD_BOSS_MAX,
+                    )
+                    await db.add_gold(interaction.user.id, reward_gold)
 
-        # 怯み効果で敵がスキップ
-        if ability_result.get("enemy_flinch", False):
-            text += "\nラスボスは怯んで動けない！"
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-    
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
-            return
+                    embed = discord.Embed(
+                        title="🎉 ダンジョンクリア！",
+                        description=f"**{self.boss['name']}** を倒した！\n\n🏆 ダンジョンを踏破した――\n💰 {reward_gold}ゴールドを手に入れた！",
+                        color=discord.Color.gold()
+                    )
 
-        # 凍結効果で敵がスキップ
-        if ability_result.get("enemy_freeze", False):
-            text += "\nラスボスは凍りついて動けない！"
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
+                    self.disable_all_items()
 
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
-            return
+                    # ラスボスクリア時の選択Viewを表示（攻撃ログは1拍置いてから結果表示）
+                    await self._staged_update(first_text=player_text, second_text=None, first_delay=1.0)
+                    clear_view = await FinalBossClearView.create(interaction.user.id, self.ctx, self.user_processing, self.boss_stage)
+                    await interaction.message.edit(embed=embed, view=clear_view)
+                    return
 
-        # 麻痺効果で敵がスキップ
-        if ability_result.get("paralyze", False):
-            text += "\nラスボスは麻痺して動けない！"
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-    
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
-            return
+                # 怯み効果で敵がスキップ
+                if ability_result.get("enemy_flinch", False):
+                    text = player_text + "\nラスボスは怯んで動けない！"
+                    # HPを保存
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
 
-        # ラスボス反撃
-        enemy_base_dmg = game.calculate_physical_damage(self.boss["atk"], self.player["defense"], -3, 3)
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+                    return
 
-        # 鎧/盾の効果を適用（盾は防御系アビリティ枠として合算）
-        armor_ability = equipment_bonus.get("armor_ability", "")
-        shield_ability = equipment_bonus.get("shield_ability", "")
-        combined_def_ability = "\n".join([a for a in [armor_ability, shield_ability] if a])
-        armor_result = game.apply_armor_effects(
-            enemy_base_dmg, 
-            combined_def_ability, 
-            self.player["hp"], 
-            self.player.get("max_hp", 50),
-            enemy_base_dmg,
-            self.boss.get("attribute", "none")
-        )
+                # 凍結効果で敵がスキップ
+                if ability_result.get("enemy_freeze", False):
+                    text = player_text + "\nラスボスは凍りついて動けない！"
+                    # HPを保存
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
+
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+                    return
+
+                # 麻痺効果で敵がスキップ
+                if ability_result.get("paralyze", False):
+                    text = player_text + "\nラスボスは麻痺して動けない！"
+                    # HPを保存
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
+
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+                    return
+
+                # ラスボス反撃
+                enemy_base_dmg = game.calculate_physical_damage(self.boss["atk"], self.player["defense"], -3, 3)
+
+                # 鎧/盾の効果を適用（盾は防御系アビリティ枠として合算）
+                armor_ability = equipment_bonus.get("armor_ability", "")
+                shield_ability = equipment_bonus.get("shield_ability", "")
+                combined_def_ability = "\n".join([a for a in [armor_ability, shield_ability] if a])
+                armor_result = game.apply_armor_effects(
+                    enemy_base_dmg, 
+                    combined_def_ability, 
+                    self.player["hp"], 
+                    self.player.get("max_hp", 50),
+                    enemy_base_dmg,
+                    self.boss.get("attribute", "none")
+                )
+
+                if armor_result["evaded"]:
+                    text = player_text + f"\nラスボスの攻撃！ {armor_result['effect_text']}"
+                else:
+                    enemy_dmg = armor_result["damage"]
+                    self.player["hp"] -= enemy_dmg
+                    self.player["hp"] = max(0, self.player["hp"])
+                    text = player_text + f"\nラスボスの反撃！ {enemy_dmg} のダメージを受けた！"
+                    if armor_result["effect_text"]:
+                        text += f"\n{armor_result['effect_text']}"
+
+                    # 反撃ダメージ
+                    if armor_result["counter_damage"] > 0:
+                        self.boss["hp"] -= armor_result["counter_damage"]
+                        if self.boss["hp"] <= 0:
+                            await db.update_player(interaction.user.id, hp=self.player["hp"])
+                            text += "\n反撃でラスボスを倒した！"
+                            await db.set_boss_defeated(interaction.user.id, self.boss_stage)
+                            reward_gold = random.randint(
+                                balance_settings.REWARD_GOLD_BOSS_MIN,
+                                balance_settings.REWARD_GOLD_BOSS_MAX,
+                            )
+                            await db.add_gold(interaction.user.id, reward_gold)
+                            embed = discord.Embed(
+                                title="🎉 ダンジョンクリア！",
+                                description=f"反撃で **{self.boss['name']}** を倒した！\n\n🏆 ダンジョンを踏破した――\n💰 {reward_gold}ゴールドを手に入れた！",
+                                color=discord.Color.gold()
+                            )
+                            embed.add_field(
+                                name="📦 アイテムを倉庫に保管", 
+                                value="インベントリから1つアイテムを選んで倉庫に保管できます。\n次回 `!start` 時に倉庫から取り出せます。", 
+                                inline=False
+                            )
+                            self.disable_all_items()
+                            await interaction.message.edit(embed=embed, view=None)
+                            await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
+
+                            storage_view = await FinalBossClearView.create(interaction.user.id, self.ctx, self.user_processing, self.boss_stage)
+                            storage_embed = discord.Embed(
+                                title="📦 倉庫にアイテムを保管",
+                                description="インベントリから1つ選んで倉庫に保管してください。\n次回の冒険で取り出すことができます。",
+                                color=discord.Color.blue()
+                            )
+                            await interaction.channel.send(embed=storage_embed, view=storage_view)
+                            return
+
+                    # 反射ダメージ
+                    if armor_result["reflect_damage"] > 0:
+                        self.boss["hp"] -= armor_result["reflect_damage"]
+                        if self.boss["hp"] <= 0:
+                            await db.update_player(interaction.user.id, hp=self.player["hp"])
+                            text += "\n反射ダメージでラスボスを倒した！"
+                            await db.set_boss_defeated(interaction.user.id, self.boss_stage)
+                            reward_gold = random.randint(
+                                balance_settings.REWARD_GOLD_BOSS_MIN,
+                                balance_settings.REWARD_GOLD_BOSS_MAX,
+                            )
+                            await db.add_gold(interaction.user.id, reward_gold)
+                            embed = discord.Embed(
+                                title="🎉 ダンジョンクリア！",
+                                description=f"反射ダメージで **{self.boss['name']}** を倒した！\n\n🏆 ダンジョンを制覇した！\n💰 {reward_gold}ゴールドを手に入れた！",
+                                color=discord.Color.gold()
+                            )
+                            embed.add_field(
+                                name="📦 アイテムを倉庫に保管", 
+                                value="インベントリから1つアイテムを選んで倉庫に保管できます。\n次回 `!start` 時に倉庫から取り出せます。", 
+                                inline=False
+                            )
+                            self.disable_all_items()
+                            await interaction.message.edit(embed=embed, view=None)
+                            await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
+
+                            storage_view = await FinalBossClearView.create(interaction.user.id, self.ctx, self.user_processing, self.boss_stage)
+                            storage_embed = discord.Embed(
+                                title="📦 倉庫にアイテムを保管",
+                                description="インベントリから1つ選んで倉庫に保管してください。\n次回の冒険で取り出すことができます。",
+                                color=discord.Color.blue()
+                            )
+                            await interaction.channel.send(embed=storage_embed, view=storage_view)
+                            return
+
+                    # HP回復
+                    if armor_result["hp_regen"] > 0:
+                        self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + armor_result["hp_regen"])
+
+                if self.player["hp"] <= 0:
+                    if armor_result.get("revived", False):
+                        self.player["hp"] = 1
+                        text += "\n蘇生効果で生き残った！"
+                    else:
+                        death_result = await handle_death_with_triggers(
+                            self.ctx if hasattr(self, 'ctx') else interaction.channel,
+                            interaction.user.id, 
+                            self.user_processing if hasattr(self, 'user_processing') else {},
+                            enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+                            enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+                        )
+                        if death_result:
+                            await self.update_embed(
+                                text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！"
+                            )
+                        else:
+                            await self.update_embed(text + "\n💀 あなたは倒れた…")
+                        self.disable_all_items()
+                        await self.message.edit(view=self)
+                        if self.ctx.author.id in self.user_processing:
+                            self.user_processing[self.ctx.author.id] = False
+                        return
+
+                # HPを保存
+                await db.update_player(interaction.user.id, hp=self.player["hp"])
+                await self._staged_update(first_text=player_text, second_text=text, first_delay=1.0, second_delay=0.5)
+
+                for child in self.children:
+                    child.disabled = False
+                await self.message.edit(view=self)
+                return
+            except Exception as e:
+                logger.exception("[FinalBossBattleView] fight error: %s", e)
+                for child in self.children:
+                    child.disabled = False
+                try:
+                    await self.message.edit(view=self)
+                except Exception:
+                    pass
+                return
 
         if armor_result["evaded"]:
-            text += f"\nラスボスの攻撃！ {armor_result['effect_text']}"
+            text = player_text + f"\nラスボスの攻撃！ {armor_result['effect_text']}"
         else:
             enemy_dmg = armor_result["damage"]
             self.player["hp"] -= enemy_dmg
             self.player["hp"] = max(0, self.player["hp"])
-            text += f"\nラスボスの反撃！ {enemy_dmg} のダメージを受けた！"
+            text = player_text + f"\nラスボスの反撃！ {enemy_dmg} のダメージを受けた！"
             if armor_result["effect_text"]:
                 text += f"\n{armor_result['effect_text']}"
 
@@ -445,7 +672,8 @@ class FinalBossBattleView(View):
                     )
                     self.disable_all_items()
                     await interaction.message.edit(embed=embed, view=None)
-                    await interaction.response.defer()
+                    # 反撃/反射で勝利した場合も、ログを1回だけ見せてから結果へ
+                    await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
 
                     # アイテム持ち帰りViewを表示
                     storage_view = await FinalBossClearView.create(interaction.user.id, self.ctx, self.user_processing, self.boss_stage)
@@ -482,7 +710,7 @@ class FinalBossBattleView(View):
                     )
                     self.disable_all_items()
                     await interaction.message.edit(embed=embed, view=None)
-                    await interaction.response.defer()
+                    await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
 
                     # アイテム持ち帰りViewを表示
                     storage_view = await FinalBossClearView.create(interaction.user.id, self.ctx, self.user_processing, self.boss_stage)
@@ -542,13 +770,30 @@ class FinalBossBattleView(View):
                     return
 
             # 生存している場合
-            await interaction.response.defer()
-            await self.update_embed(text)
+            # HPを保存
+            await db.update_player(interaction.user.id, hp=self.player["hp"])
+            await self._staged_update(first_text=player_text, second_text=text, first_delay=1.0, second_delay=0.5)
+
+            # ✅ 修正: ボタンを再有効化
+            for child in self.children:
+                child.disabled = False
+            await self.message.edit(view=self)
 
     @button(label="防御", style=discord.ButtonStyle.secondary, emoji="🛡️")
     async def defend(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
+
+        if self._battle_lock.locked():
+            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
+
+        await interaction.response.defer()
+
+        async with self._battle_lock:
+            # ボタンを即座に無効化
+            for child in self.children:
+                child.disabled = True
+            await self.message.edit(view=self)
 
         reduction = random.randint(
             balance_settings.DAMAGE_REDUCTION_HIGH_MIN,
@@ -559,7 +804,8 @@ class FinalBossBattleView(View):
         self.player["hp"] -= enemy_dmg
         self.player["hp"] = max(0, self.player["hp"])
 
-        text = f"防御した！ ダメージを {reduction}% 軽減！\nラスボスの攻撃で {enemy_dmg} のダメージを受けた！"
+        first_text = f"防御した！ ダメージを {reduction}% 軽減！"
+        text = f"{first_text}\nラスボスの攻撃で {enemy_dmg} のダメージを受けた！"
 
         if self.player["hp"] <= 0:
             # 【重要】先にインタラクションに応答
@@ -601,8 +847,12 @@ class FinalBossBattleView(View):
             return
 
         # 生存している場合
-        await interaction.response.defer()
-        await self.update_embed(text)
+        await db.update_player(interaction.user.id, hp=self.player["hp"])
+        await self._staged_update(first_text=first_text, second_text=text, first_delay=1.0, second_delay=0.5)
+
+        for child in self.children:
+            child.disabled = False
+        await self.message.edit(view=self)
 
     def disable_all_items(self):
         for item in self.children:
@@ -637,6 +887,7 @@ class BossBattleView(View):
         fresh_boss = game.get_boss(self.boss_stage)
         if fresh_boss:
             self.boss = fresh_boss
+            self._boss_max_hp = int(self.boss.get("hp", 0) or 0)
             if config.VERBOSE_DEBUG:
                 logger.debug(
                     "boss init name=%s hp=%s atk=%s def=%s",
@@ -688,37 +939,120 @@ class BossBattleView(View):
         self.message = await self.ctx.send(embed=embed, view=self)
 
     async def create_battle_embed(self):
-        embed = discord.Embed(
-            title="🔥 ボス戦！",
-            description=f"強大な敵が立ちはだかる！\n\n**{self.boss['name']}**",
-            color=discord.Color.dark_red()
-        )
-        embed.add_field(
-            name="💀 ボスの情報",
-            value=f"HP：{self.boss['hp']}\n攻撃力：{self.boss['atk']}\n防御力：{self.boss['def']}",
-            inline=False
-        )
+        boss_hp = int(self.boss.get("hp", 0) or 0)
+        boss_max_hp = int(getattr(self, "_boss_max_hp", 0) or boss_hp or 0)
+        boss_atk = int(self.boss.get("atk", 0) or 0)
+        boss_def = int(self.boss.get("def", 0) or 0)
 
+        player_hp = int(self.player.get("hp", 0) or 0)
+        player_atk = int(self.player.get("attack", 0) or 0)
+        player_def = int(self.player.get("defense", 0) or 0)
+
+        mp = None
+        max_mp = None
+        max_hp = int(self.player.get("max_hp", player_hp) or player_hp or 0)
         if "user_id" in self.player:
             player_data = await db.get_player(self.player["user_id"])
-            mp = player_data.get("mp", 20) if player_data else 20
-            max_mp = player_data.get("max_mp", 20) if player_data else 20
-            player_info = f"HP：{self.player['hp']}\nMP：{mp}/{max_mp}\n攻撃力：{self.player['attack']}\n防御力：{self.player['defense']}"
-        else:
-            player_info = f"HP：{self.player['hp']}\n攻撃力：{self.player['attack']}\n防御力：{self.player['defense']}"
+            if player_data:
+                mp = int(player_data.get("mp", 20) or 20)
+                max_mp = int(player_data.get("max_mp", 20) or 20)
+                max_hp = int(player_data.get("max_hp", max_hp) or max_hp)
 
-        embed.add_field(
-            name="🧍‍♂️ あなたの情報",
-            value=player_info,
-            inline=False
+        is_critical = (player_hp > 0) and (player_hp <= 5)
+        is_low = (player_hp > 0) and (not is_critical) and (max_hp > 0) and (player_hp <= max(1, int(max_hp * 0.25)))
+
+        if is_critical:
+            color = discord.Color.red()
+            warning_line = "💀 **瀕死です！** 回復を強く推奨"
+        elif is_low:
+            color = discord.Color.orange()
+            warning_line = "⚠️ **HPが少ないです。** 回復を推奨"
+        else:
+            color = discord.Color.dark_red()
+            warning_line = ""
+
+        boss_is_critical = (boss_hp > 0) and (boss_max_hp > 0) and (boss_hp <= max(1, int(boss_max_hp * 0.15)))
+        boss_is_low = (boss_hp > 0) and (boss_max_hp > 0) and (not boss_is_critical) and (boss_hp <= max(1, int(boss_max_hp * 0.30)))
+
+        boss_name = str(self.boss.get("name", "ボス") or "ボス")
+        if boss_is_critical:
+            boss_name += "（瀕死）"
+            boss_hp_suffix = " 💀"
+        elif boss_is_low:
+            boss_name += "（弱っている）"
+            boss_hp_suffix = " ⚠️"
+        else:
+            boss_hp_suffix = ""
+
+        enemy_line = (
+            f"👑 **{boss_name}**\n"
+            f"HP **{boss_hp}/{boss_max_hp}**{boss_hp_suffix} / ATK **{boss_atk}** / DEF **{boss_def}**"
         )
-        embed.set_footer(text="行動を選択してください。")
+
+        if mp is not None and max_mp is not None:
+            player_line = (
+                "🧍 **あなた**\n"
+                f"HP **{player_hp}/{max_hp}** / MP **{mp}/{max_mp}** / ATK **{player_atk}** / DEF **{player_def}**"
+            )
+        else:
+            player_line = (
+                "🧍 **あなた**\n"
+                f"HP **{player_hp}/{max_hp}** / ATK **{player_atk}** / DEF **{player_def}**"
+            )
+
+        parts = []
+        if warning_line:
+            parts.append(warning_line)
+        parts.append(enemy_line)
+        parts.append(player_line)
+
+        embed = discord.Embed(
+            title="🔥 ボス戦！",
+            description="\n\n".join(parts),
+            color=color,
+        )
+        embed.set_footer(text="▶ 行動を選択してください")
         return embed
+
+    def _format_battle_log(self, text: str) -> str:
+        import re
+
+        if not text:
+            return ""
+
+        text = re.sub(
+            r"あなたの攻撃！\s*(\d+)\s*のダメージを与えた！",
+            r"⚔️ あなたの攻撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"ボスの反撃！\s*(\d+)\s*のダメージを受けた！",
+            r"💥 ボスの反撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"ボスの攻撃で\s*(\d+)\s*のダメージを受けた！",
+            r"💥 ボスの攻撃！ **\1** ダメージ",
+            text,
+        )
+
+        text = text.replace("\n💥 ", "\n\n💥 ")
+        return text
+
+    async def _staged_update(self, first_text: str, second_text: str | None = None, first_delay: float = 1.0, second_delay: float = 0.5):
+        if first_delay and first_delay > 0:
+            await asyncio.sleep(first_delay)
+        await self.update_embed(first_text)
+        if second_text is not None:
+            if second_delay and second_delay > 0:
+                await asyncio.sleep(second_delay)
+            await self.update_embed(second_text)
 
     async def update_embed(self, text=""):
         embed = await self.create_battle_embed()
         if text:
-            embed.description += f"\n\n{text}"
+            log_text = self._format_battle_log(text)
+            embed.description += f"\n\n— 戦闘ログ —\n{log_text}"
         await self.message.edit(embed=embed, view=self)
 
     # =====================================
@@ -888,302 +1222,332 @@ class BossBattleView(View):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
-        if await db.is_mp_stunned(interaction.user.id):
-            await db.set_mp_stunned(interaction.user.id, False)
-            text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
-            await self.update_embed(text)
-            await interaction.response.defer()
-            return
+        if self._battle_lock.locked():
+            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
 
-        # プレイヤー攻撃
-        base_damage = game.calculate_physical_damage(self.player["attack"], self.boss["def"], -5, 5)
+        await interaction.response.defer()
 
-        # ability効果を適用
-        enemy_type = "boss"
-        equipment_bonus = await game.calculate_equipment_bonus(self.player["user_id"]) if "user_id" in self.player else {}
-        weapon_ability = equipment_bonus.get("weapon_ability", "")
-
-        ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
-
-        player_dmg = ability_result["damage"]
-        self.boss["hp"] -= player_dmg
-
-        # HP吸収
-        if ability_result["lifesteal"] > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
-
-        # 召喚回復
-        if ability_result.get("summon_heal", 0) > 0:
-            self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
-
-        # 自傷ダメージ
-        if ability_result.get("self_damage", 0) > 0:
-            self.player["hp"] -= ability_result["self_damage"]
-            self.player["hp"] = max(0, self.player["hp"])
-
-        text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
-        if ability_result["effect_text"]:
-            text += f"\n{ability_result['effect_text']}"
-
-        # 即死判定（ボス戦では無効）
-        if ability_result["instant_kill"]:
-            text += "\n💀即死効果発動！...しかしボスには効かなかった！"
-
-        if self.boss["hp"] <= 0:
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await db.set_boss_defeated(interaction.user.id, self.boss_stage)
-
-            reward_gold = random.randint(
-                balance_settings.REWARD_GOLD_NORMAL_MIN,
-                balance_settings.REWARD_GOLD_NORMAL_MAX,
-            )
-            await db.add_gold(interaction.user.id, reward_gold)
-
-            # ボス撃破通知を送信
+        async with self._battle_lock:
             try:
-                notify_channel = interaction.client.get_channel(NOTIFY_CHANNEL_ID) if NOTIFY_CHANNEL_ID else None
-                if notify_channel:
-                    await notify_channel.send(
-                        f"⚔️ {interaction.user.mention} がステージ{self.boss_stage}のボス「{self.boss['name']}」を撃破した！"
-                    )
-            except Exception as e:
-                logger.warning("通知送信エラー: %s", e, exc_info=True)
-
-            await self.update_embed(text + f"\n\n🏆 ボスを倒した！\n💰 {reward_gold}ゴールドを手に入れた！")
-            self.disable_all_items()
-            await self.message.edit(view=self)
-
-            story_id = f"boss_post_{self.boss_stage}"
-            if not await db.get_story_flag(interaction.user.id, story_id):
-                await asyncio.sleep(2)
-                from story import StoryView
-                view = StoryView(interaction.user.id, story_id, self.user_processing)
-                await view.send_story(self.ctx)
-                return
-
-            if self.ctx.author.id in self.user_processing:
-                self.user_processing[self.ctx.author.id] = False
-            return
-
-        # 怯み効果で敵がスキップ
-        if ability_result.get("enemy_flinch", False):
-            text += "\n敵は怯んで動けない！"
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-    
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
-            return
-
-        # 凍結効果で敵がスキップ
-        if ability_result.get("enemy_freeze", False):
-            text += "\n敵は凍りついて動けない！"
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
-            return
-
-        # 麻痺効果で敵がスキップ
-        if ability_result.get("paralyze", False):
-            text += "\n敵は麻痺して動けない！"
-            # HPを保存
-            await db.update_player(interaction.user.id, hp=self.player["hp"])
-            await self.update_embed(text)
-    
-            # ✅ 修正: ボタンを再有効化
-            for child in self.children:
-                child.disabled = False
-            await self.message.edit(view=self)
-    
-            # ロックはasync withで自動解放される
-            return
-
-        # ボス反撃
-        enemy_base_dmg = game.calculate_physical_damage(self.boss["atk"], self.player["defense"], -3, 3)
-
-        # 鎧/盾の効果を適用（盾は防御系アビリティ枠として合算）
-        armor_ability = equipment_bonus.get("armor_ability", "")
-        shield_ability = equipment_bonus.get("shield_ability", "")
-        combined_def_ability = "\n".join([a for a in [armor_ability, shield_ability] if a])
-        armor_result = game.apply_armor_effects(
-            enemy_base_dmg, 
-            combined_def_ability, 
-            self.player["hp"], 
-            self.player.get("max_hp", 50),
-            enemy_base_dmg,
-            self.boss.get("attribute", "none")
-        )
-
-        if armor_result["evaded"]:
-            text += f"\nボスの攻撃！ {armor_result['effect_text']}"
-        else:
-            enemy_dmg = armor_result["damage"]
-            self.player["hp"] -= enemy_dmg
-            self.player["hp"] = max(0, self.player["hp"])
-            text += f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
-            if armor_result["effect_text"]:
-                text += f"\n{armor_result['effect_text']}"
-
-            # 反撃ダメージ
-            if armor_result["counter_damage"] > 0:
-                self.boss["hp"] -= armor_result["counter_damage"]
-                if self.boss["hp"] <= 0:
-                    # HPを保存
-                    await db.update_player(interaction.user.id, hp=self.player["hp"])
-                    text += "\n反撃でボスを倒した！"
-                    await db.set_boss_defeated(interaction.user.id, self.boss_stage)
-                    reward_gold = random.randint(
-                        balance_settings.REWARD_GOLD_NORMAL_MIN,
-                        balance_settings.REWARD_GOLD_NORMAL_MAX,
-                    )
-                    await db.add_gold(interaction.user.id, reward_gold)
-                    await self.update_embed(text + f"\n💰 {reward_gold}ゴールドを手に入れた！")
-                    self.disable_all_items()
-                    await self.message.edit(view=self)
-
-                    story_id = f"boss_post_{self.boss_stage}"
-                    if not await db.get_story_flag(interaction.user.id, story_id):
-                        await asyncio.sleep(2)
-                        from story import StoryView
-                        view = StoryView(interaction.user.id, story_id, self.user_processing)
-                        await view.send_story(self.ctx)
-                        return
-
-                    if self.ctx.author.id in self.user_processing:
-                        self.user_processing[self.ctx.author.id] = False
-                    return
-
-            # 反射ダメージ
-            if armor_result["reflect_damage"] > 0:
-                self.boss["hp"] -= armor_result["reflect_damage"]
-                if self.boss["hp"] <= 0:
-                    # HPを保存
-                    await db.update_player(interaction.user.id, hp=self.player["hp"])
-                    text += "\n反射ダメージでボスを倒した！"
-                    await db.set_boss_defeated(interaction.user.id, self.boss_stage)
-                    reward_gold = random.randint(
-                        balance_settings.REWARD_GOLD_NORMAL_MIN,
-                        balance_settings.REWARD_GOLD_NORMAL_MAX,
-                    )
-                    await db.add_gold(interaction.user.id, reward_gold)
-                    await self.update_embed(text + f"\n💰 {reward_gold}ゴールドを手に入れた！")
-                    self.disable_all_items()
-                    await self.message.edit(view=self)
-
-                    story_id = f"boss_post_{self.boss_stage}"
-                    if not await db.get_story_flag(interaction.user.id, story_id):
-                        await asyncio.sleep(2)
-                        from story import StoryView
-                        view = StoryView(interaction.user.id, story_id, self.user_processing)
-                        await view.send_story(self.ctx)
-                        return
-
-                    if self.ctx.author.id in self.user_processing:
-                        self.user_processing[self.ctx.author.id] = False
-                    return
-
-            # HP回復
-            if armor_result["hp_regen"] > 0:
-                self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + armor_result["hp_regen"])
-
-        if self.player["hp"] <= 0:
-            if armor_result.get("revived", False):
-                self.player["hp"] = 1
-                text += "\n蘇生効果で生き残った！"
-            else:
-                death_result = await handle_death_with_triggers(
-                    self.ctx if hasattr(self, 'ctx') else interaction.channel,
-                    interaction.user.id, 
-                    self.user_processing if hasattr(self, 'user_processing') else {},
-                    enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
-                    enemy_type='boss' if hasattr(self, 'boss') else 'normal'
-                )
-
-                # 死亡通知を送信
-                try:
-                    notify_channel = interaction.client.get_channel(NOTIFY_CHANNEL_ID) if NOTIFY_CHANNEL_ID else None
-                    if notify_channel:
-                        player = await db.get_player(interaction.user.id)
-                        distance = player.get("distance", 0) if player else 0
-                        await notify_channel.send(
-                            f"💀 {interaction.user.mention} がボス戦で倒れた…\n"
-                            f"到達距離: {distance}m"
-                        )
-                except Exception as e:
-                    logger.warning("通知送信エラー: %s", e, exc_info=True)
-
-                if death_result:
-                    await self.update_embed(
-                        text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！\n（死亡回数: {death_result['death_count']}回）"
-                    )
-                else:
-                    await self.update_embed(text + "\n💀 あなたは倒れた…")
-
-                self.disable_all_items()
+                for child in self.children:
+                    child.disabled = True
                 await self.message.edit(view=self)
 
-                if self.ctx.author.id in self.user_processing:
-                    self.user_processing[self.ctx.author.id] = False
+                if await db.is_mp_stunned(interaction.user.id):
+                    await db.set_mp_stunned(interaction.user.id, False)
+                    text = "⚠️ MP枯渇で行動不能…\n『嘘だろ!?』\n次のターンから行動可能になります。"
+                    await self.update_embed(text)
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+                    return
+
+                # プレイヤー攻撃
+                base_damage = game.calculate_physical_damage(self.player["attack"], self.boss["def"], -5, 5)
+
+                # ability効果を適用
+                enemy_type = "boss"
+                equipment_bonus = await game.calculate_equipment_bonus(self.player["user_id"]) if "user_id" in self.player else {}
+                weapon_ability = equipment_bonus.get("weapon_ability", "")
+                ability_result = game.apply_ability_effects(base_damage, weapon_ability, self.player["hp"], enemy_type)
+
+                player_dmg = ability_result["damage"]
+                self.boss["hp"] -= player_dmg
+
+                if ability_result["lifesteal"] > 0:
+                    self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["lifesteal"])
+
+                if ability_result.get("summon_heal", 0) > 0:
+                    self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + ability_result["summon_heal"])
+
+                if ability_result.get("self_damage", 0) > 0:
+                    self.player["hp"] -= ability_result["self_damage"]
+                    self.player["hp"] = max(0, self.player["hp"])
+
+                player_text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
+                if ability_result["effect_text"]:
+                    player_text += f"\n{ability_result['effect_text']}"
+
+                if ability_result["instant_kill"]:
+                    player_text += "\n💀即死効果発動！...しかしボスには効かなかった！"
+
+                # 勝利
+                if self.boss["hp"] <= 0:
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await db.set_boss_defeated(interaction.user.id, self.boss_stage)
+
+                    reward_gold = random.randint(
+                        balance_settings.REWARD_GOLD_NORMAL_MIN,
+                        balance_settings.REWARD_GOLD_NORMAL_MAX,
+                    )
+                    await db.add_gold(interaction.user.id, reward_gold)
+
+                    try:
+                        notify_channel = interaction.client.get_channel(NOTIFY_CHANNEL_ID) if NOTIFY_CHANNEL_ID else None
+                        if notify_channel:
+                            await notify_channel.send(
+                                f"⚔️ {interaction.user.mention} がステージ{self.boss_stage}のボス「{self.boss['name']}」を撃破した！"
+                            )
+                    except Exception as e:
+                        logger.warning("通知送信エラー: %s", e, exc_info=True)
+
+                    text = player_text + f"\n\n🏆 ボスを倒した！\n💰 {reward_gold}ゴールドを手に入れた！"
+                    await self._staged_update(first_text=player_text, second_text=text, first_delay=1.0, second_delay=0.5)
+                    self.disable_all_items()
+                    await self.message.edit(view=self)
+
+                    story_id = f"boss_post_{self.boss_stage}"
+                    if not await db.get_story_flag(interaction.user.id, story_id):
+                        await asyncio.sleep(2)
+                        from story import StoryView
+                        view = StoryView(interaction.user.id, story_id, self.user_processing)
+                        await view.send_story(self.ctx)
+                        return
+
+                    if self.ctx.author.id in self.user_processing:
+                        self.user_processing[self.ctx.author.id] = False
+                    return
+
+                # 敵がスキップ
+                if ability_result.get("enemy_flinch", False):
+                    text = player_text + "\n敵は怯んで動けない！"
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
+
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+                    return
+
+                if ability_result.get("enemy_freeze", False):
+                    text = player_text + "\n敵は凍りついて動けない！"
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
+
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+                    return
+
+                if ability_result.get("paralyze", False):
+                    text = player_text + "\n敵は麻痺して動けない！"
+                    await db.update_player(interaction.user.id, hp=self.player["hp"])
+                    await self._staged_update(first_text=text, second_text=None, first_delay=1.0)
+
+                    for child in self.children:
+                        child.disabled = False
+                    await self.message.edit(view=self)
+                    return
+
+                # ボス反撃
+                enemy_base_dmg = game.calculate_physical_damage(self.boss["atk"], self.player["defense"], -3, 3)
+
+                armor_ability = equipment_bonus.get("armor_ability", "")
+                shield_ability = equipment_bonus.get("shield_ability", "")
+                combined_def_ability = "\n".join([a for a in [armor_ability, shield_ability] if a])
+                armor_result = game.apply_armor_effects(
+                    enemy_base_dmg,
+                    combined_def_ability,
+                    self.player["hp"],
+                    self.player.get("max_hp", 50),
+                    enemy_base_dmg,
+                    self.boss.get("attribute", "none"),
+                )
+
+                if armor_result["evaded"]:
+                    text = player_text + f"\nボスの攻撃！ {armor_result['effect_text']}"
+                else:
+                    enemy_dmg = armor_result["damage"]
+                    self.player["hp"] -= enemy_dmg
+                    self.player["hp"] = max(0, self.player["hp"])
+                    text = player_text + f"\nボスの反撃！ {enemy_dmg} のダメージを受けた！"
+                    if armor_result["effect_text"]:
+                        text += f"\n{armor_result['effect_text']}"
+
+                    # 反撃ダメージ
+                    if armor_result["counter_damage"] > 0:
+                        self.boss["hp"] -= armor_result["counter_damage"]
+                        if self.boss["hp"] <= 0:
+                            await db.update_player(interaction.user.id, hp=self.player["hp"])
+                            text += "\n反撃でボスを倒した！"
+                            await db.set_boss_defeated(interaction.user.id, self.boss_stage)
+                            reward_gold = random.randint(
+                                balance_settings.REWARD_GOLD_NORMAL_MIN,
+                                balance_settings.REWARD_GOLD_NORMAL_MAX,
+                            )
+                            await db.add_gold(interaction.user.id, reward_gold)
+                            await self.update_embed(text + f"\n💰 {reward_gold}ゴールドを手に入れた！")
+                            self.disable_all_items()
+                            await self.message.edit(view=self)
+
+                            story_id = f"boss_post_{self.boss_stage}"
+                            if not await db.get_story_flag(interaction.user.id, story_id):
+                                await asyncio.sleep(2)
+                                from story import StoryView
+                                view = StoryView(interaction.user.id, story_id, self.user_processing)
+                                await view.send_story(self.ctx)
+                                return
+
+                            if self.ctx.author.id in self.user_processing:
+                                self.user_processing[self.ctx.author.id] = False
+                            return
+
+                    # 反射ダメージ
+                    if armor_result["reflect_damage"] > 0:
+                        self.boss["hp"] -= armor_result["reflect_damage"]
+                        if self.boss["hp"] <= 0:
+                            await db.update_player(interaction.user.id, hp=self.player["hp"])
+                            text += "\n反射ダメージでボスを倒した！"
+                            await db.set_boss_defeated(interaction.user.id, self.boss_stage)
+                            reward_gold = random.randint(
+                                balance_settings.REWARD_GOLD_NORMAL_MIN,
+                                balance_settings.REWARD_GOLD_NORMAL_MAX,
+                            )
+                            await db.add_gold(interaction.user.id, reward_gold)
+                            await self.update_embed(text + f"\n💰 {reward_gold}ゴールドを手に入れた！")
+                            self.disable_all_items()
+                            await self.message.edit(view=self)
+
+                            story_id = f"boss_post_{self.boss_stage}"
+                            if not await db.get_story_flag(interaction.user.id, story_id):
+                                await asyncio.sleep(2)
+                                from story import StoryView
+                                view = StoryView(interaction.user.id, story_id, self.user_processing)
+                                await view.send_story(self.ctx)
+                                return
+
+                            if self.ctx.author.id in self.user_processing:
+                                self.user_processing[self.ctx.author.id] = False
+                            return
+
+                    if armor_result["hp_regen"] > 0:
+                        self.player["hp"] = min(self.player.get("max_hp", 50), self.player["hp"] + armor_result["hp_regen"])
+
+                # 死亡
+                if self.player["hp"] <= 0:
+                    if armor_result.get("revived", False):
+                        self.player["hp"] = 1
+                        text += "\n蘇生効果で生き残った！"
+                    else:
+                        death_result = await handle_death_with_triggers(
+                            self.ctx if hasattr(self, 'ctx') else interaction.channel,
+                            interaction.user.id,
+                            self.user_processing if hasattr(self, 'user_processing') else {},
+                            enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+                            enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+                        )
+
+                        try:
+                            notify_channel = interaction.client.get_channel(NOTIFY_CHANNEL_ID) if NOTIFY_CHANNEL_ID else None
+                            if notify_channel:
+                                player = await db.get_player(interaction.user.id)
+                                distance = player.get("distance", 0) if player else 0
+                                await notify_channel.send(
+                                    f"💀 {interaction.user.mention} がボス戦で倒れた…\n"
+                                    f"到達距離: {distance}m"
+                                )
+                        except Exception as e:
+                            logger.warning("通知送信エラー: %s", e, exc_info=True)
+
+                        if death_result:
+                            await self.update_embed(
+                                text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！\n（死亡回数: {death_result['death_count']}回）"
+                            )
+                        else:
+                            await self.update_embed(text + "\n💀 あなたは倒れた…")
+
+                        self.disable_all_items()
+                        await self.message.edit(view=self)
+
+                        if self.ctx.author.id in self.user_processing:
+                            self.user_processing[self.ctx.author.id] = False
+                        return
+
+                # 継続
+                await db.update_player(interaction.user.id, hp=self.player["hp"])
+                await self._staged_update(first_text=player_text, second_text=text, first_delay=1.0, second_delay=0.5)
+
+                for child in self.children:
+                    child.disabled = False
+                await self.message.edit(view=self)
                 return
 
-        await self.update_embed(text)
-        await interaction.response.defer()
+            except Exception as e:
+                logger.exception("[BossBattleView] fight error: %s", e)
+                for child in self.children:
+                    child.disabled = False
+                try:
+                    await self.message.edit(view=self)
+                except Exception:
+                    pass
+                return
 
     @button(label="防御", style=discord.ButtonStyle.secondary, emoji="🛡️")
     async def defend(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("これはあなたの戦闘ではありません！", ephemeral=True)
 
-        reduction = random.randint(
-            balance_settings.DAMAGE_REDUCTION_MID_MIN,
-            balance_settings.DAMAGE_REDUCTION_MID_MAX,
-        )
-        reduced_raw = int((self.boss["atk"] + random.randint(-3, 3)) * (1 - reduction / 100))
-        enemy_dmg = game.mitigate_physical_damage(reduced_raw, self.player["defense"])
-        self.player["hp"] -= enemy_dmg
-        self.player["hp"] = max(0, self.player["hp"])
+        if self._battle_lock.locked():
+            return await interaction.response.send_message("⚠️ 処理中です。少々お待ちください。", ephemeral=True)
 
-        text = f"防御した！ ダメージを {reduction}% 軽減！\nボスの攻撃で {enemy_dmg} のダメージを受けた！"
-
-        if self.player["hp"] <= 0:
-            death_result = await handle_death_with_triggers(
-                self.ctx if hasattr(self, 'ctx') else interaction.channel,
-                interaction.user.id, 
-                self.user_processing if hasattr(self, 'user_processing') else {},
-                enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
-                enemy_type='boss' if hasattr(self, 'boss') else 'normal'
-            )
-            if death_result:
-                await self.update_embed(
-                    text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！"
-                )
-            else:
-                await self.update_embed(text + "\n💀 あなたは倒れた…")
-
-            self.disable_all_items()
-            await self.message.edit(view=self)
-
-            if self.ctx.author.id in self.user_processing:
-                self.user_processing[self.ctx.author.id] = False
-            return
-
-        # HPを保存
-        await db.update_player(interaction.user.id, hp=self.player["hp"])
-        await self.update_embed(text)
         await interaction.response.defer()
+
+        async with self._battle_lock:
+            try:
+                for child in self.children:
+                    child.disabled = True
+                await self.message.edit(view=self)
+
+                reduction = random.randint(
+                    balance_settings.DAMAGE_REDUCTION_MID_MIN,
+                    balance_settings.DAMAGE_REDUCTION_MID_MAX,
+                )
+                reduced_raw = int((self.boss["atk"] + random.randint(-3, 3)) * (1 - reduction / 100))
+                enemy_dmg = game.mitigate_physical_damage(reduced_raw, self.player["defense"])
+                self.player["hp"] -= enemy_dmg
+                self.player["hp"] = max(0, self.player["hp"])
+
+                first_text = f"防御した！ ダメージを {reduction}% 軽減！"
+                text = f"{first_text}\nボスの攻撃で {enemy_dmg} のダメージを受けた！"
+
+                if self.player["hp"] <= 0:
+                    death_result = await handle_death_with_triggers(
+                        self.ctx if hasattr(self, 'ctx') else interaction.channel,
+                        interaction.user.id,
+                        self.user_processing if hasattr(self, 'user_processing') else {},
+                        enemy_name=getattr(self, 'enemy', {}).get('name') or getattr(self, 'boss', {}).get('name') or '不明',
+                        enemy_type='boss' if hasattr(self, 'boss') else 'normal'
+                    )
+                    if death_result:
+                        await self.update_embed(
+                            text + f"\n\n💀 あなたは倒れた…\n\n⭐ {death_result['points']}アップグレードポイントを獲得！"
+                        )
+                    else:
+                        await self.update_embed(text + "\n💀 あなたは倒れた…")
+
+                    self.disable_all_items()
+                    await self.message.edit(view=self)
+                    if self.ctx.author.id in self.user_processing:
+                        self.user_processing[self.ctx.author.id] = False
+                    return
+
+                await db.update_player(interaction.user.id, hp=self.player["hp"])
+                await self._staged_update(first_text=first_text, second_text=text, first_delay=1.0, second_delay=0.5)
+
+                for child in self.children:
+                    child.disabled = False
+                await self.message.edit(view=self)
+                return
+
+            except Exception as e:
+                logger.exception("[BossBattleView] defend error: %s", e)
+                for child in self.children:
+                    child.disabled = False
+                try:
+                    await self.message.edit(view=self)
+                except Exception:
+                    pass
+                return
 
     def disable_all_items(self):
         for item in self.children:
@@ -1275,37 +1639,142 @@ class BattleView(View):
         self.message = await self.ctx.send(embed=embed, view=self)
 
     async def create_battle_embed(self):
-        embed = discord.Embed(
-            title="⚔️ 戦闘開始！",
-            description=f"敵が現れた！：**{self.enemy['name']}**",
-            color=0xff4444
-        )
-        embed.add_field(
-            name="💀 敵の情報",
-            value=f"HP：{self.enemy['hp']}\n攻撃力：{self.enemy['atk']}\n防御力：{self.enemy['def']}",
-            inline=False
-        )
+        enemy_hp = int(self.enemy.get("hp", 0) or 0)
+        enemy_max_hp = int(self._enemy_max_hp or enemy_hp or 0)
+        enemy_atk = int(self.enemy.get("atk", 0) or 0)
+        enemy_def = int(self.enemy.get("def", 0) or 0)
 
+        player_hp = int(self.player.get("hp", 0) or 0)
+        player_atk = int(self.player.get("attack", 0) or 0)
+        player_def = int(self.player.get("defense", 0) or 0)
+
+        mp = None
+        max_mp = None
+        max_hp = int(self.player.get("max_hp", player_hp) or player_hp or 0)
         if "user_id" in self.player:
             player_data = await db.get_player(self.player["user_id"])
-            mp = player_data.get("mp", 20) if player_data else 20
-            max_mp = player_data.get("max_mp", 20) if player_data else 20
-            player_info = f"HP：{self.player['hp']}\nMP：{mp}/{max_mp}\n攻撃力：{self.player['attack']}\n防御力：{self.player['defense']}"
-        else:
-            player_info = f"HP：{self.player['hp']}\n攻撃力：{self.player['attack']}\n防御力：{self.player['defense']}"
+            if player_data:
+                mp = int(player_data.get("mp", 20) or 20)
+                max_mp = int(player_data.get("max_mp", 20) or 20)
+                max_hp = int(player_data.get("max_hp", max_hp) or max_hp)
 
-        embed.add_field(
-            name="🧍‍♂️ あなたの情報",
-            value=player_info,
-            inline=False
+        is_critical = (player_hp > 0) and (player_hp <= 5)
+        is_low = (player_hp > 0) and (not is_critical) and (max_hp > 0) and (player_hp <= max(1, int(max_hp * 0.25)))
+
+        if is_critical:
+            color = discord.Color.red()
+            warning_line = "💀 **瀕死です！** 回復を強く推奨"
+        elif is_low:
+            color = discord.Color.orange()
+            warning_line = "⚠️ **HPが少ないです。** 回復を推奨"
+        else:
+            color = discord.Color.dark_grey()
+            warning_line = ""
+
+        enemy_is_critical = (enemy_hp > 0) and (enemy_max_hp > 0) and (enemy_hp <= max(1, int(enemy_max_hp * 0.15)))
+        enemy_is_low = (enemy_hp > 0) and (enemy_max_hp > 0) and (not enemy_is_critical) and (enemy_hp <= max(1, int(enemy_max_hp * 0.30)))
+
+        enemy_name = str(self.enemy.get("name", "敵") or "敵")
+        if enemy_is_critical:
+            enemy_name += "（瀕死）"
+            enemy_hp_suffix = " 💀"
+        elif enemy_is_low:
+            enemy_name += "（弱っている）"
+            enemy_hp_suffix = " ⚠️"
+        else:
+            enemy_hp_suffix = ""
+
+        enemy_line = (
+            f"🧟 **{enemy_name}**\n"
+            f"HP **{enemy_hp}/{enemy_max_hp}**{enemy_hp_suffix} / ATK **{enemy_atk}** / DEF **{enemy_def}**"
         )
-        embed.set_footer(text="行動を選択してください。")
+
+        if mp is not None and max_mp is not None:
+            player_line = (
+                "🧍 **あなた**\n"
+                f"HP **{player_hp}/{max_hp}** / MP **{mp}/{max_mp}** / ATK **{player_atk}** / DEF **{player_def}**"
+            )
+        else:
+            player_line = (
+                "🧍 **あなた**\n"
+                f"HP **{player_hp}/{max_hp}** / ATK **{player_atk}** / DEF **{player_def}**"
+            )
+
+        parts = []
+        if warning_line:
+            parts.append(warning_line)
+        parts.append(enemy_line)
+        parts.append(player_line)
+
+        embed = discord.Embed(
+            title="⚔️ 戦闘開始！",
+            description="\n\n".join(parts),
+            color=color,
+        )
+        embed.set_footer(text="▶ 行動を選択してください")
+
+        # 低HP時は「アイテム使用」を目立たせる
+        try:
+            for child in self.children:
+                if isinstance(child, discord.ui.Button) and str(getattr(child, "label", "")) == "アイテム使用":
+                    child.style = discord.ButtonStyle.danger if (is_low or is_critical) else discord.ButtonStyle.primary
+        except Exception:
+            pass
+
         return embed
+
+    def _format_battle_log(self, text: str) -> str:
+        import re
+
+        if not text:
+            return ""
+
+        # よく出るログだけ、数字を太字＋絵文字で強調
+        text = re.sub(
+            r"あなたの攻撃！\s*(\d+)\s*のダメージを与えた！",
+            r"⚔️ あなたの攻撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"敵の反撃！\s*(\d+)\s*のダメージを受けた！",
+            r"💥 敵の反撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"ボスの反撃！\s*(\d+)\s*のダメージを受けた！",
+            r"💥 ボスの反撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"ラスボスの反撃！\s*(\d+)\s*のダメージを受けた！",
+            r"💥 ラスボスの反撃！ **\1** ダメージ",
+            text,
+        )
+        text = re.sub(
+            r"⚔️\s*(\d+)\s*のダメージを与えた！",
+            r"⚔️ **\1** ダメージ",
+            text,
+        )
+
+        # 攻撃→反撃の2行は、間に1行余白を入れて視線の休憩を作る
+        text = text.replace("\n💥 ", "\n\n💥 ")
+
+        return text
+    async def _staged_update(self, first_text: str, second_text: str | None = None, first_delay: float = 1.0, second_delay: float = 0.5):
+        if first_delay and first_delay > 0:
+            await asyncio.sleep(first_delay)
+        await self.update_embed(first_text)
+        if second_text is not None:
+            if second_delay and second_delay > 0:
+                await asyncio.sleep(second_delay)
+            await self.update_embed(second_text)
 
     async def update_embed(self, text=""):
         embed = await self.create_battle_embed()
         if text:
-            embed.description += f"\n\n{text}"
+            log_text = self._format_battle_log(text)
+            # 余白＋見出しで「直近ログ感」を上げる
+            embed.description += f"\n\n— 戦闘ログ —\n{log_text}"
         await self.message.edit(embed=embed, view=self)
 
     # =====================================
@@ -1433,6 +1902,15 @@ class BattleView(View):
 
                     if self.player["hp"] <= 0:
                         if await self._maybe_finish_story_battle("lose"):
+                            # ストーリー駆動戦闘でも、致死ターンのHP/ログを反映してから終了する
+                            try:
+                                await db.update_player(interaction.user.id, hp=self.player["hp"])
+                            except Exception:
+                                pass
+                            try:
+                                await self.update_embed(text)
+                            except Exception:
+                                pass
                             self.disable_all_items()
                             await self.message.edit(view=self)
                             if self.ctx.author.id in self.user_processing:
@@ -1570,9 +2048,9 @@ class BattleView(View):
                     self.player["hp"] -= ability_result["self_damage"]
                     self.player["hp"] = max(0, self.player["hp"])
 
-                text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
+                player_text = f"あなたの攻撃！ {player_dmg} のダメージを与えた！"
                 if ability_result["effect_text"]:
-                    text += f"\n{ability_result['effect_text']}"
+                    player_text += f"\n{ability_result['effect_text']}"
 
                 # 即死判定
                 if ability_result["instant_kill"]:
@@ -1605,7 +2083,12 @@ class BattleView(View):
                             await db.add_item_to_inventory(interaction.user.id, drop_result["name"])
                             drop_text = f"\n🎁 **{drop_result['name']}** を手に入れた！"
 
-                    await self.update_embed(text + "\n🏆 敵を倒した！" + drop_text)
+                    await self._staged_update(
+                        first_text=player_text,
+                        second_text=player_text + "\n🏆 敵を倒した！" + drop_text,
+                        first_delay=1.0,
+                        second_delay=0.5,
+                    )
                     self.disable_all_items()
                     await self.message.edit(view=self)
                     if self.ctx.author.id in self.user_processing:
@@ -1615,50 +2098,51 @@ class BattleView(View):
 
                 # 怯み効果で敵がスキップ
                 if ability_result.get("enemy_flinch", False):
-                    text += "\n敵は怯んで動けない！"
+                    combined = player_text + "\n敵は怯んで動けない！"
                     # HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
-                    await self.update_embed(text)
-    
-                    # ✅ 修正: ボタンを再有効化
+                    await self._staged_update(first_text=player_text, second_text=combined, first_delay=1.0, second_delay=0.5)
+
+                    # ✅ ボタンを再有効化
                     for child in self.children:
                         child.disabled = False
                     await self.message.edit(view=self)
-    
+
                     # ロックはasync withで自動解放される
                     return
 
                 # 凍結効果で敵がスキップ
                 if ability_result.get("enemy_freeze", False):
-                    text += "\n敵は凍りついて動けない！"
+                    combined = player_text + "\n敵は凍りついて動けない！"
                     # HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
-                    await self.update_embed(text)
+                    await self._staged_update(first_text=player_text, second_text=combined, first_delay=1.0, second_delay=0.5)
 
-                    # ✅ 修正: ボタンを再有効化
+                    # ✅ ボタンを再有効化
                     for child in self.children:
                         child.disabled = False
                     await self.message.edit(view=self)
-    
+
                     # ロックはasync withで自動解放される
                     return
 
                 # 麻痺効果で敵がスキップ
                 if ability_result.get("paralyze", False):
-                    text += "\n敵は麻痺して動けない！"
+                    combined = player_text + "\n敵は麻痺して動けない！"
                     # HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
-                    await self.update_embed(text)
-    
-                    # ✅ 修正: ボタンを再有効化
+                    await self._staged_update(first_text=player_text, second_text=combined, first_delay=1.0, second_delay=0.5)
+
+                    # ✅ ボタンを再有効化
                     for child in self.children:
                         child.disabled = False
                     await self.message.edit(view=self)
-    
+
                     # ロックはasync withで自動解放される
                     return
 
                 # 敵反撃
+                text = player_text
                 enemy_base_dmg = game.calculate_physical_damage(self.enemy["atk"], self.player["defense"], -2, 2)
 
                 # 鎧/盾の効果を適用（盾は防御系アビリティ枠として合算）
@@ -1725,6 +2209,20 @@ class BattleView(View):
                         text += "\n蘇生効果で生き残った！\n『死んだかと思った……どんなシステムなんだろう』"
                     else:
                         if await self._maybe_finish_story_battle("lose"):
+                            # ストーリー駆動戦闘でも、致死ターンのHP/ログを反映してから終了する
+                            try:
+                                await db.update_player(interaction.user.id, hp=self.player["hp"])
+                            except Exception:
+                                pass
+                            try:
+                                await self._staged_update(
+                                    first_text=player_text,
+                                    second_text=text,
+                                    first_delay=1.0,
+                                    second_delay=0.5,
+                                )
+                            except Exception:
+                                pass
                             self.disable_all_items()
                             await self.message.edit(view=self)
                             if self.ctx.author.id in self.user_processing:
@@ -1740,9 +2238,19 @@ class BattleView(View):
                             enemy_type='boss' if hasattr(self, 'boss') else 'normal'
                         )
                         if death_result:
-                            await self.update_embed(text + f"\n💀 あなたは倒れた…\n\n🔄 リスタート\n📍 アップグレードポイント: +{death_result['points']}pt")
+                            await self._staged_update(
+                                first_text=player_text,
+                                second_text=text + f"\n💀 あなたは倒れた…\n\n🔄 リスタート\n📍 アップグレードポイント: +{death_result['points']}pt",
+                                first_delay=1.0,
+                                second_delay=0.5,
+                            )
                         else:
-                            await self.update_embed(text + "\n💀 あなたは倒れた…")
+                            await self._staged_update(
+                                first_text=player_text,
+                                second_text=text + "\n💀 あなたは倒れた…",
+                                first_delay=1.0,
+                                second_delay=0.5,
+                            )
                         self.disable_all_items()
                         await self.message.edit(view=self)
                         if self.ctx.author.id in self.user_processing:
@@ -1752,7 +2260,12 @@ class BattleView(View):
 
                 # HPを保存（戦闘継続時）
                 await db.update_player(interaction.user.id, hp=self.player["hp"])
-                await self.update_embed(text)
+                await self._staged_update(
+                    first_text=player_text,
+                    second_text=text,
+                    first_delay=1.0,
+                    second_delay=0.5,
+                )
                 # ボタンを再有効化
                 for child in self.children:
                     child.disabled = False
@@ -1817,10 +2330,20 @@ class BattleView(View):
                 self.player["hp"] -= enemy_dmg
                 self.player["hp"] = max(0, self.player["hp"])
 
-                text = f"防御した！ ダメージを {reduction}% 軽減！\n敵の攻撃で {enemy_dmg} のダメージを受けた！"
+                first_text = f"防御した！ ダメージを {reduction}% 軽減！"
+                text = f"{first_text}\n敵の攻撃で {enemy_dmg} のダメージを受けた！"
 
                 if self.player["hp"] <= 0:
                     if await self._maybe_finish_story_battle("lose"):
+                        # ストーリー駆動戦闘でも、致死ターンのHP/ログを反映してから終了する
+                        try:
+                            await db.update_player(interaction.user.id, hp=self.player["hp"])
+                        except Exception:
+                            pass
+                        try:
+                            await self.update_embed(text)
+                        except Exception:
+                            pass
                         self.disable_all_items()
                         await self.message.edit(view=self)
                         if self.ctx.author.id in self.user_processing:
@@ -1847,7 +2370,7 @@ class BattleView(View):
 
                 # HPを保存
                 await db.update_player(interaction.user.id, hp=self.player["hp"])
-                await self.update_embed(text)
+                await self._staged_update(first_text=first_text, second_text=text, first_delay=1.0, second_delay=0.5)
                 # ボタンを再有効化
                 for child in self.children:
                     child.disabled = False
@@ -1902,13 +2425,15 @@ class BattleView(View):
                         self.player["defense"],
                     )
 
+                first_text = "🏃‍♂️ 逃走を試みた…"
+
                 # 逃走確率
                 if random.randint(1, 100) <= balance_settings.FLEE_CHANCE_PERCENT:
                     # 逃走成功 - HPを保存
                     await db.update_player(interaction.user.id, hp=self.player["hp"])
                     text = "🏃‍♂️ うまく逃げ切れた！\n『戦っとけば良かったかな――。』"
                     self.disable_all_items()
-                    await self.update_embed(text)
+                    await self._staged_update(first_text=first_text, second_text=text, first_delay=1.0, second_delay=0.5)
                     await self.message.edit(view=self)
                     if self.ctx.author.id in self.user_processing:
                         self.user_processing[self.ctx.author.id] = False
@@ -1933,7 +2458,7 @@ class BattleView(View):
                         else:
                             text = f"逃げられなかった！ 敵の攻撃で {enemy_dmg} のダメージ！\n💀 あなたは倒れた…"
                         self.disable_all_items()
-                        await self.update_embed(text)
+                        await self._staged_update(first_text=first_text, second_text=text, first_delay=1.0, second_delay=0.5)
                         await self.message.edit(view=self)
                         if self.ctx.author.id in self.user_processing:
                             self.user_processing[self.ctx.author.id] = False
@@ -1941,7 +2466,7 @@ class BattleView(View):
                         # HPを保存（生存時）
                         await db.update_player(interaction.user.id, hp=self.player["hp"])
                         text = f"逃げられなかった！ 敵の攻撃で {enemy_dmg} のダメージ！"
-                        await self.update_embed(text)
+                        await self._staged_update(first_text=first_text, second_text=text, first_delay=1.0, second_delay=0.5)
                         # ボタンを再有効化
                         for child in self.children:
                             child.disabled = False

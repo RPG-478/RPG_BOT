@@ -55,13 +55,23 @@ import admin_anti_cheat
 from bot_state import attach_bot_state
 from bot_utils import check_ban
 
+from help_commands import setup_help_command
+from death_commands import setup_death_commands
+from emoji_commands import setup_emoji_command
+
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+# NOTE: discord.py の標準 help コマンドと衝突しないように無効化し、自前 !help を提供する
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
 # cogs 側から参照できるように共有状態を bot にぶら下げる
 user_processing, user_locks = attach_bot_state(bot)
+
+# commands split out of main.py (keep main.py under 1000 lines)
+setup_help_command(bot)
+setup_death_commands(bot)
+setup_emoji_command(bot)
 
 # main.py 内で snapshot_manager を参照している箇所があるため、
 # debug_commands を extension(cog) としてロードする場合でもシンボルだけ確保する。
@@ -147,6 +157,7 @@ async def on_ready():
     logger.info("Logged in as %s", bot.user)
     logger.info("✅ Bot is ready")
 
+
 #move
 @bot.command(name="move", aliases=["m"])
 @check_ban()
@@ -167,6 +178,26 @@ async def move(ctx: commands.Context):
         if not player:
             await ctx.send("!start で冒険を始めてみてね。")
             return
+
+        # start_mihari（最初の相方ストーリー）は移動で回避できないようにする
+        # 注意: StoryView は通常 user_processing を触らないため、ここではロックを委譲しない。
+        mihari_done = await db.get_story_flag(user.id, "start_mihari")
+        if not mihari_done:
+            embed = discord.Embed(
+                title="📖 まずは『みはり』と合流しよう",
+                description="最初のストーリーが未完了です。\n先にストーリーを進めてください。",
+                color=discord.Color.purple(),
+            )
+            await ctx.send(embed=embed)
+            view = StoryView(user.id, "start_mihari", user_processing={})
+            await view.send_story(ctx)
+            return
+
+        # チュートリアル進行: move を実行した
+        try:
+            await db.set_story_flag_key(user.id, "tutorial.used_move", True)
+        except Exception:
+            pass
         
         # Anti-cheat: Log command execution
         await anti_cheat.log_command(
@@ -227,12 +258,11 @@ async def move(ctx: commands.Context):
         await asyncio.sleep(2.5)
 
         # ==========================
-        # イベント決定（exploration.pyに委譲）
+        # イベント決定（exploration.py）
         # ==========================
         try:
             import exploration
-            
-            # 選択肢ストーリーのリスト
+
             choice_story_ids = [
                 "choice_mysterious_door",
                 "choice_strange_merchant",
@@ -241,43 +271,42 @@ async def move(ctx: commands.Context):
                 "choice_sleeping_dragon",
                 "choice_cursed_treasure",
                 "choice_time_traveler",
-                "choice_fairy_spring"
+                "choice_fairy_spring",
             ]
-            
-            # 未体験の選択肢ストーリーをフィルタリング
+
             available_choice_stories = []
             for sid in choice_story_ids:
                 if not await db.get_story_flag(user.id, sid):
                     available_choice_stories.append(sid)
-            
-            # ストーリーフラグを収集
-            story_flags = player.get("story_flags", {}) if isinstance(player.get("story_flags", {}), dict) else {}
-            # ボス前ストーリー（互換のため明示的に上書き取得）
+
+            story_flags = (
+                player.get("story_flags", {})
+                if isinstance(player.get("story_flags", {}), dict)
+                else {}
+            )
             for stage in range(1, 11):
                 story_id = f"boss_pre_{stage}"
                 story_flags[story_id] = await db.get_story_flag(user.id, story_id)
-            
-            # イベントを決定
+
             event = await exploration.determine_event(
                 current_distance=total_distance,
                 previous_distance=previous_distance,
                 story_flags=story_flags,
-                available_choice_stories=available_choice_stories
+                available_choice_stories=available_choice_stories,
             )
         except Exception as e:
-            # イベント決定に失敗した場合は、安全に「何もなし」にフォールバック
             logger.exception("⚠️ イベント決定エラー: %s", e)
             embed = discord.Embed(
                 title="📜 探索結果",
                 description=f"→ {distance}m進んだ！\n何も見つからなかったようだ。",
-                color=discord.Color.dark_grey()
+                color=discord.Color.dark_grey(),
             )
             embed.set_footer(text=f"📏 現在の距離: {total_distance}m")
             await exploring_msg.edit(content=None, embed=embed)
             return
-        
+
         # ==========================
-        # イベント実行（type別の分岐処理）
+        # イベント処理
         # ==========================
         player_data = {
             "hp": player.get("hp", 50),
@@ -286,57 +315,62 @@ async def move(ctx: commands.Context):
             "defense": player.get("def", 2),
             "inventory": player.get("inventory", []),
             "distance": total_distance,
-            "user_id": user.id
+            "user_id": user.id,
         }
-        
+
         if event.type == "BOSS":
             boss_stage = event.data["boss_stage"]
-            
-            # ボス未撃破の場合のみ処理
+
+            # 未討伐の場合のみボス戦
             if not await db.is_boss_defeated(user.id, boss_stage):
                 story_id = event.data["story_id"]
-                
-                if not event.data["story_shown"]:
-                    # ラスボス判定（10000m）
+
+                if not event.data.get("story_shown", False):
+                    # ラスボス前演出（10000m）
                     if boss_stage == 10:
                         embed = discord.Embed(
-                            title="📖 運命の時",
-                            description="強大な気配を感じる…なにが来るんだ？",
-                            color=discord.Color.purple()
+                            title="📖 謎の声",
+                            description="奇妙な気配を感じる…\n何かが近づいている……",
+                            color=discord.Color.purple(),
                         )
                     else:
                         embed = discord.Embed(
-                            title="📖 試練の予兆",
-                            description="強大な存在の気配を感じる…気を引き締めて……",
-                            color=discord.Color.purple()
+                            title="📖 違和感",
+                            description="奇妙な気配を感じる…\n何かが近づいている……",
+                            color=discord.Color.purple(),
                         )
-                    
+
                     await exploring_msg.edit(content=None, embed=embed)
                     await asyncio.sleep(2)
-                    
-                    view = StoryView(user.id, story_id, user_processing, 
-                                    callback_data={
-                                        'type': 'boss_battle',
-                                        'boss_stage': boss_stage,
-                                        'ctx': ctx
-                                    })
+
+                    view = StoryView(
+                        user.id,
+                        story_id,
+                        user_processing,
+                        callback_data={
+                            "type": "boss_battle",
+                            "boss_stage": boss_stage,
+                            "ctx": ctx,
+                        },
+                    )
                     await view.send_story(ctx)
                     view_delegated = True
                     return
-                
-                # ストーリー表示済みの場合、ボス戦に進む
+
                 boss = game.get_boss(boss_stage)
                 if boss:
                     if boss_stage == 10:
                         embed = discord.Embed(
-                            title="⚔️ ラスボス出現！",
-                            description=f"**{boss['name']}** が最後の戦いに臨む！\n\nこれが最終決戦だ…！",
-                            color=discord.Color.dark_gold()
+                            title="👑 ラスボス出現！",
+                            description=f"**{boss['name']}** が目の前に現れた！\n\nこれが最後の戦いだ…",
+                            color=discord.Color.dark_gold(),
                         )
                         await exploring_msg.edit(content=None, embed=embed)
                         await asyncio.sleep(3)
-                        
-                        view = await FinalBossBattleView.create(ctx, player_data, boss, user_processing, boss_stage)
+
+                        view = await FinalBossBattleView.create(
+                            ctx, player_data, boss, user_processing, boss_stage
+                        )
                         await view.send_initial_embed()
                         view_delegated = True
                         return
@@ -344,16 +378,18 @@ async def move(ctx: commands.Context):
                         embed = discord.Embed(
                             title="⚠️ ボス出現！",
                             description=f"**{boss['name']}** が目の前に立ちはだかる！",
-                            color=discord.Color.dark_red()
+                            color=discord.Color.dark_red(),
                         )
                         await exploring_msg.edit(content=None, embed=embed)
                         await asyncio.sleep(2)
-                        
-                        view = await BossBattleView.create(ctx, player_data, boss, user_processing, boss_stage)
+
+                        view = await BossBattleView.create(
+                            ctx, player_data, boss, user_processing, boss_stage
+                        )
                         await view.send_initial_embed()
                         view_delegated = True
                         return
-        
+
         elif event.type == "SPECIAL":
             special_distance = event.data["special_distance"]
             embed = discord.Embed(
@@ -469,6 +505,12 @@ async def inventory(ctx):
         await ctx.send("!start で冒険を始めてね。")
         return
 
+    # チュートリアル進行: inventory を開いた
+    try:
+        await db.set_story_flag_key(ctx.author.id, "tutorial.used_inventory", True)
+    except Exception:
+        pass
+
     view = views.InventorySelectView(player)
     await ctx.send("🎒 インベントリ", view=view)
 
@@ -490,6 +532,12 @@ async def status(ctx):
         if not player:
             await ctx.send("!start で冒険を始めてね。")
             return
+
+        # チュートリアル進行: status を開いた
+        try:
+            await db.set_story_flag_key(ctx.author.id, "tutorial.used_status", True)
+        except Exception:
+            pass
 
         # 装備情報取得
         equipped = {"weapon": "なし", "armor": "なし", "shield": "なし"}
@@ -690,6 +738,17 @@ async def main():
         logger.error("❌ エラー: DISCORD_BOT_TOKEN 環境変数が設定されていません")
         exit(1)
 
+    # Startup validation: external stories JSON (warn by default, strict if STORY_VALIDATION_STRICT=1)
+    try:
+        strict = (os.getenv("STORY_VALIDATION_STRICT", "0").strip() in {"1", "true", "True", "yes", "YES"})
+        import story as _story
+        _story.validate_external_story_files(strict=strict)
+    except Exception:
+        # Strict mode will raise; in non-strict we still avoid crashing startup.
+        logger.exception("story validation failed")
+        if os.getenv("STORY_VALIDATION_STRICT", "0").strip() in {"1", "true", "True", "yes", "YES"}:
+            raise
+
     # extensions(cogs) を自動ロード（今後のcog追加で main.py を触らなくて済むように）
     cogs_dir = Path(__file__).resolve().parent / "cogs"
     if cogs_dir.exists():
@@ -808,163 +867,6 @@ async def show_servers(ctx: commands.Context):
     view = ServerListView(guilds_list, str(ctx.author.id))
     await ctx.send(embed=view.create_embed(), view=view)
 
-
-@bot.command(name="death_stats", aliases=["ds"])
-@check_ban()
-async def death_stats(ctx: commands.Context):
-    """死亡統計を表示"""
-    user = ctx.author
-    player = await get_player(user.id)
-
-    if not player:
-        await ctx.send("!start で冒険を始めてみてね。")
-        return
-
-    import death_system
-
-    summary = await death_system.get_death_summary(user.id)
-    total_deaths = summary.get("total_deaths", 0)
-    top_killers = summary.get("top_killers", [])
-
-    if total_deaths == 0:
-        embed = discord.Embed(
-            title="💀 死亡統計",
-            description="まだ一度も死亡していません。\n\n慎重な冒険者ですね！",
-            color=discord.Color.green()
-        )
-        await ctx.send(embed=embed)
-        return
-
-    # トップ5の敵を表示
-    killer_list = ""
-    for i, (enemy_name, count) in enumerate(top_killers[:5], 1):
-        killer_list += f"{i}. **{enemy_name}** - {count}回\n"
-
-    if not killer_list:
-        killer_list = "データがありません"
-
-    embed = discord.Embed(
-        title=f"💀 {player.get('name', 'あなた')}の死亡統計",
-        description=f"総死亡回数: **{total_deaths}回**\n\n## よく殺された敵 TOP5\n{killer_list}",
-        color=discord.Color.red()
-    )
-
-    # ストーリー進行状況
-    story_progress = await death_system.get_death_story_progress(user.id)
-    embed.add_field(
-        name="📖 死亡ストーリー進行",
-        value=f"{story_progress['unlocked']}/{story_progress['total']} ({story_progress['percentage']:.1f}%)",
-        inline=True
-    )
-
-    embed.set_footer(text="!death_history で詳細な履歴を確認できます")
-
-    await ctx.send(embed=embed)
-
-@bot.command(name="death_history", aliases=["dh"])
-@check_ban()
-async def death_history(ctx: commands.Context, limit: int = 10):
-    """最近の死亡履歴を表示"""
-    user = ctx.author
-    player = await get_player(user.id)
-
-    if not player:
-        await ctx.send("!start で冒険を始めてみてね。")
-        return
-
-    if limit < 1 or limit > 50:
-        await ctx.send("⚠️ 表示件数は1〜50の範囲で指定してください。")
-        return
-
-    recent_deaths = await db.get_recent_deaths(user.id, limit)
-
-    if not recent_deaths:
-        embed = discord.Embed(
-            title="💀 死亡履歴",
-            description="まだ一度も死亡していません。",
-            color=discord.Color.green()
-        )
-        await ctx.send(embed=embed)
-        return
-
-    # 履歴をフォーマット
-    history_text = ""
-    for i, death in enumerate(recent_deaths, 1):
-        enemy_name = death.get("enemy_name", "不明")
-        distance = death.get("distance", 0)
-        floor = death.get("floor", 0)
-        enemy_type_icon = "👑" if death.get("enemy_type") == "boss" else "⚔️"
-
-        history_text += f"{i}. {enemy_type_icon} **{enemy_name}** ({distance}m / {floor}階層)\n"
-
-    embed = discord.Embed(
-        title=f"💀 最近の死亡履歴 (直近{len(recent_deaths)}件)",
-        description=history_text,
-        color=discord.Color.dark_red()
-    )
-
-    embed.set_footer(text="!death_stats で統計を確認できます")
-
-    await ctx.send(embed=embed)
-
-@bot.command(name="titles", aliases=["t"])
-@check_ban()
-async def titles(ctx: commands.Context):
-    """所持している称号を表示"""
-    user = ctx.author
-    player = await get_player(user.id)
-
-    if not player:
-        await ctx.send("!start で冒険を始めてみてね。")
-        return
-
-    from titles import get_title_rarity_emoji, RARITY_COLORS
-
-    player_titles = await db.get_player_titles(user.id)
-    active_title = await db.get_active_title(user.id)
-
-    if not player_titles:
-        embed = discord.Embed(
-            title="🏆 称号一覧",
-            description="まだ称号を獲得していません。\n\n特定の条件を満たすと称号が解放されます。",
-            color=discord.Color.blue()
-        )
-        await ctx.send(embed=embed)
-        return
-
-    # レアリティ別に分類
-    from titles import TITLES
-    rarity_order = ["mythic", "legendary", "epic", "rare", "uncommon", "common"]
-
-    title_text = ""
-    for rarity in rarity_order:
-        rarity_titles = [t for t in player_titles if TITLES.get(t['title_id'], {}).get('rarity') == rarity]
-
-        if rarity_titles:
-            rarity_name = {
-                "mythic": "神話",
-                "legendary": "伝説",
-                "epic": "叙事詩",
-                "rare": "レア",
-                "uncommon": "アンコモン",
-                "common": "コモン"
-            }.get(rarity, rarity)
-
-            for title in rarity_titles:
-                emoji = get_title_rarity_emoji(title['title_id'])
-                title_name = title['title_name']
-                is_active = "【装備中】" if title_name == active_title else ""
-                title_text += f"{emoji} **{title_name}** {is_active}\n"
-
-    embed = discord.Embed(
-        title=f"🏆 {player.get('name', 'あなた')}の称号一覧 ({len(player_titles)}個)",
-        description=title_text or "称号がありません",
-        color=discord.Color.gold()
-    )
-
-    embed.set_footer(text="!equip_title <称号名> で称号を装備できます")
-
-    await ctx.send(embed=embed)
 
 @bot.command(name="equip_title", aliases=["et"])
 @check_ban()

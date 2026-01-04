@@ -47,8 +47,27 @@ def _safe_bool_env(name: str, default: bool = False) -> bool:
         return default
     return raw in ("1", "true", "yes", "y", "on")
 
+
+def _safe_int_env(name: str, default: int) -> int:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except Exception:
+        return default
+
 # デバッグをさらに詳細化したい場合のスイッチ（ログが非常に多くなります）
 VERBOSE_DEBUG = _safe_bool_env("VERBOSE_DEBUG", False)
+
+# -------------------------
+# Supabase HTTP / Retry
+# -------------------------
+# db.py の httpx クライアントと、429/5xx/タイムアウト時のリトライを調整する。
+SUPABASE_HTTP_TIMEOUT = _safe_float_env("SUPABASE_HTTP_TIMEOUT", 30.0)
+SUPABASE_RETRY_MAX_ATTEMPTS = max(1, min(10, _safe_int_env("SUPABASE_RETRY_MAX_ATTEMPTS", 3)))
+SUPABASE_RETRY_BASE_DELAY = max(0.05, _safe_float_env("SUPABASE_RETRY_BASE_DELAY", 0.5))
+SUPABASE_RETRY_MAX_DELAY = max(0.1, _safe_float_env("SUPABASE_RETRY_MAX_DELAY", 3.0))
 
 if SUPABASE_URL and not SUPABASE_URL.startswith(("http://", "https://")):
     # 例: your-project.supabase.co を https://your-project.supabase.co に正規化

@@ -1,0 +1,105 @@
+{
+  "stories": {
+    "tutorial_commands": {
+      "title": "チュートリアル：コマンド",
+      "start_node": "start",
+      "nodes": {
+        "start": {
+          "lines": [
+            {"speaker": "みはり", "text": "よし、まずはコマンドを覚えよう。"},
+            {"speaker": "みはり", "text": "まずは `!status`（または `!s`）でステータスを見てみて！"},
+            {"speaker": "みはり", "text": "できたらこの画面に戻って、NEXTを押してね。"}
+          ],
+          "choices": [
+            {
+              "label": "✅ `!status` できた！",
+              "conditions": [{"type": "flag.has", "key": "tutorial.used_status"}],
+              "result": {
+                "title": "ナイス！",
+                "lines": [
+                  {"speaker": "みはり", "text": "OK！ステータスの見方は大事だよ。"}
+                ]
+              },
+              "next": {"node": "move"}
+            },
+            {
+              "label": "まだ（あとでやる）",
+              "result": {
+                "title": "まずはやってみよう",
+                "lines": [
+                  {"speaker": "みはり", "text": "`!status` を打ってみて！できたらもう一度ここでNEXT→『できた！』を押してね。"}
+                ]
+              },
+              "next": {"node": "start"}
+            }
+          ]
+        },
+        "move": {
+          "lines": [
+            {"speaker": "みはり", "text": "次は移動だ！"},
+            {"speaker": "みはり", "text": "`!move`（または `!m`）で進んでみて。"},
+            {"speaker": "みはり", "text": "敵に遭遇したり、宝箱を見つけたりするぞ。"}
+          ],
+          "choices": [
+            {
+              "label": "✅ `!move` できた！",
+              "conditions": [{"type": "flag.has", "key": "tutorial.used_move"}],
+              "result": {
+                "title": "いいね！",
+                "lines": [
+                  {"speaker": "みはり", "text": "進めたね！困ったらまた `!status` で確認しよう。"}
+                ]
+              },
+              "next": {"node": "inventory"}
+            },
+            {
+              "label": "まだ（あとでやる）",
+              "result": {
+                "title": "やってみよう",
+                "lines": [
+                  {"speaker": "みはり", "text": "`!move` を打ってみて！できたら戻ってきてね。"}
+                ]
+              },
+              "next": {"node": "move"}
+            }
+          ]
+        },
+        "inventory": {
+          "lines": [
+            {"speaker": "みはり", "text": "最後にインベントリ！"},
+            {"speaker": "みはり", "text": "`!inventory`（または `!inv`）で持ち物を見てみて。"}
+          ],
+          "choices": [
+            {
+              "label": "✅ `!inventory` できた！",
+              "conditions": [{"type": "flag.has", "key": "tutorial.used_inventory"}],
+              "result": {
+                "title": "完璧！",
+                "lines": [
+                  {"speaker": "みはり", "text": "よし！あとは進みながら覚えていこう。"}
+                ]
+              },
+              "next": {"node": "finish"}
+            },
+            {
+              "label": "まだ（あとでやる）",
+              "result": {
+                "title": "やってみよう",
+                "lines": [
+                  {"speaker": "みはり", "text": "`!inventory` を打ってみて！できたら戻ってきてね。"}
+                ]
+              },
+              "next": {"node": "inventory"}
+            }
+          ]
+        },
+        "finish": {
+          "lines": [
+            {"speaker": "みはり", "text": "チュートリアルはここまで！"},
+            {"speaker": "みはり", "text": "困ったら `!status`、装備はステータス画面から変更できるよ。"}
+          ]
+        }
+      }
+    }
+  }
+}
